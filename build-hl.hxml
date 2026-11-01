@@ -1,0 +1,4 @@
+# Desktop build (HashLink + SDL). Run with: hl bin/game.hl
+common.hxml
+-lib hlsdl
+-hl bin/game.hl

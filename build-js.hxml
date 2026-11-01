@@ -1,0 +1,4 @@
+# Web/WebGL build. Serve the bin/ folder and open index.html.
+common.hxml
+-js bin/game.js
+-D js-es=6

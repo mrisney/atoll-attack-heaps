@@ -1,0 +1,7 @@
+bin/*
+!bin/index.html
+.haxelib/
+dump/
+*.hl
+.DS_Store
+.vscode/
