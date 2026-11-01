@@ -52,14 +52,15 @@ class Palette {
 
 	/** Terrain color by elevation band. **/
 	public static function terrain(h:Float):Int {
-		if (h < -2.0) return mix(SEABED, WET_SAND, (h + 7) / 5);
+		if (h < -5.0) return mix(OCEAN_DEEP, SEABED, (h + 8) / 3); // fades into the open sea
+		if (h < -2.0) return mix(SEABED, WET_SAND, (h + 5) / 3);
 		if (h < 0.15) return mix(WET_SAND, SAND, (h + 2) / 2.15);
 		if (h < 0.9) return SAND;
 		if (h < 1.6) return mix(SAND, GRASS, (h - 0.9) / 0.7);
 		if (h < 2.4) return mix(GRASS, MEADOW, (h - 1.6) / 0.8);
-		if (h < 3.6) return mix(JUNGLE, JUNGLE_DARK, (h - 2.4) / 1.2);
-		if (h < 4.6) return mix(JUNGLE_DARK, ROCK, (h - 3.6) / 1.0);
-		return mix(ROCK, PEAK, (h - 4.6) / 1.5);
+		if (h < 4.4) return mix(JUNGLE, JUNGLE_DARK, (h - 2.4) / 2.0);
+		if (h < 5.4) return mix(JUNGLE_DARK, ROCK, (h - 4.4) / 1.0);
+		return mix(ROCK, PEAK, (h - 5.4) / 1.5);
 	}
 
 	/** Water color by depth below the surface. **/

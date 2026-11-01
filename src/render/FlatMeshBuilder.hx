@@ -64,7 +64,7 @@ class FlatMeshBuilder {
 			var p0 = new Point(x + Math.cos(a0) * radius, y + Math.sin(a0) * radius, z);
 			var p1 = new Point(x + Math.cos(a1) * radius, y + Math.sin(a1) * radius, z);
 			// Alternate a tiny shade per facet — reads as "hand-painted".
-			var shade = (s % 2 == 0) ? 1.0 : 0.93;
+			var shade = (s % 2 == 0) ? 1.0 : 0.97;
 			if (topRadius <= 0) {
 				tri(p0, p1, top, color, shade);
 			} else {

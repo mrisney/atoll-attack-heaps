@@ -25,30 +25,52 @@ class IslandView extends h3d.scene.Object {
 		return new Point(i * island.cell - he, j * island.cell - he, island.heightAtVertex(i, j));
 	}
 
+	/**
+		Smooth-shaded terrain: shared vertices, normals from the height
+		gradient, and colors blended per vertex. A low-frequency "paint"
+		noise varies the tint so it reads hand-painted rather than banded.
+	**/
 	function buildTerrain() {
-		var b = new FlatMeshBuilder();
-		var jitter = new Noise(island.seed + 101);
-		for (j in 0...island.size)
-			for (i in 0...island.size) {
-				var p00 = vertex(i, j), p10 = vertex(i + 1, j);
-				var p01 = vertex(i, j + 1), p11 = vertex(i + 1, j + 1);
-				// Alternate the diagonal for a less grid-like faceting.
-				var flip = ((i + j) & 1) == 0;
-				var ta = flip ? [p00, p10, p11] : [p00, p10, p01];
-				var tb = flip ? [p00, p11, p01] : [p10, p11, p01];
-				for (t in [ta, tb]) {
-					var h = (t[0].z + t[1].z + t[2].z) / 3;
-					var shade = 0.94 + jitter.rand(i * 2 + (t == ta ? 0 : 1), j) * 0.1;
-					b.tri(t[0], t[1], t[2], Palette.terrain(h), shade);
-				}
+		var size = island.size;
+		var c = island.cell;
+		var paint = new Noise(island.seed + 101);
+		var pts = [], nrm = [], cols = [];
+		for (j in 0...size + 1)
+			for (i in 0...size + 1) {
+				var p = vertex(i, j);
+				pts.push(p);
+				// Central differences → smooth normal.
+				var dx = island.heightAtVertex(i + 1, j) - island.heightAtVertex(i - 1, j);
+				var dy = island.heightAtVertex(i, j + 1) - island.heightAtVertex(i, j - 1);
+				var n = new Point(-dx, -dy, 2 * c);
+				n.normalize();
+				nrm.push(n);
+
+				var col = Palette.terrain(p.z);
+				// Steep slopes pick up a rocky tint, like painted cliffs.
+				var steep = 1 - n.z;
+				if (p.z > 0.5 && steep > 0.2) col = Palette.mix(col, Palette.ROCK, (steep - 0.2) * 1.6);
+				var tint = 0.93 + paint.fbm(p.x * 0.12 + 7, p.y * 0.12 + 7, 3) * 0.14;
+				cols.push(new Point(Palette.r(col) * tint, Palette.g(col) * tint, Palette.b(col) * tint));
 			}
-		b.build(this);
+		var idx = new hxd.IndexBuffer();
+		var w = size + 1;
+		for (j in 0...size)
+			for (i in 0...size) {
+				var a = j * w + i, b = a + 1, d = a + w, e = d + 1;
+				for (k in [a, b, e, a, e, d]) idx.push(k);
+			}
+		var poly = new h3d.prim.Polygon(pts, idx);
+		poly.normals = nrm;
+		poly.colors = cols;
+		var m = new h3d.scene.Mesh(poly, this);
+		FlatMeshBuilder.setupMaterial(m.material, true);
 	}
 
 	function buildWater() {
 		// One smooth grid well past the island so the sea reaches the horizon.
-		var segs = 80;
-		var extent = island.halfExtent * 3.0;
+		var segs = 110;
+		var extent = island.halfExtent * 6.0;
 		var pts = [], cols = [], nrm = [];
 		var idx = new hxd.IndexBuffer();
 		var up = new Point(0, 0, 1);
@@ -86,7 +108,7 @@ class IslandView extends h3d.scene.Object {
 		var rnd = new Noise(island.seed + 303);
 		var he = island.halfExtent;
 		// Scatter on a half-cell lattice with jitter.
-		var step = island.cell * 0.9;
+		var step = 1.1;
 		var n = Std.int(island.size * island.cell / step);
 		for (j in 0...n)
 			for (i in 0...n) {
@@ -95,7 +117,7 @@ class IslandView extends h3d.scene.Object {
 				var h = island.heightAt(x, y);
 				var d = density.fbm(x * 0.08 + 3, y * 0.08 + 3, 3);
 				var r = rnd.rand(i + 5000, j);
-				if (h > 1.2 && h < 4.4 && d > 0.5 && r < 0.7) {
+				if (h > 1.0 && h < 5.0 && d > 0.45 && r < 0.7) {
 					pine(b, x, y, h - 0.05, 0.75 + rnd.rand(i, j + 7000) * 0.6, r);
 				} else if (h > 4.2 && r < 0.18) {
 					rock(b, x, y, h - 0.1, 0.4 + r * 2.0, r);
@@ -111,8 +133,8 @@ class IslandView extends h3d.scene.Object {
 		b.prism(x, y, z, 0.09 * s, 0.45 * s, 5, Palette.TRUNK, rot);
 		var c1 = r < 0.5 ? Palette.PINE_A : Palette.PINE_B;
 		var c2 = r < 0.5 ? Palette.PINE_B : Palette.PINE_A;
-		b.cone(x, y, z + 0.35 * s, 0.62 * s, 1.0 * s, 6, c1, 0, rot);
-		b.cone(x, y, z + 0.85 * s, 0.45 * s, 0.85 * s, 6, c2, 0, rot + 0.4);
+		b.cone(x, y, z + 0.35 * s, 0.62 * s, 1.0 * s, 8, c1, 0, rot);
+		b.cone(x, y, z + 0.85 * s, 0.45 * s, 0.85 * s, 8, c2, 0, rot + 0.4);
 	}
 
 	function rock(b:FlatMeshBuilder, x:Float, y:Float, z:Float, s:Float, r:Float) {

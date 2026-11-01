@@ -29,10 +29,10 @@ class UnitView extends h3d.scene.Object {
 		var s = unit.kind == Captain ? 1.15 : 1.0;
 
 		// Legs/tunic, torso, head, helmet.
-		b.cone(0, 0, 0, 0.26 * s, 0.45 * s, 6, Palette.mix(team, 0x222222, 0.35), 0.2 * s);
-		b.cone(0, 0, 0.45 * s, 0.22 * s, 0.4 * s, 6, team, 0.17 * s);
-		b.cone(0, 0, 0.85 * s, 0.13 * s, 0.22 * s, 6, Palette.SKIN, 0.13 * s);
-		b.cone(0, 0, 1.03 * s, 0.16 * s, 0.18 * s, 6, Palette.STEEL, 0);
+		b.cone(0, 0, 0, 0.26 * s, 0.45 * s, 8, Palette.mix(team, 0x222222, 0.35), 0.2 * s);
+		b.cone(0, 0, 0.45 * s, 0.22 * s, 0.4 * s, 8, team, 0.17 * s);
+		b.cone(0, 0, 0.85 * s, 0.13 * s, 0.22 * s, 8, Palette.SKIN, 0.13 * s);
+		b.cone(0, 0, 1.03 * s, 0.16 * s, 0.18 * s, 8, Palette.STEEL, 0);
 
 		switch unit.kind {
 			case Captain:
@@ -42,7 +42,7 @@ class UnitView extends h3d.scene.Object {
 					new h3d.Vector(-0.18, 0, 1.4), team);
 			case Swordsman:
 				// Shield on the left arm, sword on the right.
-				b.prism(0, 0.27, 0.45, 0.2, 0.06, 6, Palette.mix(team, 0xFFFFFF, 0.25));
+				b.prism(0, 0.27, 0.45, 0.2, 0.06, 8, Palette.mix(team, 0xFFFFFF, 0.25));
 				b.prism(0.08, -0.26, 0.55, 0.035, 0.55, 4, Palette.STEEL);
 			case Archer:
 				// Bow as a thin arc of prisms.

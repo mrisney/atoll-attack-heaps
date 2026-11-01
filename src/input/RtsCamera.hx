@@ -15,7 +15,7 @@ class RtsCamera {
 	public var pitch = 0.95; // radians above the horizon
 
 	public var minDistance = 14.0;
-	public var maxDistance = 110.0;
+	public var maxDistance = 95.0;
 	public var bounds = 80.0;
 	public var edgeScroll = true;
 

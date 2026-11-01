@@ -26,12 +26,40 @@ class Island {
 	inline function get_halfExtent()
 		return size * cell * 0.5;
 
-	public function new(seed:Int, size = 96, cell = 1.25) {
+	public function new(seed:Int, size = 160, cell = 0.75) {
 		this.seed = seed;
 		this.size = size;
 		this.cell = cell;
 		heights = [for (_ in 0...(size + 1) * (size + 1)) 0.0];
 		generate();
+		smooth(2);
+	}
+
+	/** Box-blur passes to round off ridges (deterministic, Int-indexed). **/
+	function smooth(passes:Int) {
+		var w = size + 1;
+		for (_ in 0...passes) {
+			var src = heights.copy();
+			for (j in 1...size)
+				for (i in 1...size) {
+					var sum = 0.0;
+					for (dj in -1...2)
+						for (di in -1...2)
+							sum += src[(j + dj) * w + i + di];
+					heights[j * w + i] = sum / 9;
+				}
+		}
+		// Recompute the apex after smoothing.
+		apexH = -999.0;
+		for (j in 0...w)
+			for (i in 0...w) {
+				var h = heights[j * w + i];
+				if (h > apexH) {
+					apexH = h;
+					apexX = i * cell - halfExtent;
+					apexY = j * cell - halfExtent;
+				}
+			}
 	}
 
 	function generate() {
@@ -108,7 +136,7 @@ class Island {
 	}
 
 	/** Find a walkable spot near a preferred angle on the ring (for spawning). **/
-	public function findLandNear(angle:Float):{x:Float, y:Float} {
+	public function findLandNear(angle:Float, sweep = 0):{x:Float, y:Float} {
 		var dx = Math.cos(angle), dy = Math.sin(angle);
 		var best = {x: 0.0, y: 0.0};
 		var bestH = -999.0;
@@ -117,14 +145,16 @@ class Island {
 			var t = k / steps * halfExtent;
 			var x = dx * t, y = dy * t;
 			var h = heightAt(x, y);
-			// Prefer low beaches (good landing zones) over peaks.
-			if (h > WALKABLE_MIN + 0.3 && h < 2.5 && h > bestH) {
+			// Prefer low beaches (good landing zones) on a real landmass, not a sandbar.
+			if (h > 0.6 && h < 2.5 && h > bestH && landAround(x, y, 3.0) >= 7) {
 				bestH = h;
 				best = {x: x, y: y};
 			}
 		}
 		if (bestH < -100) {
-			// Fall back to the highest point along that bearing.
+			// Nothing suitable on this bearing: sweep outward to neighbouring bearings,
+			// and only as a last resort settle for the highest point.
+			if (sweep < 12) return findLandNear(angle + (sweep % 2 == 0 ? 1 : -1) * (sweep + 1) * 0.12, sweep + 1);
 			for (k in 0...steps) {
 				var t = k / steps * halfExtent;
 				var h = heightAt(dx * t, dy * t);
@@ -135,6 +165,16 @@ class Island {
 			}
 		}
 		return best;
+	}
+
+	/** How many of 8 points on a circle around (x,y) are walkable. **/
+	function landAround(x:Float, y:Float, radius:Float):Int {
+		var n = 0;
+		for (k in 0...8) {
+			var a = k / 8 * Math.PI * 2;
+			if (heightAt(x + Math.cos(a) * radius, y + Math.sin(a) * radius) > 0.3) n++;
+		}
+		return n;
 	}
 
 	public static inline function lerp(a:Float, b:Float, t:Float):Float
