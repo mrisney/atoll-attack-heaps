@@ -17,6 +17,29 @@ class FlatMeshBuilder {
 	var nrm:Array<Point>;
 	var col:Array<Point>;
 
+	/**
+		Ink outline thickness in world units (0 = none). When set, every cone
+		and prism also emits a slightly larger "inverted hull" that is drawn
+		back-faces-only in a dark ink color, giving a hand-inked edge.
+	**/
+	public var outline = 0.0;
+	public var outlineColor = Palette.INK;
+	var hull:Null<FlatMeshBuilder>;
+
+	/** Optional transform applied to everything emitted (rotate, then translate). **/
+	public var transform:Null<h3d.Matrix> = null;
+
+	public function place(rx:Float, ry:Float, rz:Float, tx:Float, ty:Float, tz:Float) {
+		var m = new h3d.Matrix();
+		m.initRotation(rx, ry, rz);
+		m.translate(tx, ty, tz);
+		transform = m;
+	}
+
+	public inline function unplace() {
+		transform = null;
+	}
+
 	public function new() {
 		reset();
 	}
@@ -40,6 +63,11 @@ class FlatMeshBuilder {
 
 	public function tri(a:Point, b:Point, c:Point, color:Int, shade = 1.0) {
 		if (pts.length + 3 > MAX_VERTS) flush();
+		if (transform != null) {
+			a = a.transformed(transform);
+			b = b.transformed(transform);
+			c = c.transformed(transform);
+		}
 		var n = b.sub(a).cross(c.sub(a));
 		n.normalize();
 		var cc = new Point(Palette.r(color) * shade, Palette.g(color) * shade, Palette.b(color) * shade);
@@ -57,6 +85,13 @@ class FlatMeshBuilder {
 
 	/** Cone (or truncated cone when topRadius > 0) standing on z. **/
 	public function cone(x:Float, y:Float, z:Float, radius:Float, height:Float, sides:Int, color:Int, topRadius = 0.0, rot = 0.0) {
+		if (outline > 0) {
+			if (hull == null) hull = new FlatMeshBuilder();
+			hull.transform = transform;
+			var o = outline;
+			hull.cone(x, y, z - o * 0.5, radius + o, height + o * (topRadius > 0 ? 1.0 : 2.2), sides, outlineColor,
+				topRadius > 0 ? topRadius + o : 0, rot);
+		}
 		var top = new Point(x, y, z + height);
 		for (s in 0...sides) {
 			var a0 = rot + s / sides * Math.PI * 2;
@@ -102,12 +137,22 @@ class FlatMeshBuilder {
 			out.push(m);
 		}
 		chunks = [];
+		if (hull != null) {
+			for (m in hull.build(parent, false))
+				m.material.mainPass.culling = Front; // only the far side shows → outline
+			hull = null;
+		}
 		return out;
+	}
+
+	/** Filled disc lying on z (blob shadows). **/
+	public inline function disc(x:Float, y:Float, z:Float, radius:Float, segs:Int, color:Int) {
+		ring(x, y, z, 0.0001, radius, segs, color);
 	}
 
 	public static function setupMaterial(mat:h3d.mat.Material, lit = true) {
 		mat.color.set(1, 1, 1, 1);
-		mat.mainPass.culling = None;
+		mat.mainPass.culling = Back;
 		mat.mainPass.addShader(new h3d.shader.VertexColor());
 		mat.mainPass.enableLights = lit;
 		mat.specularAmount = 0;

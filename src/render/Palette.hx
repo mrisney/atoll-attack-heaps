@@ -25,12 +25,14 @@ class Palette {
 	public static inline var PINE_B = 0x557F3E;
 	public static inline var STONE = 0x9A9284;
 
-	public static inline var TEAM_BLUE = 0x3C6FB5;
-	public static inline var TEAM_RED = 0xB84A3E;
+	public static inline var TEAM_BLUE = 0x3B5F8E;
+	public static inline var TEAM_RED = 0x9C4436;
 	public static inline var SKIN = 0xE0B48C;
 	public static inline var STEEL = 0xB9BDC2;
 	public static inline var WOOD = 0x8A6440;
 	public static inline var SELECT = 0xF4E27A;
+	public static inline var INK = 0x1F1A15;
+	public static inline var LEATHER = 0x5A4130;
 
 	public static inline function r(c:Int):Float
 		return ((c >> 16) & 0xFF) / 255;

@@ -104,6 +104,7 @@ class IslandView extends h3d.scene.Object {
 
 	function buildProps() {
 		var b = new FlatMeshBuilder();
+		b.outline = 0.06;
 		var density = new Noise(island.seed + 202);
 		var rnd = new Noise(island.seed + 303);
 		var he = island.halfExtent;
@@ -143,12 +144,15 @@ class IslandView extends h3d.scene.Object {
 
 	function buildApexFlag() {
 		var b = new FlatMeshBuilder();
+		b.outline = 0.05;
 		var x = island.apexX, y = island.apexY, z = island.apexH - 0.05;
 		// Stone cairn + pole + neutral banner, waiting to be claimed.
 		b.cone(x, y, z, 0.7, 0.45, 6, Palette.STONE, 0.45);
 		b.prism(x, y, z + 0.4, 0.05, 2.6, 5, Palette.WOOD);
 		var top = z + 2.9;
-		b.tri(new Point(x, y, top), new Point(x + 1.1, y + 0.15, top - 0.35), new Point(x, y, top - 0.7), 0xEFE8D8);
+		var f0 = new Point(x, y, top), f1 = new Point(x + 1.1, y + 0.15, top - 0.35), f2 = new Point(x, y, top - 0.7);
+		b.tri(f0, f1, f2, 0xEFE8D8);
+		b.tri(f0, f2, f1, 0xEFE8D8); // two-sided cloth
 		b.build(this);
 	}
 }
