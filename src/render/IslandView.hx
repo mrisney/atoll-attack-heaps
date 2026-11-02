@@ -27,6 +27,9 @@ class IslandView extends h3d.scene.Object {
 		buildProps();
 		buildApexFlag();
 		buildWater();
+		surf = Surf.build(island, this);
+		boats = new Boats(island, this);
+		decals = new Decals(island, this);
 	}
 
 	function vertex(i:Int, j:Int):Point {
@@ -90,6 +93,15 @@ class IslandView extends h3d.scene.Object {
 
 	public function setStyle(style:VisualStyle) {
 		terrainStyle.painted = style == Painted ? 1 : 0;
+		// Surf body: a deeper shade of each style's shallow water.
+		if (surf != null) {
+			var c = switch style {
+				case Classic: 0x3D8FC4;
+				case Painted: 0x2F8C9C;
+				case InkMap: 0x86AFBC;
+			};
+			TerrainStyle.setColor(surf.body, c);
+		}
 		waterShader.softness = 0;
 		switch style {
 			case Painted:
@@ -154,6 +166,65 @@ class IslandView extends h3d.scene.Object {
 	}
 
 	var props:Props.PropGroups;
+
+	var surf:Null<Surf.SurfShader>;
+
+	/** Ambient sailboats offshore; call `update` every frame. **/
+	public var boats(default, null):Boats;
+	/** Ground marks (blast craters). **/
+	public var decals(default, null):Decals;
+
+	public function update(dt:Float) {
+		boats.update(dt);
+	}
+
+	/**
+		A wooden dock at each landing beach, pointing from the beach out to sea.
+		`points` are on land near the shore (the squads' spawn spots).
+	**/
+	public function addLandings(points:Array<{x:Float, y:Float}>) {
+		var sp = new SpriteProps();
+		var posts = new FlatMeshBuilder();
+		for (p in points) {
+			// The shortest way to deep water is the dock's direction.
+			var best = -1.0, bdx = 1.0, bdy = 0.0;
+			for (k in 0...32) {
+				var a = k / 32 * Math.PI * 2;
+				var dx = Math.cos(a), dy = Math.sin(a);
+				var t = 0.0;
+				while (t < 30 && island.heightAt(p.x + dx * t, p.y + dy * t) > -0.9) t += 0.25;
+				if (t < 30 && (best < 0 || t < best)) {
+					best = t;
+					bdx = dx;
+					bdy = dy;
+				}
+			}
+			if (best < 0) continue;
+			// Find the waterline along that direction; the dock starts just above it.
+			var t = 0.0;
+			while (t < best && island.heightAt(p.x + bdx * t, p.y + bdy * t) > 0.25) t += 0.1;
+			var len = 7.5;
+			var sx = p.x + bdx * (t - 1.2), sy = p.y + bdy * (t - 1.2);
+			var cx = sx + bdx * len / 2, cy = sy + bdy * len / 2;
+			var deck = 0.45;
+			// Image-up (the shore end) points back toward land.
+			sp.add("structures/dock.png", cx, cy, deck, len, 0, Math.atan2(bdx, -bdy), 1.0);
+			// Pilings along both sides, down into the water.
+			var sideX = -bdy, sideY = bdx;
+			var k = 0.0;
+			while (k <= len) {
+				for (side in [-1.25, 1.25]) {
+					var px = sx + bdx * k + sideX * side, py = sy + bdy * k + sideY * side;
+					var ground = island.heightAt(px, py);
+					posts.prism(px, py, Math.min(ground, -0.2) - 0.3, 0.09, deck - Math.min(ground, -0.2) + 0.25, 6, Palette.shade(Palette.TRUNK, 0.8));
+				}
+				k += 2.4;
+			}
+		}
+		var docks = new h3d.scene.Object(this);
+		sp.build(docks, true);
+		posts.build(docks, true, true, true);
+	}
 
 	function buildProps() {
 		props = Props.build(island, this);

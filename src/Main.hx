@@ -78,6 +78,8 @@ class Main extends hxd.App {
 		islandView = new IslandView(island, s3d);
 		applyStyle();
 		for (u in sim.units) unitViews.push(new UnitView(u, island.heightAt, s3d));
+		// A dock at each squad's landing beach (the captains start there).
+		islandView.addLandings([for (u in sim.units) if (u.kind == Captain) {x: u.x, y: u.y}]);
 		selection = new SelectionController(sim, unitViews, s3d, s2d, rtsCam);
 		if (controls == null) {
 			controls = new ui.ControlBar(rtsCam, recenterOnSquad, s2d);
@@ -88,6 +90,7 @@ class Main extends hxd.App {
 		minimap.setIsland(island, sim.units);
 		minimap.onCommand = selection.orderMoveWorld;
 		selection.uiHitTest = (x, y) -> controls.hitTest(x, y) || minimap.hitTest(x, y);
+		selection.onBlast = (x, y) -> islandView.decals.crater(x, y, 2.6);
 
 		// Start looking at the blue squad's beach.
 		var blue = sim.units[0];
@@ -193,6 +196,7 @@ class Main extends hxd.App {
 		}
 		rtsCam.update(dt, selection.mouseX, selection.mouseY, s2d.width, s2d.height);
 		sim.update(dt);
+		islandView.update(dt);
 		for (v in unitViews) v.syncFromSim(dt);
 		selection.update(dt);
 		controls.update(dt, s2d.width, s2d.height);

@@ -95,6 +95,8 @@ class SelectionController {
 
 	/** Debug: knock down every unit near the cursor (tests the rag dolls). **/
 	public var blastRadius = 3.5;
+	/** Called with the blast's world position (the view leaves a crater). **/
+	public var onBlast:Null<(Float, Float) -> Void> = null;
 
 	public function blastAt(sx:Float, sy:Float) {
 		var hit = groundAt(sx, sy);
@@ -105,6 +107,7 @@ class SelectionController {
 			if (v.unit.alive && dx * dx + dy * dy < blastRadius * blastRadius) ids.push(v.unit.id);
 		}
 		if (ids.length > 0) sim.queue(Kill(ids, hit.x, hit.y));
+		if (onBlast != null) onBlast(hit.x, hit.y);
 		marker.setPosition(hit.x, hit.y, Math.max(hit.z, 0));
 		marker.setScale(3);
 		markerTime = 0;

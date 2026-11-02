@@ -173,6 +173,10 @@ private class Batch {
 		m.material.texture = SpriteProps.texture(path);
 		m.material.textureShader.killAlpha = true;
 		m.material.textureShader.killAlphaThreshold = 0.5;
+		// Foliage ripples gently in the breeze; rocks, logs, docks and boats don't.
+		var sway = if (path.indexOf("canopy") >= 0) 0.05 else if (path.indexOf("waterline") >= 0) 0.06 else if (path.indexOf("bush") >= 0
+			|| path.indexOf("vine-mat") >= 0) 0.03 else 0.0;
+		if (sway > 0) m.material.mainPass.addShader(new SwayShader(sway));
 		FlatMeshBuilder.shadows(m.material, castShadow, true);
 	}
 }

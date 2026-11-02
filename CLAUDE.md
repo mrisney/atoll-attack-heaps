@@ -86,6 +86,14 @@ URL params on the web build make runs reproducible:
   from his WildCurrent repo (`assets/art/bank`). `SpriteProps` puts each on an
   alpha-tested smooth dome, trims the art's 1 px pale outline, and bleeds edge
   colour so mipmaps don't halo. Ink map keeps low-poly by default.
+- **WildCurrent art in use** (see `res/SOURCE.md`): canopies (plain and
+  vine), bushes, boulders, vine mats, waterline/tall grass, reeds, the floating
+  log, the swell sheet (surf), white-sail dinghies (ambient boats) and the
+  dock (landing beaches). Racing spinnakers, rafts, buoys and city pieces were
+  judged off-theme for the island. Foliage sways subtly, per the WildCurrent
+  art notes ("never rotate the whole canopy").
+- The surf sprite's dark teal back was painted for San Francisco's ocean.
+  `SurfShader` keeps the white foam and recolours the back per style.
 - All colours live in `render/Palette.hx` and the style shaders. Don't
   hard-code colours elsewhere.
 
@@ -127,8 +135,9 @@ URL params on the web build make runs reproducible:
   `IslandShape.Single` rather than a second `Classic`.
 - **Web keyboard input:** the canvas needs `globalEvents="1"` (in
   `bin/index.html`), or keys only work after focusing the canvas.
-- **`hxd.Key.isPressed` is per frame.** Under slow software rendering, quick
-  taps can be missed. Hold keys about 400 ms in automation.
+- **`hxd.Key.isPressed` is per frame.** Headless software rendering runs at
+  only about 4 fps with the full scene, so hold keys about 1.5 s in automation
+  or the press can fall between frames.
 - **Keep fragment shaders cheap**, because mobile is a target. Bake expensive
   noise into textures once per island (see `TerrainStyle.bakeRelief`,
   `WaterShader.setIsland`). Per-pixel fbm was too slow.

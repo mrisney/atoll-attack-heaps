@@ -37,6 +37,10 @@ typedef PropGroups = {
 class Props {
 	static inline var SPRITES = "props/";
 	static final CANOPIES = ["tree-canopy-01", "tree-canopy-02", "tree-canopy-03", "tree-canopy-04"];
+	/** Weeping, vine-draped canopies: mixed in, more often near water. **/
+	static final VINE_CANOPIES = ["tree-canopy-vine-01", "tree-canopy-vine-02", "tree-canopy-vine-03"];
+	static final VINE_MATS = ["vine-mat-01", "vine-mat-02"];
+	static final TALL_GRASS = ["waterline-grass-tall-01", "waterline-grass-tall-02", "waterline-grass-tall-03"];
 	static final BUSHES = ["bush-clump-01", "bush-clump-02", "bush-clump-03"];
 	static final BOULDERS = ["landmark-boulder-01", "landmark-boulder-02", "landmark-boulder-03"];
 	static final REEDS = [
@@ -118,14 +122,16 @@ class Props {
 					// Beach
 					if (roll < 0.03 && h > 0.35) palm(x, y, z, -gx, -gy);
 					else if (roll < 0.05) stones(x, y, z, 2);
-					else if (roll < 0.056 && h < 0.6) driftwood(x, y, z);
+					else if (roll < 0.066 && h < 0.6) driftwood(x, y, z);
 					else if (roll < 0.12) shells(x, y, z);
+					else if (roll < 0.2 && h > 0.35) beachGrass(x, y, z);
 				} else if (h < tLow) {
 					// Lowland
 					if (steep && roll < 0.25) rockCluster(x, y, z, 2);
 					else if (forest > 0.56 && roll < 0.55) {
 						if (r() < 0.75) broadleaf(x, y, z) else pine(x, y, z);
 					} else if (forest > 0.5 && roll < 0.2) bush(x, y, z);
+					else if (forest > 0.47 && roll < 0.42) vineMat(x, y, z);
 					else if (meadow > 0.48 && roll < 0.75) {
 						grassTuft(x, y, z);
 						if (r() < 0.35) flowers(x, y, z);
@@ -169,7 +175,24 @@ class Props {
 		var trunkH = (0.9 + r() * 0.45) * s;
 		trunks.prism(x, y, z, 0.1 * s, trunkH + 0.2, 5, tint(pick(Palette.BARK)), r() * 3);
 		var size = (2.0 + r() * 0.9) * s;
-		spr.add(SPRITES + pickName(CANOPIES) + ".png", x, y, z + trunkH, size, size * 0.28, r() * Math.PI * 2, 0.92 + r() * 0.16);
+		// Weeping vine trees like the low ground near water; elsewhere they're occasional.
+		var vineChance = z < Island.classicHeight(0.47) ? 0.45 : 0.15;
+		var name = r() < vineChance ? pickName(VINE_CANOPIES) : pickName(CANOPIES);
+		spr.add(SPRITES + name + ".png", x, y, z + trunkH, size, size * 0.28, r() * Math.PI * 2, 0.92 + r() * 0.16);
+	}
+
+	/** Creepers spilling out of the forest edge onto the open ground. **/
+	function vineMat(x:Float, y:Float, z:Float) {
+		spr.add(SPRITES + pickName(VINE_MATS) + ".png", x, y, z + 0.04, 1.4 + r() * 1.0, 0.08, r() * Math.PI * 2, 0.9 + r() * 0.2);
+	}
+
+	/** Dune grass clumps on the sand. **/
+	function beachGrass(x:Float, y:Float, z:Float) {
+		for (k in 0...1 + Std.int(r() * 3)) {
+			var a = r() * Math.PI * 2, d = r() * 0.7;
+			spr.add(SPRITES + pickName(TALL_GRASS) + ".png", x + Math.cos(a) * d, y + Math.sin(a) * d, z + 0.05, 0.8 + r() * 0.5, 0.12,
+				r() * Math.PI * 2, 0.95 + r() * 0.1);
+		}
 	}
 
 	function reeds(x:Float, y:Float) {
@@ -324,9 +347,10 @@ class Props {
 	function driftwood(x:Float, y:Float, z:Float) {
 		var a = r() * Math.PI;
 		var len = 0.9 + r() * 0.8;
-		solid.place(0, Math.PI / 2, a, x, y, z + 0.06);
-		solid.prism(0, 0, -len / 2, 0.07, len, 5, Palette.DRIFTWOOD);
-		solid.unplace();
+		low.place(0, Math.PI / 2, a, x, y, z + 0.06);
+		low.prism(0, 0, -len / 2, 0.07, len, 5, Palette.DRIFTWOOD);
+		low.unplace();
+		spr.add(SPRITES + "floating-log.png", x, y, z + 0.05, len * 1.25, 0.06, a + Math.PI / 2, 1.0);
 	}
 
 	/** A bare dead tree on the heights. **/
