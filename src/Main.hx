@@ -27,7 +27,7 @@ class Main extends hxd.App {
 	var drafting:ui.DraftingOverlay;
 	/** Size of on-screen UI relative to its design size (2 on Retina screens). **/
 	var uiScale = 1.0;
-	var style:VisualStyle = Classic;
+	var style:VisualStyle = Sketch;
 	var shape:IslandShape = Single;
 	/** null = follow the style's default (sprites except in Ink map). **/
 	var spriteProps:Null<Bool> = null;

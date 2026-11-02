@@ -17,7 +17,7 @@ haxe build-hl.hxml && hl bin/game.hl     # desktop HashLink (x86 only)
 ```
 
 URL params on the web build make runs reproducible:
-`bin/index.html?seed=123&style=classic|painted|inkmap&shape=atoll|single&dist=80`.
+`bin/index.html?seed=123&style=sketch|classic|painted|inkmap&shape=atoll|single&dist=80`.
 
 ## How to verify a change
 
@@ -54,8 +54,9 @@ URL params on the web build make runs reproducible:
 
 ## Art direction (decided — keep consistent)
 
-- Four visual styles, cycled with **T** (Classic → Painted → Ink map → Sketch):
-  - **Classic** (default) is the Flutter game's look. Posterised elevation
+- Four visual styles, cycled with **T** (Classic → Painted → Ink map → Sketch).
+  **Sketch is the default** (owner's choice); the others stay for comparison.
+  - **Classic** is the Flutter game's look. Posterised elevation
     bands (sand/lowland/upland/peak), three stepped water tones, and the fbm
     "relief" highlight. Ported from `atoll-attack/shaders/island_water.frag`.
   - **Painted** blends painted grass/dirt/rock/sand textures
