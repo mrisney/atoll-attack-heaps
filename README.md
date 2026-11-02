@@ -37,6 +37,7 @@ The goal of this spike is to answer one question: does Heaps give the Northgard-
 - **3D rocks**: boulders and loose stones are procedural meshes (a noise-deformed icosphere with fracture planes, sunk into the ground, darkened at the base, with the painted rock texture projected from three sides) lit by the scene's sun, so they agree with the light and cast real shadows.
 - **Wind waves**: an FFT ocean (Tessendorf's method, Phillips spectrum) baked once at startup into a seamless looping texture, so on the GPU it's just texture lookups. The water is lit by the waves (light and shade, sun glints, lighter crests). Foam comes from the simulation itself (where crests fold over), lingering in patches: sparse whitecaps at sea, and in the shallows the swell breaks into froth that rolls in along the depth contours and runs up the sand as swash, leaving it wet. Only shores exposed to the open swell break; lagoons stay calm.
 - **Blast craters**: scorched pits with thrown soil, draped over the terrain where X blasts land.
+- **Grass fields in the wind**: tens of thousands of real grass blades in open meadows, bent by rolling gusts in the vertex shader and lit as translucent leaves (an approach inspired by spacejack/terra; own implementation).
 - **Micro-scatter**: wildflowers in the meadows, shells on the beaches, loose pebbles in the uplands.
 - **Tilt-shift** (B to toggle; on by default in Painted).
 - **Prop variety**: palms leaning toward the sea, mixed broadleaf and pine woods with the odd turning tree, bushes, grass meadows, rock outcrops, driftwood, loose stones and dead snags on the heights. Placed by elevation band and clustered by noise, with a colour and size per instance, merged into a handful of draw calls.
@@ -56,6 +57,7 @@ src/
   render/FlatMeshBuilder.hx low-poly faceted geometry helper
   render/IslandView.hx      terrain, water, apex flag; shadow setup per mesh
   render/Props.hx           vegetation and rocks: species, biome placement, clustering
+  render/GrassField.hx      wind-blown grass fields: blade strips bent and lit in a vertex shader
   render/Palms.hx           coconut palms: curved smooth trunks, arched leafy fronds (texture painted in code)
   render/SpriteProps.hx     painted sprites on alpha-tested domes (one draw call per sprite)
   render/Rocks.hx           procedural 3D boulders and stones (triplanar painted texture)

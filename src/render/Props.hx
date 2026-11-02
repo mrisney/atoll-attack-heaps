@@ -60,6 +60,10 @@ class Props {
 	/** Real 3D boulders for the sprite look (sprites read as stickers for rocks). **/
 	final rocks = new Rocks();
 	final palms = new Palms();
+	/** Wind-blown grass fields (real blades, bent in the shader). **/
+	final fields = new GrassField();
+	var fieldN:Noise;
+	var clumpN:Noise;
 	/** Small loose stones, shared by both looks. **/
 	final pebbles = new Rocks();
 	/** Sprite trunks (mostly hidden under the canopy, they ground the tree). **/
@@ -94,6 +98,8 @@ class Props {
 	function scatter(parent:h3d.scene.Object):PropGroups {
 		var forestN = new Noise(island.seed + 202);
 		var meadowN = new Noise(island.seed + 404);
+		fieldN = new Noise(island.seed + 505);
+		clumpN = new Noise(island.seed + 606);
 		var he = island.halfExtent;
 		var tSand = Island.classicHeight(0.39);
 		var tLow = Island.classicHeight(0.54);
@@ -119,6 +125,8 @@ class Props {
 				var slope = Math.sqrt(gx * gx + gy * gy);
 				var steep = slope > 0.9;
 				var forest = forestN.fbm(x * 0.055 + 3, y * 0.055 + 3, 3);
+				// Grassland clearings: where a field patch is strong, the woods give way to it.
+				forest -= smoothstep(0.42, 0.55, fieldN.fbm(x * 0.035 + 21, y * 0.035 + 21, 3)) * 0.12;
 				var meadow = meadowN.fbm(x * 0.08 + 9, y * 0.08 + 9, 3);
 				var roll = r();
 				var z = h - 0.06;
@@ -126,7 +134,7 @@ class Props {
 				if (h < tSand) {
 					// Beach
 					if (roll < 0.03 && h > 0.35) palm(x, y, z, -gx, -gy);
-					else if (roll < 0.05) stones(x, y, z, 2);
+					else if (roll < 0.04) stones(x, y, z, 2);
 					else if (roll < 0.066 && h < 0.6) driftwood(x, y, z);
 					else if (roll < 0.12) shells(x, y, z);
 					else if (roll < 0.2 && h > 0.35) beachGrass(x, y, z);
@@ -137,25 +145,35 @@ class Props {
 						if (r() < 0.75) broadleaf(x, y, z) else pine(x, y, z);
 					} else if (forest > 0.5 && roll < 0.2) bush(x, y, z);
 					else if (forest > 0.47 && roll < 0.42) vineMat(x, y, z);
-					else if (meadow > 0.48 && roll < 0.75) {
-						grassTuft(x, y, z);
-						if (r() < 0.35) flowers(x, y, z);
+					else {
+						// Open ground: fields of tall grass in the wind, meadow tufts elsewhere.
+						var f = fieldWeight(x, y, h, forest, slope, tSand, tUp);
+						if (f > 0.02) {
+							grassField(x, y, step, f);
+							if (r() < 0.1) flowers(x, y, z);
+						} else if (meadow > 0.48 && roll < 0.75) {
+							grassTuft(x, y, z);
+							if (r() < 0.35) flowers(x, y, z);
+						}
 					}
-					else if (roll < 0.006) rockCluster(x, y, z, 1);
 				} else if (h < tUp) {
 					// Upland
 					if (steep && roll < 0.15) rockCluster(x, y, z, 2);
 					else if (forest > 0.48 && roll < 0.65) {
 						if (r() < 0.8) pine(x, y, z) else broadleaf(x, y, z);
-					} else if (roll < 0.12) bush(x, y, z);
-					else if (roll < 0.3) grassTuft(x, y, z);
-					else if (roll < 0.33) stones(x, y, z, 2);
+					} else if (roll < 0.1) bush(x, y, z);
+					else {
+						var f = fieldWeight(x, y, h, forest, slope, tSand, tUp);
+						if (f > 0.02) grassField(x, y, step, f);
+						else if (roll < 0.3) grassTuft(x, y, z);
+						else if (roll < 0.315) stones(x, y, z, 2);
+					}
 				} else {
 					// Peak
 					// Sparse: a few boulder groups and loose stones (the owner found them too many).
 					if (roll < 0.022) rockCluster(x, y, z, 1 + Std.int(r() * 3));
-					else if (roll < 0.08) stones(x, y, z, 2);
-					else if (roll < 0.11) snag(x, y, z);
+					else if (roll < 0.05) stones(x, y, z, 2);
+					else if (roll < 0.08) snag(x, y, z);
 				}
 			}
 
@@ -172,6 +190,10 @@ class Props {
 		spr.build(sprites);
 		rocks.build(sprites);
 		pebbles.build(parent);
+		fields.build(parent);
+		#if js
+		js.Syntax.code("window.grassBlades = {0}", fields.count);
+		#end
 		palms.build(parent);
 		return {lowPoly: lowPoly, sprites: sprites};
 	}
@@ -256,6 +278,36 @@ class Props {
 			low.ball(x + Math.cos(a) * d, y + Math.sin(a) * d, z + 0.18 * s, (0.3 + r() * 0.15) * s, tint(c, 0.18), 6, 3, 0.75, r() * 3);
 		}
 		spr.add(SPRITES + pickName(BUSHES) + ".png", x, y, z, (1.0 + r() * 0.5) * (0.6 + s), 0.35 * s, r() * Math.PI * 2, 0.9 + r() * 0.2);
+	}
+
+	/**
+		How much grass field grows here (0..1): large open patches away from
+		forest, off the beach and below the bare heights, on gentle ground.
+	**/
+	function fieldWeight(x:Float, y:Float, h:Float, forest:Float, slope:Float, tSand:Float, tUp:Float):Float {
+		if (slope > 0.75) return 0;
+		var field = fieldN.fbm(x * 0.035 + 21, y * 0.035 + 21, 3);
+		return smoothstep(0.34, 0.44, field) * (1 - smoothstep(0.5, 0.6, forest)) * smoothstep(tSand + 0.05, tSand + 0.45, h)
+			* (1 - smoothstep(tUp - 0.3, tUp + 0.5, h));
+	}
+
+	/** Fill one placement cell with grass blades; `w` thins them out toward a field's edge. **/
+	function grassField(x:Float, y:Float, cell:Float, w:Float) {
+		var n = Std.int(w * 38 + r());
+		for (k in 0...n) {
+			var bx = x + (r() - 0.5) * cell, by = y + (r() - 0.5) * cell;
+			// Clumpy heights (as in Terra): taller tussocks and shorter patches.
+			var clump = clumpN.fbm(bx * 0.45 + 3, by * 0.45 + 3, 2);
+			var height = (0.3 + 0.5 * clump) * (0.75 + r() * 0.5) * (0.6 + 0.4 * w);
+			var dry = r() < 0.15 ? r() : r() * 0.25;
+			fields.blade(bx, by, island.heightAt(bx, by) - 0.02, r() * Math.PI * 2, 0.08 + r() * 0.06, height, (r() - 0.5) * 0.5,
+				0.15 + r() * 0.45, dry);
+		}
+	}
+
+	static inline function smoothstep(a:Float, b:Float, x:Float):Float {
+		var t = Math.max(0, Math.min(1, (x - a) / (b - a)));
+		return t * t * (3 - 2 * t);
 	}
 
 	function grassTuft(x:Float, y:Float, z:Float) {

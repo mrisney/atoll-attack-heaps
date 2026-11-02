@@ -134,6 +134,18 @@ URL params on the web build make runs reproducible:
   leaf texture painted in code and alpha-cut (leafy silhouettes and
   shadows). There's no palm art in WildCurrent; if the owner supplies some,
   it could replace the frond texture.
+- **Grass fields** (`render/GrassField.hx`): the owner pointed at
+  github.com/spacejack/terra and asked for "more fields of grass in the
+  wind". Terra is **CC BY-NC** (non-commercial) except a few MIT files, so
+  **don't copy its code**: GrassField is our own version of the same idea.
+  Real blade strips have per-blade shape baked into standard vertex
+  channels, and a vertex shader bends them with rolling gusts and lights
+  them as translucent (|N·L|, darker roots). They're in the alpha pass
+  (no ink outlines), receive shadows and don't cast them. Fields are placed
+  by noise in open lowland and upland ground, and strong field patches push
+  the forest back into clearings. Blade count is about 37k on a typical
+  single island (`window.grassBlades` in the web build): watch it for
+  phone performance.
 - **Boulders are sparse** (the owner asked for fewer random boulders), so keep
   the `rockCluster` rates in `Props` low.
 - **Ocean waves** (`render/OceanWaves.hx`): the owner pointed at

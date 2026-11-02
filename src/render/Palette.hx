@@ -30,6 +30,10 @@ class Palette {
 	public static final LEAF_AUTUMN = [0xB2A24A, 0xB89048, 0xA88448];
 	public static final PINE = [0x3F6E45, 0x4A7A4C, 0x557F48, 0x5F8A52];
 	public static final PALM = [0x6FA04A, 0x7EAE52, 0x8BB85A];
+	// Wind-blown grass fields (GrassField): darker at the root, sunlit tips, some dry blades.
+	public static inline var GRASS_BLADE_BASE = 0x6B9A3A;
+	public static inline var GRASS_BLADE_TIP = 0xC3DA7E;
+	public static inline var GRASS_BLADE_DRY = 0xC9B873;
 	public static final GRASS_TUFT = [0x8FBF4E, 0x9DC757, 0xA9C25E, 0xB7C96A];
 	public static final BARK = [0x7A5B42, 0x8C6A4E, 0x6B5040];
 	public static final PALM_BARK = [0xA08560, 0x92785A];
