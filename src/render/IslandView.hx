@@ -261,6 +261,7 @@ class IslandView extends h3d.scene.Object {
 
 	function buildProps() {
 		props = Props.build(island, this);
+		if (props.fieldMask != null) terrainStyle.fieldMask = props.fieldMask;
 	}
 
 	/** Painted sprite trees/bushes/boulders, or the low-poly versions. **/

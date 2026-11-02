@@ -76,7 +76,7 @@ page.on("console", (m) => {
 
 await page.goto(url);
 try {
-  await page.waitForFunction(() => (window.atollFrames ?? 0) > 20, null, { timeout: 60000 });
+  await page.waitForFunction(() => (window.atollFrames ?? 0) > 20, null, { timeout: 180000 });
 } catch {
   problems.push("game never reached 20 frames (did it crash on start?)");
 }

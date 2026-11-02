@@ -50,6 +50,9 @@ class TerrainStyle extends hxsl.Shader {
 		@param var rockTex:Sampler2D;
 
 		@param var mapOrigin:Vec2;
+		/** GrassField's map (R = field), to tint the ground under fields like the blades. **/
+		@param var fieldMask:Sampler2D;
+		@param var fieldGround:Vec3;
 		@param var mapSize:Float;
 
 		/** Sample a ground texture at two scales so the tiling never shows. **/
@@ -84,7 +87,7 @@ class TerrainStyle extends hxsl.Shader {
 				var dirtW = smoothstep(0.6, 0.72, patch) * (1.0 - smoothstep(tUpland, tUpland + 0.6, h));
 				c = mix(c, twoScale(dirtTex, p), dirtW);
 
-				var rockW = max(smoothstep(0.32, 0.5, steep + (patch - 0.5) * 0.25), smoothstep(tUpland - 0.3, tUpland + 0.5, h + (broad - 0.5) * 1.4));
+				var rockW = max(smoothstep(0.32, 0.5, steep + (patch - 0.5) * 0.25), smoothstep(tUpland + 0.7, tUpland + 1.5, h + (broad - 0.5) * 1.4));
 				c = mix(c, twoScale(rockTex, p), rockW);
 
 				var sandEdge = tSand - 0.05 + (broad - 0.5) * 0.9;
@@ -95,6 +98,9 @@ class TerrainStyle extends hxsl.Shader {
 				sandC = mix(seabed, sandC, smoothstep(-1.2, 0.0, h));
 				c = mix(c, sandC, sandW);
 
+				// Under grass fields, the ground takes the blades' colour so gaps read as grass.
+				var fm = fieldMask.get((transformedPosition.xy - mapOrigin) / mapSize);
+				c = mix(c, fieldGround * (0.85 + 0.3 * fm.g), smoothstep(0.05, 0.6, fm.r) * 0.85);
 				col = c * form;
 			}
 			var exposed = exposureMap.get(clamp((transformedPosition.xy - mapOrigin) / mapSize, vec2(0.0), vec2(1.0))).g;
@@ -138,6 +144,8 @@ class TerrainStyle extends hxsl.Shader {
 		sunDir.set(0.55, 0.35, 0.76);
 		sunDir.normalize();
 		setColor(seabed, 0x8FD3C6);
+		setColor(fieldGround, Palette.FIELD_GROUND);
+		fieldMask = h3d.mat.Texture.fromColor(0);
 		tSand = world.Island.classicHeight(0.39);
 		tLowland = world.Island.classicHeight(0.54);
 		tUpland = world.Island.classicHeight(0.70);

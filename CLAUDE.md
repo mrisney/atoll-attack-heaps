@@ -135,17 +135,24 @@ URL params on the web build make runs reproducible:
   shadows). There's no palm art in WildCurrent; if the owner supplies some,
   it could replace the frond texture.
 - **Grass fields** (`render/GrassField.hx`): the owner pointed at
-  github.com/spacejack/terra and asked for "more fields of grass in the
-  wind". Terra is **CC BY-NC** (non-commercial) except a few MIT files, so
-  **don't copy its code**: GrassField is our own version of the same idea.
-  Real blade strips have per-blade shape baked into standard vertex
-  channels, and a vertex shader bends them with rolling gusts and lights
-  them as translucent (|N·L|, darker roots). They're in the alpha pass
-  (no ink outlines), receive shadows and don't cast them. Fields are placed
-  by noise in open lowland and upland ground, and strong field patches push
-  the forest back into clearings. Blade count is about 37k on a typical
-  single island (`window.grassBlades` in the web build): watch it for
-  phone performance.
+  github.com/spacejack/terra ("looks much better on the demo"). Terra is
+  **CC BY-NC** (non-commercial) except a few MIT files, so **don't copy its
+  code**: GrassField is our own version of the same idea. **One shared dense
+  patch** (10 m, about 34 blades/m²) is drawn on every 10 m tile that has
+  field. The vertex shader puts blades on the ground from an R32F height
+  grid (bilinear by hand, matching `Island.heightAt`) and scales them by a
+  field map (R field, G clump, B dryness), so the repeating patch never
+  shows. Blades are olive, lit as translucent, bent by rolling gusts, drawn
+  in the alpha pass, and receive but don't cast shadows. `TerrainStyle`
+  tints the ground under fields to the blade colour (`fieldMask`), so gaps
+  read as grass. Visible blades are about 100k at normal zoom on desktop;
+  that's the first thing to cut for phones (`DENSITY`).
+- **The island is pastoral** (owner: "more uninterrupted fields, with some
+  tree lines, more campus, pastoral like"): open lowland and upland are
+  fields. Trees grow in winding **tree lines** (`Props.treeLineAt`, a noise
+  isoline broken into runs), small **copses** (densest forest noise only),
+  and rare lone parkland trees. Grass climbs high, and rock texture only
+  shows near the summit. **Rocks are rare** everywhere.
 - **Boulders are sparse** (the owner asked for fewer random boulders), so keep
   the `rockCluster` rates in `Props` low.
 - **Ocean waves** (`render/OceanWaves.hx`): the owner pointed at

@@ -32,6 +32,8 @@ typedef PropGroups = {
 	var lowPoly:h3d.scene.Object;
 	/** The same trees, bushes and rocks as painted sprites, plus waterline reeds. **/
 	var sprites:h3d.scene.Object;
+	/** Grass field map (R field, G clump, B dryness) for tinting the ground under fields. **/
+	var fieldMask:Null<h3d.mat.Texture>;
 }
 
 class Props {
@@ -61,9 +63,11 @@ class Props {
 	final rocks = new Rocks();
 	final palms = new Palms();
 	/** Wind-blown grass fields (real blades, bent in the shader). **/
-	final fields = new GrassField();
+	var fields:GrassField;
 	var fieldN:Noise;
-	var clumpN:Noise;
+	var forestN:Noise;
+	var tSand = 0.0;
+	var tUp = 0.0;
 	/** Small loose stones, shared by both looks. **/
 	final pebbles = new Rocks();
 	/** Sprite trunks (mostly hidden under the canopy, they ground the tree). **/
@@ -96,14 +100,14 @@ class Props {
 		return Palette.shade(c, 1 - amount * 0.5 + r() * amount);
 
 	function scatter(parent:h3d.scene.Object):PropGroups {
-		var forestN = new Noise(island.seed + 202);
+		forestN = new Noise(island.seed + 202);
 		var meadowN = new Noise(island.seed + 404);
 		fieldN = new Noise(island.seed + 505);
-		clumpN = new Noise(island.seed + 606);
+
 		var he = island.halfExtent;
-		var tSand = Island.classicHeight(0.39);
+		tSand = Island.classicHeight(0.39);
 		var tLow = Island.classicHeight(0.54);
-		var tUp = Island.classicHeight(0.70);
+		tUp = Island.classicHeight(0.70);
 
 		var step = 1.1;
 		var n = Std.int(island.size * island.cell / step);
@@ -124,9 +128,7 @@ class Props {
 				var gy = island.heightAt(x, y + 0.5) - island.heightAt(x, y - 0.5);
 				var slope = Math.sqrt(gx * gx + gy * gy);
 				var steep = slope > 0.9;
-				var forest = forestN.fbm(x * 0.055 + 3, y * 0.055 + 3, 3);
-				// Grassland clearings: where a field patch is strong, the woods give way to it.
-				forest -= smoothstep(0.42, 0.55, fieldN.fbm(x * 0.035 + 21, y * 0.035 + 21, 3)) * 0.12;
+				var forest = forestAt(x, y);
 				var meadow = meadowN.fbm(x * 0.08 + 9, y * 0.08 + 9, 3);
 				var roll = r();
 				var z = h - 0.06;
@@ -134,46 +136,35 @@ class Props {
 				if (h < tSand) {
 					// Beach
 					if (roll < 0.03 && h > 0.35) palm(x, y, z, -gx, -gy);
-					else if (roll < 0.04) stones(x, y, z, 2);
+					else if (roll < 0.033) stones(x, y, z, 1);
 					else if (roll < 0.066 && h < 0.6) driftwood(x, y, z);
 					else if (roll < 0.12) shells(x, y, z);
 					else if (roll < 0.2 && h > 0.35) beachGrass(x, y, z);
-				} else if (h < tLow) {
-					// Lowland
-					if (steep && roll < 0.1) rockCluster(x, y, z, 2);
-					else if (forest > 0.56 && roll < 0.55) {
-						if (r() < 0.75) broadleaf(x, y, z) else pine(x, y, z);
-					} else if (forest > 0.5 && roll < 0.2) bush(x, y, z);
-					else if (forest > 0.47 && roll < 0.42) vineMat(x, y, z);
-					else {
-						// Open ground: fields of tall grass in the wind, meadow tufts elsewhere.
-						var f = fieldWeight(x, y, h, forest, slope, tSand, tUp);
-						if (f > 0.02) {
-							grassField(x, y, step, f);
-							if (r() < 0.1) flowers(x, y, z);
-						} else if (meadow > 0.48 && roll < 0.75) {
-							grassTuft(x, y, z);
-							if (r() < 0.35) flowers(x, y, z);
-						}
-					}
-				} else if (h < tUp) {
-					// Upland
-					if (steep && roll < 0.15) rockCluster(x, y, z, 2);
-					else if (forest > 0.48 && roll < 0.65) {
-						if (r() < 0.8) pine(x, y, z) else broadleaf(x, y, z);
-					} else if (roll < 0.1) bush(x, y, z);
-					else {
-						var f = fieldWeight(x, y, h, forest, slope, tSand, tUp);
-						if (f > 0.02) grassField(x, y, step, f);
-						else if (roll < 0.3) grassTuft(x, y, z);
-						else if (roll < 0.315) stones(x, y, z, 2);
-					}
+				} else if (h < tUp + 1.0) {
+					// Pastoral lowland and upland: broad open fields, divided by winding
+					// tree lines (hedgerows), with a few small copses and lone trees.
+					var line = treeLineAt(x, y);
+					var copse = forest > 0.7;
+					if (steep && roll < 0.025) rockCluster(x, y, z, 1);
+					else if (line > 0.5) {
+						if (roll < 0.8) {
+							if (h > tLow && r() < 0.5) pine(x, y, z) else broadleaf(x, y, z);
+						} else bush(x, y, z);
+					} else if (copse && roll < 0.6) {
+						if (h > tLow && r() < 0.6) pine(x, y, z) else broadleaf(x, y, z);
+					} else if (forest > 0.62 && roll < 0.25) bush(x, y, z);
+					else if (fieldWeight(x, y, h, forest, slope) > 0.02) {
+						// Open field: the blades come from GrassField. Now and then a lone tree,
+						// like parkland, and a few flowers.
+						if (roll < 0.004) broadleaf(x, y, z);
+						else if (roll < 0.06) flowers(x, y, z);
+					} else if (meadow > 0.48 && roll < 0.5) grassTuft(x, y, z);
 				} else {
 					// Peak
 					// Sparse: a few boulder groups and loose stones (the owner found them too many).
-					if (roll < 0.022) rockCluster(x, y, z, 1 + Std.int(r() * 3));
-					else if (roll < 0.05) stones(x, y, z, 2);
-					else if (roll < 0.08) snag(x, y, z);
+					if (roll < 0.008) rockCluster(x, y, z, 1 + Std.int(r() * 2));
+					else if (roll < 0.02) stones(x, y, z, 2);
+					else if (roll < 0.04) snag(x, y, z);
 				}
 			}
 
@@ -190,12 +181,13 @@ class Props {
 		spr.build(sprites);
 		rocks.build(sprites);
 		pebbles.build(parent);
-		fields.build(parent);
+		fields = new GrassField(island);
+		fields.build(parent, fieldAt);
 		#if js
-		js.Syntax.code("window.grassBlades = {0}", fields.count);
+		js.Syntax.code("window.grassBlades = {0}", fields.tileCount * fields.bladesPerTile);
 		#end
 		palms.build(parent);
-		return {lowPoly: lowPoly, sprites: sprites};
+		return {lowPoly: lowPoly, sprites: sprites, fieldMask: fields.mask};
 	}
 
 	inline function pickName(list:Array<String>):String
@@ -280,29 +272,42 @@ class Props {
 		spr.add(SPRITES + pickName(BUSHES) + ".png", x, y, z, (1.0 + r() * 0.5) * (0.6 + s), 0.35 * s, r() * Math.PI * 2, 0.9 + r() * 0.2);
 	}
 
-	/**
-		How much grass field grows here (0..1): large open patches away from
-		forest, off the beach and below the bare heights, on gentle ground.
-	**/
-	function fieldWeight(x:Float, y:Float, h:Float, forest:Float, slope:Float, tSand:Float, tUp:Float):Float {
-		if (slope > 0.75) return 0;
-		var field = fieldN.fbm(x * 0.035 + 21, y * 0.035 + 21, 3);
-		return smoothstep(0.34, 0.44, field) * (1 - smoothstep(0.5, 0.6, forest)) * smoothstep(tSand + 0.05, tSand + 0.45, h)
-			* (1 - smoothstep(tUp - 0.3, tUp + 0.5, h));
+	/** Forest density (only the densest spots become copses now). **/
+	function forestAt(x:Float, y:Float):Float {
+		return forestN.fbm(x * 0.09 + 3, y * 0.09 + 3, 3);
 	}
 
-	/** Fill one placement cell with grass blades; `w` thins them out toward a field's edge. **/
-	function grassField(x:Float, y:Float, cell:Float, w:Float) {
-		var n = Std.int(w * 38 + r());
-		for (k in 0...n) {
-			var bx = x + (r() - 0.5) * cell, by = y + (r() - 0.5) * cell;
-			// Clumpy heights (as in Terra): taller tussocks and shorter patches.
-			var clump = clumpN.fbm(bx * 0.45 + 3, by * 0.45 + 3, 2);
-			var height = (0.3 + 0.5 * clump) * (0.75 + r() * 0.5) * (0.6 + 0.4 * w);
-			var dry = r() < 0.15 ? r() : r() * 0.25;
-			fields.blade(bx, by, island.heightAt(bx, by) - 0.02, r() * Math.PI * 2, 0.08 + r() * 0.06, height, (r() - 0.5) * 0.5,
-				0.15 + r() * 0.45, dry);
-		}
+	/**
+		Tree lines: thin winding bands along a noise isoline, like hedgerows
+		dividing fields. 1 on the line, 0 off it. A second noise breaks them
+		into runs with gaps (field gates), so they don't wall everything in.
+	**/
+	function treeLineAt(x:Float, y:Float):Float {
+		var n = fieldN.fbm(x * 0.022 + 40, y * 0.022 + 40, 2);
+		var gx = fieldN.fbm((x + 1) * 0.022 + 40, y * 0.022 + 40, 2) - n;
+		var gy = fieldN.fbm(x * 0.022 + 40, (y + 1) * 0.022 + 40, 2) - n;
+		// Distance to the 0.5 isoline in metres (value / gradient).
+		var d = Math.abs(n - 0.5) / Math.max(1e-5, Math.sqrt(gx * gx + gy * gy));
+		var runs = smoothstep(0.38, 0.46, forestN.fbm(x * 0.03 + 77, y * 0.03 + 77, 2));
+		return (1 - smoothstep(1.6, 2.8, d)) * runs;
+	}
+
+	/**
+		How much grass field grows here (0..1): nearly all open lowland and
+		upland, stopping at copses, tree lines, the beach, bare heights and
+		steep ground.
+	**/
+	function fieldWeight(x:Float, y:Float, h:Float, forest:Float, slope:Float):Float {
+		return (1 - smoothstep(0.64, 0.72, forest)) * (1 - treeLineAt(x, y) * 0.85) * smoothstep(tSand + 0.05, tSand + 0.45, h)
+			* (1 - smoothstep(tUp + 0.6, tUp + 1.4, h)) * (1 - smoothstep(0.7, 1.0, slope));
+	}
+
+	/** fieldWeight at any world point (for GrassField's map). **/
+	function fieldAt(x:Float, y:Float):Float {
+		var h = island.heightAt(x, y);
+		var gx = island.heightAt(x + 0.5, y) - island.heightAt(x - 0.5, y);
+		var gy = island.heightAt(x, y + 0.5) - island.heightAt(x, y - 0.5);
+		return fieldWeight(x, y, h, forestAt(x, y), Math.sqrt(gx * gx + gy * gy));
 	}
 
 	static inline function smoothstep(a:Float, b:Float, x:Float):Float {
