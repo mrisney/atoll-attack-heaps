@@ -2,6 +2,8 @@ import game.Sim;
 import input.RtsCamera;
 import input.SelectionController;
 import render.IslandView;
+import render.IslandView.VisualStyle;
+import world.Island.IslandShape;
 import render.Palette;
 import render.UnitView;
 import world.Island;
@@ -20,9 +22,11 @@ class Main extends hxd.App {
 	var selection:SelectionController;
 	var hud:h2d.Text;
 	var inkRenderer:render.ink.InkRenderer;
+	var style:VisualStyle = Classic;
+	var shape:IslandShape = Single;
 
 	override function init() {
-		engine.backgroundColor = 0xFF000000 | Palette.OCEAN_DEEP;
+		engine.backgroundColor = 0xFF2185C4;
 		inkRenderer = new render.ink.InkRenderer();
 		s3d.renderer = inkRenderer;
 		setupLighting();
@@ -51,9 +55,10 @@ class Main extends hxd.App {
 		unitViews = [];
 		if (selection != null) selection.dispose();
 
-		island = new Island(seed);
+		island = new Island(seed, shape);
 		sim = new Sim(island);
 		islandView = new IslandView(island, s3d);
+		applyStyle();
 		for (u in sim.units) unitViews.push(new UnitView(u, s3d));
 		selection = new SelectionController(sim, unitViews, s3d, s2d, rtsCam);
 
@@ -64,9 +69,21 @@ class Main extends hxd.App {
 		rtsCam.bounds = island.halfExtent;
 		rtsCam.apply();
 
-		hud.text = 'ATOLL ATTACK  ·  seed $seed\n'
+		updateHud();
+	}
+
+	function applyStyle() {
+		islandView.setStyle(style);
+		inkRenderer.inkEnabled = style == InkMap;
+		engine.backgroundColor = style == InkMap ? 0xFF6E9FB5 : 0xFF2185C4;
+		updateHud();
+	}
+
+	function updateHud() {
+		hud.text = 'ATOLL ATTACK  ·  seed $seed  ·  ${shape} island  ·  ${style} style\n'
 			+ 'Drag: select   Click/RMB: move   Shift: add\n'
-			+ 'WASD/edges: pan   Wheel: zoom   Q/E: rotate   R: new island   I: ink lines';
+			+ 'WASD/edges: pan   Wheel: zoom   Q/E: rotate\n'
+			+ 'R: new island   G: island shape   T: visual style   I: ink lines';
 	}
 
 	override function update(dt:Float) {
@@ -76,6 +93,14 @@ class Main extends hxd.App {
 		}
 		if (hxd.Key.isPressed(hxd.Key.I))
 			inkRenderer.inkEnabled = !inkRenderer.inkEnabled;
+		if (hxd.Key.isPressed(hxd.Key.T)) {
+			style = style == Classic ? InkMap : Classic;
+			applyStyle();
+		}
+		if (hxd.Key.isPressed(hxd.Key.G)) {
+			shape = shape == Single ? Atoll : Single;
+			buildWorld();
+		}
 		rtsCam.update(dt, selection.mouseX, selection.mouseY, s2d.width, s2d.height);
 		sim.update(dt);
 		for (v in unitViews) v.syncFromSim(dt);

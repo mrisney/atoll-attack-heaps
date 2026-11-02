@@ -1,5 +1,12 @@
 package world;
 
+enum IslandShape {
+	/** One island, ported from the Flutter atoll-attack shader: fbm + 3 peaks + radial falloff. **/
+	Single;
+	/** Reef ring with islets around a lagoon. **/
+	Atoll;
+}
+
 /**
 	Procedural atoll heightfield. Pure data: no rendering here, so the same
 	class can run in a headless server or a lockstep simulation.
@@ -16,6 +23,7 @@ class Island {
 	public final size:Int;
 	public final cell:Float;
 	public final heights:Array<Float>;
+	public final shape:IslandShape;
 
 	public var apexX(default, null) = 0.0;
 	public var apexY(default, null) = 0.0;
@@ -26,14 +34,113 @@ class Island {
 	inline function get_halfExtent()
 		return size * cell * 0.5;
 
-	public function new(seed:Int, size = 160, cell = 0.75) {
+	public function new(seed:Int, shape:IslandShape = Single, size = 160, cell = 0.75) {
 		this.seed = seed;
+		this.shape = shape;
 		this.size = size;
 		this.cell = cell;
 		heights = [for (_ in 0...(size + 1) * (size + 1)) 0.0];
-		generate();
-		smooth(2);
+		switch shape {
+			case Single:
+				generateClassic();
+				smooth(1);
+			case Atoll:
+				generate();
+				smooth(2);
+		}
 	}
+
+	// --- Classic: a port of atoll-attack's island_water.frag getElevation() ---------
+
+	/** Height scale: elevation 0.32 (the shader's shoreline) maps to sea level. **/
+	public static inline var CLASSIC_SHORE = 0.32;
+	public static inline var CLASSIC_SCALE = 12.0;
+
+	// Same defaults as the Flutter game (constants/game_config.dart).
+	public var amplitude = 1.9;
+	public var wavelength = 0.22;
+	public var bias = -0.56;
+	public var islandRadius = 1.11;
+
+	function classicFbm(n:Noise, x:Float, y:Float):Float {
+		// 5 octaves, each rotated 0.5 rad and shifted — exactly like the GLSL.
+		var v = 0.0, a = 0.5;
+		var c = Math.cos(0.5), s = Math.sin(0.5);
+		for (_ in 0...5) {
+			v += a * n.value(x, y);
+			var nx = (c * x - s * y) * 2.0 + 100.0;
+			var ny = (s * x + c * y) * 2.0 + 100.0;
+			x = nx;
+			y = ny;
+			a *= 0.5;
+		}
+		return v;
+	}
+
+	static inline function peak(x:Float, y:Float, cx:Float, cy:Float, radius:Float, intensity:Float):Float {
+		var dx = x - cx, dy = y - cy;
+		var d = Math.sqrt(dx * dx + dy * dy) / radius;
+		return intensity * Math.exp(-d * d);
+	}
+
+	/** The shader's 0..1 elevation at a normalized position (-1..1). **/
+	public function classicElevation(nx:Float, ny:Float, n:Noise):{e:Float, raw:Float} {
+		var sf = (seed % 1000) * 1.0;
+		var so = sf * 0.01;
+		var v = classicFbm(n, nx / wavelength + so, ny / wavelength + so);
+		v = (v + 1.0) * 0.5;
+		v = v * amplitude + bias;
+		v += peak(nx, ny, 0.3 * Math.sin(sf + 1.3), 0.25 * Math.cos(sf + 2.7), 0.13, 0.12);
+		v += peak(nx, ny, -0.26 * Math.cos(sf + 3.4), 0.12 * Math.sin(sf + 5.8), 0.10, 0.08);
+		v += peak(nx, ny, 0.15 * Math.sin(sf + 4.1), -0.20 * Math.cos(sf + 2.3), 0.09, 0.06);
+		var raw = v;
+		if (v < 0) v = 0;
+		if (v > 1) v = 1;
+		var dist = Math.sqrt(nx * nx + ny * ny);
+		var falloff = 1.0 - dist / islandRadius;
+		if (falloff < 0) falloff = 0;
+		if (falloff > 1) falloff = 1;
+		return {e: v * falloff, raw: raw * falloff};
+	}
+
+	function generateClassic() {
+		var n = new Noise(seed);
+		var w = size + 1;
+		for (j in 0...w)
+			for (i in 0...w) {
+				var nx = i / size * 2 - 1;
+				var ny = j / size * 2 - 1;
+				var el = classicElevation(nx, ny, n);
+				// The 2D shader clamps elevation at 1, which would make a smooth cone in 3D.
+				// Let a little of the unclamped noise through so the highlands have relief.
+				var bulge = Math.max(0, el.raw - el.e) * 0.18;
+				var h = (el.e + bulge - CLASSIC_SHORE) * CLASSIC_SCALE;
+				heights[j * w + i] = h;
+			}
+	}
+
+	/**
+		The original shader's "relief" highlight at a normalized position:
+		direction of the fbm gradient, lit from one side, in 0.7..1.1.
+	**/
+	public function classicRelief(nx:Float, ny:Float, n:Noise, lx:Float, ly:Float):Float {
+		var so = (seed % 1000) * 0.01;
+		var eps = 0.008;
+		var hL = classicFbm(n, (nx - eps) / wavelength + so, ny / wavelength + so);
+		var hR = classicFbm(n, (nx + eps) / wavelength + so, ny / wavelength + so);
+		var hD = classicFbm(n, nx / wavelength + so, (ny - eps) / wavelength + so);
+		var hU = classicFbm(n, nx / wavelength + so, (ny + eps) / wavelength + so);
+		var gx = hL - hR, gy = hD - hU;
+		var len = Math.sqrt(gx * gx + gy * gy);
+		if (len < 1e-9) return 0.9;
+		var d = (gx * lx + gy * ly) / len;
+		var v = d * 0.4 + 0.7;
+		return v < 0.7 ? 0.7 : (v > 1.1 ? 1.1 : v);
+	}
+
+	/** Classic band thresholds converted from shader elevation to world height. **/
+	public static inline function classicHeight(e:Float):Float
+		return (e - CLASSIC_SHORE) * CLASSIC_SCALE;
 
 	/** Box-blur passes to round off ridges (deterministic, Int-indexed). **/
 	function smooth(passes:Int) {

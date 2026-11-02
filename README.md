@@ -2,12 +2,16 @@
 
 A Haxe/[Heaps](https://heaps.io) port spike of [atoll-attack](https://github.com/mrisney/atoll-attack): a stylized, low-poly procedural atoll with two squads you can box-select and move.
 
-![screenshot](docs/screenshot.png)
+| Classic style (ported from the Flutter game) | Ink map style |
+|---|---|
+| ![classic](docs/style-classic.png) | ![ink map](docs/style-inkmap.png) |
 
 ![units](docs/screenshot-units.png)
 
 The goal of this spike is to answer one question: does Heaps give the Northgard-style look and a pleasant dev loop? It covers:
 
+- **Two island shapes** (G to switch): *Single*, a direct port of the Flutter game's `island_water.frag` generator (fbm + three seeded peaks + radial falloff, same default amplitude/wavelength/bias/radius), and *Atoll*, a reef ring around a lagoon.
+- **Two visual styles** (T to switch): *Classic* carries over the Flutter look, with hard posterised bands (sand, lowland, upland, peak), the stepped three-tone water and the crinkly relief highlight (baked to a texture per island so it's cheap on phones). *Ink map* adds soft colours, contours, hatching and ink outlines.
 - **Procedural atoll**: a seeded, deterministic heightfield (Int32 hashing, so every platform generates the same island) with a wobbly reef ring broken into islets, a shallow lagoon, and a raised apex where the flag stands.
 - **Stylized rendering**: flat-shaded vertex-colored terrain by elevation band, depth-tinted water with an animated HXSL swell and shimmer shader, scattered low-poly pines and rocks, and warm sun with cool ambient lighting.
 - **Units**: Captain, Swordsmen, and Archers for blue and red, built from low-poly primitives.
@@ -29,7 +33,8 @@ src/
   render/Palette.hx         the whole art direction in one file
   render/FlatMeshBuilder.hx low-poly faceted geometry helper
   render/IslandView.hx      terrain, water, props, apex flag
-  render/WaterShader.hx     HXSL swell + shimmer
+  render/WaterShader.hx     banded water from a heightmap texture + swell/shimmer
+  render/TerrainStyle.hx    Classic bands + baked relief, or soft vertex colours
   render/InkShape.hx        rounded line-art shapes for units
   render/ink/InkRenderer.hx geometry pass + screen-space ink composite
   render/ink/InkEdge.hx     edge detection (normals + inverse-depth Laplacian)

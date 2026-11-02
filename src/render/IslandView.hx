@@ -5,9 +5,16 @@ import world.Island;
 import world.Noise;
 
 /**
-	Turns an Island heightfield into the stylized scene: faceted terrain,
-	depth-tinted animated water, scattered pines and rocks, and the apex flag.
+	Turns an Island heightfield into the stylized scene: terrain, banded
+	animated water, scattered pines and rocks, and the apex flag.
 **/
+enum VisualStyle {
+	/** The atoll-attack (Flutter) look: posterised bands, bright palette. **/
+	Classic;
+	/** Hand-drawn map: soft colours, contours, hatching, ink outlines. **/
+	InkMap;
+}
+
 class IslandView extends h3d.scene.Object {
 	final island:Island;
 
@@ -64,12 +71,39 @@ class IslandView extends h3d.scene.Object {
 		poly.normals = nrm;
 		poly.colors = cols;
 		var m = new h3d.scene.Mesh(poly, this);
-		FlatMeshBuilder.setupMaterial(m.material, true);
+		// Shaded by TerrainStyle rather than the scene lights, so the look is fully ours.
+		FlatMeshBuilder.setupMaterial(m.material, false);
+		terrainStyle.bakeRelief(island);
+		m.material.mainPass.addShader(terrainStyle);
 		m.material.mainPass.addShader(terrainInk);
 	}
 
+	/** Band colours and relief (Classic) or soft vertex colours (Ink). **/
+	public final terrainStyle = new TerrainStyle();
 	/** Contours, coastline and slope hatching — tweak live via this shader's params. **/
 	public final terrainInk = new render.ink.TerrainInk();
+	public final waterShader = new WaterShader();
+
+	public function setStyle(style:VisualStyle) {
+		switch style {
+			case Classic:
+				terrainStyle.bands = 1;
+				waterShader.setClassicColors();
+				terrainInk.minorAlpha = 0;
+				terrainInk.majorAlpha = 0;
+				terrainInk.hatchAlpha = 0;
+				terrainInk.coastWidth = 0;
+				terrainInk.coastLevel = -999; // no inked coastline in this style
+			case InkMap:
+				terrainStyle.bands = 0;
+				waterShader.setChartColors();
+				terrainInk.minorAlpha = 0.28;
+				terrainInk.majorAlpha = 0.55;
+				terrainInk.hatchAlpha = 0.3;
+				terrainInk.coastWidth = 2.2;
+				terrainInk.coastLevel = 0.1;
+		}
+	}
 
 	function buildWater() {
 		// One smooth grid well past the island so the sea reaches the horizon.
@@ -84,9 +118,7 @@ class IslandView extends h3d.scene.Object {
 				var y = j / segs * extent * 2 - extent;
 				pts.push(new Point(x, y, Island.SEA_LEVEL));
 				nrm.push(up);
-				var depth = Island.SEA_LEVEL - island.heightAt(x, y);
-				var c = Palette.water(depth);
-				cols.push(new Point(Palette.r(c), Palette.g(c), Palette.b(c)));
+				cols.push(new Point(1, 1, 1));
 			}
 		for (j in 0...segs)
 			for (i in 0...segs) {
@@ -98,12 +130,10 @@ class IslandView extends h3d.scene.Object {
 		poly.colors = cols;
 		poly.normals = nrm;
 		var m = new h3d.scene.Mesh(poly, this);
-		FlatMeshBuilder.setupMaterial(m.material, true);
-		m.material.blendMode = Alpha;
-		m.material.color.set(1, 1, 1, 0.82);
-		m.material.mainPass.depthWrite = false;
-		m.material.specularAmount = 0.25;
-		m.material.mainPass.addShader(new WaterShader());
+		// Opaque, unlit: colour comes entirely from the banded water shader.
+		FlatMeshBuilder.setupMaterial(m.material, false);
+		waterShader.setIsland(island);
+		m.material.mainPass.addShader(waterShader);
 	}
 
 	function buildProps() {
@@ -121,7 +151,7 @@ class IslandView extends h3d.scene.Object {
 				var h = island.heightAt(x, y);
 				var d = density.fbm(x * 0.08 + 3, y * 0.08 + 3, 3);
 				var r = rnd.rand(i + 5000, j);
-				if (h > 1.0 && h < 5.0 && d > 0.45 && r < 0.7) {
+				if (h > 1.0 && h < 4.4 && d > 0.55 && r < 0.6) {
 					pine(b, x, y, h - 0.05, 0.75 + rnd.rand(i, j + 7000) * 0.6, r);
 				} else if (h > 4.2 && r < 0.18) {
 					rock(b, x, y, h - 0.1, 0.4 + r * 2.0, r);
