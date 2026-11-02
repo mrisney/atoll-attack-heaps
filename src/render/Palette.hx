@@ -72,7 +72,9 @@ class Palette {
 	public static inline var SKETCH_BG = 0xE2E2DF;
 	public static inline var SKETCH_GRAPHITE = 0x2E2D2B;
 	/** Shadows go neutral grey on paper (the other styles tint them cool). **/
-	public static inline var SKETCH_SHADOW = 0x8A8986;
+	public static inline var SKETCH_SHADOW = 0x857C70;
+	/** Warm bias for the muted colour that Sketch keeps (pulls green to olive, blue to slate). **/
+	public static inline var SKETCH_EARTH = 0xFFF0D2;
 	/** Drafting lines and annotation text. **/
 	public static inline var SKETCH_LINE = 0x3A3936;
 	/** The one warm material: timber. **/

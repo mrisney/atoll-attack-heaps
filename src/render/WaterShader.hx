@@ -109,11 +109,12 @@ class WaterShader extends hxsl.Shader {
 		TerrainStyle.setColor(deep, 0x6E9FB5);
 	}
 
-	/** Near-white page; the shore is drawn with ruled strokes instead. **/
+	/** Sketch: muted slate water, with ruled strokes along the shore. **/
 	public function setSketchColors() {
-		TerrainStyle.setColor(shallow, 0xE6E5E1);
-		TerrainStyle.setColor(mid, 0xDCDCD9);
-		TerrainStyle.setColor(deep, 0xD3D4D2);
+		// Muted slate-green, deepening gently; the tone shader keeps a little of the hue.
+		TerrainStyle.setColor(shallow, 0xC8CFC2);
+		TerrainStyle.setColor(mid, 0xA3B2AC);
+		TerrainStyle.setColor(deep, 0x84979A);
 	}
 
 	/** Bake the island's heights into a texture the water can sample. **/

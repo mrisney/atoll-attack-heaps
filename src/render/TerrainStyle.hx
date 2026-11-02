@@ -20,6 +20,8 @@ class TerrainStyle extends hxsl.Shader {
 
 		@param var bands:Float;
 		@param var relief:Float;
+		/** 0 = the soft classic form light; 1 = real hillshade (Sketch): slopes away from the sun go properly dark. **/
+		@param var light:Float;
 		@param var sunDir:Vec3;
 
 		@param var sand:Vec3;
@@ -57,7 +59,8 @@ class TerrainStyle extends hxsl.Shader {
 			var n = normalize(transformedNormal);
 
 			// Soft form lighting from the mesh, same range as the original's highlight.
-			var form = 0.78 + 0.32 * max(dot(n, sunDir), 0.0);
+			var ndl = max(dot(n, sunDir), 0.0);
+			var form = mix(0.78 + 0.32 * ndl, 0.36 + 0.78 * ndl, light);
 
 			var col = pixelColor.rgb * form;
 			if (painted > 0.5) {
@@ -112,6 +115,7 @@ class TerrainStyle extends hxsl.Shader {
 		bands = 1;
 		painted = 0;
 		relief = 1;
+		light = 0;
 		var gt = GroundTextures.get();
 		grassTex = gt.grass;
 		dirtTex = gt.dirt;

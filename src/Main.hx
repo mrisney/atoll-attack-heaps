@@ -138,11 +138,10 @@ class Main extends hxd.App {
 		inkRenderer.inkStrength = style == Sketch ? 0.62 : 0.85;
 		if (drafting != null) drafting.visible = style == Sketch;
 		if (minimap != null) {
-			// The minimap goes graphite too, so the only colour on screen is timber and team.
+			// The minimap is muted to match the island's earth tones.
 			var m = new h3d.Matrix();
 			m.identity();
-			m.colorSaturate(-1);
-			m.colorLightness(0.12);
+			m.colorSaturate(-0.65);
 			minimap.filter = style == Sketch ? new h2d.filter.ColorMatrix(m) : null;
 		}
 		// Dark notes on paper in Sketch; light text with a shadow over the sea otherwise.

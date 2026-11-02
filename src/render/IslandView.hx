@@ -41,9 +41,9 @@ class IslandView extends h3d.scene.Object {
 	}
 
 	/** Greys everything for the Sketch style (amount 0 in the others). **/
-	public final sketchTone = new SketchTone();
+	public final sketchTone = new SketchTone(1.05, 0.95, 0.3);
 	/** Props go darker than the ground, so trees read as graphite on the page. **/
-	public final sketchProps = new SketchTone(1.0, 1.3);
+	public final sketchProps = new SketchTone(1.0, 1.2, 0.32);
 	var terrainMat:h3d.mat.Material;
 	var waterMat:h3d.mat.Material;
 
@@ -108,17 +108,19 @@ class IslandView extends h3d.scene.Object {
 	public final waterShader = new WaterShader();
 
 	public function setStyle(style:VisualStyle) {
-		terrainStyle.painted = style == Painted ? 1 : 0;
+		// Sketch keeps the painted ground for its detail; the tone mutes it to earth colours.
+		terrainStyle.painted = style == Painted || style == Sketch ? 1 : 0;
+		terrainStyle.light = style == Sketch ? 1 : 0;
 		sketchTone.amount = style == Sketch ? 1 : 0;
 		sketchProps.amount = sketchTone.amount;
-		waterShader.ruled = style == Sketch ? 0.55 : 0;
+		waterShader.ruled = style == Sketch ? 0.35 : 0;
 		// Surf body: a deeper shade of each style's shallow water.
 		if (surf != null) {
 			var c = switch style {
 				case Classic: 0x3D8FC4;
 				case Painted: 0x2F8C9C;
 				case InkMap: 0x86AFBC;
-				case Sketch: 0xC9CAC7;
+				case Sketch: 0x8E9C98;
 			};
 			TerrainStyle.setColor(surf.body, c);
 			// On paper the grey wave backs read as heavy brush strokes; keep them faint.
@@ -152,12 +154,14 @@ class IslandView extends h3d.scene.Object {
 				terrainInk.coastWidth = 2.2;
 				terrainInk.coastLevel = 0.1;
 			case Sketch:
+				// No contours or slope hatching: relief comes from real sun shading.
 				terrainStyle.bands = 0;
 				waterShader.setSketchColors();
-				terrainInk.minorAlpha = 0.1;
-				terrainInk.majorAlpha = 0.28;
-				terrainInk.hatchAlpha = 0.38;
-				terrainInk.coastWidth = 1.6;
+				waterShader.softness = 0.45;
+				terrainInk.minorAlpha = 0;
+				terrainInk.majorAlpha = 0;
+				terrainInk.hatchAlpha = 0;
+				terrainInk.coastWidth = 1.4;
 				terrainInk.coastLevel = 0.1;
 		}
 	}

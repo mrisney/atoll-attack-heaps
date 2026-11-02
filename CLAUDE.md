@@ -67,9 +67,13 @@ URL params on the web build make runs reproducible:
   - **Ink map** uses soft colours, topo contours, coastline, slope hatching,
     and a screen-space ink pass.
   - **Sketch** comes from architectural presentation drawings the owner
-    shared (graphite on paper, one warm timber material, drafting lines).
-    `SketchTone` greys every island material (a light curve for ground and
-    water, a darker one for props). Anything added *after* it's applied in
+    shared (paper, one warm timber material, drafting lines). The owner then
+    asked for **no topographic lines** (no contours or slope hatching).
+    Relief comes from real sun shading (`TerrainStyle.light`), and colour is
+    **muted earth tones, not bright green/blue**. `SketchTone` remaps each
+    island material's brightness and keeps a fraction of its hue (`chroma`),
+    biased warm (`Palette.SKETCH_EARTH`). Ground and water get a lighter curve,
+    props a darker one. The ground uses the painted textures for detail. Anything added *after* it's applied in
     `IslandView`'s constructor (docks, the flag pole) keeps its colour. That
     warm timber is the point of the style, so new built things (ships,
     forts) should be timber and stay un-toned. `ui/DraftingOverlay` is the
