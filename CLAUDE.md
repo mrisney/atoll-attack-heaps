@@ -44,6 +44,10 @@ URL params on the web build make runs reproducible:
   need care (or fixed-point) for cross-platform lockstep.
 - `render/` reads the sim and draws. `UnitView.syncFromSim` interpolates
   toward sim state each frame.
+- **Death is sim state, the rag doll is cosmetic.** `Command.Kill` sets
+  `unit.alive = false` and records where the hit came from. `render/Ragdoll`
+  then animates the body locally. It doesn't need to be deterministic or
+  networked, and the sim must never read rag doll positions.
 - Platform services (storage, multiplayer, achievements) will go behind small
   interfaces with one implementation per target. Don't call Steam/Capacitor
   APIs from game code.
@@ -63,6 +67,9 @@ URL params on the web build make runs reproducible:
   tint and the captain's pennant. **Animation is restrained:** a gentle limb
   swing while walking, still when idle. The owner explicitly does not want
   cartoony or over-animated characters.
+- **Rag dolls on death** (owner asked for them). Keep them grounded: modest
+  impulse, rigid limbs (no knees or elbows), friction, and settling within a
+  couple of seconds. Not slapstick.
 - All colours live in `render/Palette.hx` and the style shaders. Don't
   hard-code colours elsewhere.
 
@@ -94,6 +101,8 @@ URL params on the web build make runs reproducible:
   inside `SRC`. Use `fwidth` for constant-pixel-width lines.
 - **HashLink's JIT doesn't run natively on Apple Silicon.** Develop with the
   web build, and ship native through HashLink/C.
+- Haxe `Int` is 32-bit: a literal like `2654435761` is a `Float`, which breaks
+  integer hashing. Use small multipliers or `haxe.Int32`.
 - When unsure of an API, read the Heaps source rather than guessing. It's
   small and readable (`h3d/`, `h2d/`, `hxd/`, `hxsl/`).
 

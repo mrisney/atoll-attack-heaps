@@ -64,7 +64,7 @@ class Sim {
 		pending = [];
 
 		for (u in units) {
-			if (!u.hasTarget) continue;
+			if (!u.alive || !u.hasTarget) continue;
 			var dx = u.tx - u.x, dy = u.ty - u.y;
 			var dist = Math.sqrt(dx * dx + dy * dy);
 			if (dist < 0.15) {
@@ -92,7 +92,8 @@ class Sim {
 		}
 
 		separate();
-		for (u in units) u.z = island.heightAt(u.x, u.y);
+		for (u in units)
+			if (u.alive) u.z = island.heightAt(u.x, u.y);
 		tick++;
 	}
 
@@ -102,6 +103,7 @@ class Sim {
 		for (i in 0...units.length)
 			for (j in i + 1...units.length) {
 				var a = units[i], b = units[j];
+				if (!a.alive || !b.alive) continue;
 				var dx = b.x - a.x, dy = b.y - a.y;
 				var d2 = dx * dx + dy * dy;
 				if (d2 >= minDist * minDist || d2 < 1e-6) continue;
@@ -125,11 +127,20 @@ class Sim {
 				var k = 0;
 				for (id in ids) {
 					var u = getUnit(id);
-					if (u == null) continue;
+					if (u == null || !u.alive) continue;
 					var o = formationOffset(k++, 1.25);
 					u.tx = x + o.x;
 					u.ty = y + o.y;
 					u.hasTarget = true;
+				}
+			case Kill(ids, fx, fy):
+				for (id in ids) {
+					var u = getUnit(id);
+					if (u == null || !u.alive) continue;
+					u.alive = false;
+					u.hasTarget = false;
+					u.hitFromX = fx;
+					u.hitFromY = fy;
 				}
 			case Stop(ids):
 				for (id in ids) {

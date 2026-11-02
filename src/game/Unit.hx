@@ -20,6 +20,11 @@ class Unit {
 	public var z:Float = 0;
 	public var facing:Float = 0;
 
+	public var alive = true;
+	/** Where the killing blow came from — the view uses it to fling the body away. **/
+	public var hitFromX = 0.0;
+	public var hitFromY = 0.0;
+
 	public var hasTarget = false;
 	public var tx = 0.0;
 	public var ty = 0.0;

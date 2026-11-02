@@ -65,7 +65,26 @@ class SelectionController {
 		marker.remove();
 	}
 
+	/** Debug: knock down every unit near the cursor (tests the rag dolls). **/
+	public var blastRadius = 3.5;
+
+	public function blastAt(sx:Float, sy:Float) {
+		var hit = groundAt(sx, sy);
+		if (hit == null) return;
+		var ids = [];
+		for (v in views) {
+			var dx = v.unit.x - hit.x, dy = v.unit.y - hit.y;
+			if (v.unit.alive && dx * dx + dy * dy < blastRadius * blastRadius) ids.push(v.unit.id);
+		}
+		if (ids.length > 0) sim.queue(Kill(ids, hit.x, hit.y));
+		marker.setPosition(hit.x, hit.y, Math.max(hit.z, 0));
+		marker.setScale(3);
+		markerTime = 0;
+		marker.visible = true;
+	}
+
 	public function update(dt:Float) {
+		if (hxd.Key.isPressed(hxd.Key.X) && mouseX >= 0) blastAt(mouseX, mouseY);
 		if (marker.visible) {
 			markerTime += dt;
 			var s = 1 + markerTime * 2.5;
@@ -147,7 +166,7 @@ class SelectionController {
 	// --- selection -------------------------------------------------------
 
 	public function selectedIds():Array<Int> {
-		return [for (v in views) if (v.selected) v.unit.id];
+		return [for (v in views) if (v.selected && v.unit.alive) v.unit.id];
 	}
 
 	function clearSelection() {
@@ -162,6 +181,7 @@ class SelectionController {
 		var best:UnitView = null;
 		var bestD = PICK_RADIUS * PICK_RADIUS;
 		for (v in views) {
+			if (!v.unit.alive) continue;
 			var p = screenPos(v);
 			var dx = p.x - sx, dy = p.y - sy;
 			var d = dx * dx + dy * dy;
@@ -178,7 +198,7 @@ class SelectionController {
 		var minY = Math.min(y0, y1), maxY = Math.max(y0, y1);
 		if (!additive) clearSelection();
 		for (v in views) {
-			if (v.unit.team != localTeam) continue;
+			if (v.unit.team != localTeam || !v.unit.alive) continue;
 			var p = screenPos(v);
 			if (p.x >= minX && p.x <= maxX && p.y >= minY && p.y <= maxY) v.selected = true;
 		}

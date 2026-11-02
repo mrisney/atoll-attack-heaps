@@ -65,7 +65,7 @@ class Main extends hxd.App {
 		sim = new Sim(island);
 		islandView = new IslandView(island, s3d);
 		applyStyle();
-		for (u in sim.units) unitViews.push(new UnitView(u, s3d));
+		for (u in sim.units) unitViews.push(new UnitView(u, island.heightAt, s3d));
 		selection = new SelectionController(sim, unitViews, s3d, s2d, rtsCam);
 		if (controls == null) controls = new ui.ControlBar(rtsCam, recenterOnSquad, s2d);
 		selection.uiHitTest = controls.hitTest;
@@ -107,7 +107,7 @@ class Main extends hxd.App {
 		hud.text = 'ATOLL ATTACK  ·  seed $seed  ·  ${shape} island  ·  ${style} style\n'
 			+ 'Drag: select   Click/RMB: move   Shift: add\n'
 			+ 'WASD/edges: pan   Wheel/pinch/+ -: zoom   Q/E: rotate   Space: recentre\n'
-			+ 'R: new island   G: island shape   T: visual style   I: ink lines';
+			+ 'R: new island   G: island shape   T: visual style   I: ink lines   X: blast at cursor (test)';
 	}
 
 	var frames = 0;

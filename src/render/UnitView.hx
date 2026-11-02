@@ -9,6 +9,9 @@ import game.Unit.UnitKind;
 	tunic (and the captain's banner). Animation is deliberately restrained:
 	a gentle arm/leg swing while walking, still when idle.
 
+	When the unit dies, the parts detach and follow a Verlet rag doll
+	(see Ragdoll), then settle and lie still.
+
 	The figure faces +X; its left side is +Y.
 **/
 class UnitView extends h3d.scene.Object {
@@ -24,6 +27,12 @@ class UnitView extends h3d.scene.Object {
 	var armL:h3d.scene.Object;
 	var armR:h3d.scene.Object;
 	var ring:h3d.scene.Object;
+	var torso:h3d.scene.Object;
+	var head:h3d.scene.Object;
+	var shadowMeshes:Array<h3d.scene.Mesh> = [];
+	var ragdoll:Null<Ragdoll> = null;
+	/** World (x, y) → ground height, for the rag doll. **/
+	final groundAt:(Float, Float) -> Float;
 
 	var walkTime = 0.0;
 	var swing = 0.0;
@@ -36,9 +45,10 @@ class UnitView extends h3d.scene.Object {
 
 	public var selected(default, set) = false;
 
-	public function new(unit:Unit, ?parent:h3d.scene.Object) {
+	public function new(unit:Unit, groundAt:(Float, Float) -> Float, ?parent:h3d.scene.Object) {
 		super(parent);
 		this.unit = unit;
+		this.groundAt = groundAt;
 
 		shadow();
 
@@ -49,9 +59,9 @@ class UnitView extends h3d.scene.Object {
 
 		legL = limb(0, 0.075, 0.42, 0.062, 0.36, paper);
 		legR = limb(0, -0.075, 0.42, 0.062, 0.36, paper);
-		var torso = InkShape.capsule(body, 0.135, 0.5, 0.65, cloth);
+		torso = InkShape.capsule(body, 0.135, 0.5, 0.65, cloth);
 		torso.scaleX = 0.85;
-		var head = InkShape.sphere(body, 0.118, paper);
+		head = InkShape.sphere(body, 0.118, paper);
 		head.z = 0.93;
 		armL = limb(0, 0.178, 0.74, 0.046, 0.3, paper);
 		armR = limb(0, -0.178, 0.74, 0.046, 0.3, paper);
@@ -111,6 +121,7 @@ class UnitView extends h3d.scene.Object {
 		var sb = new FlatMeshBuilder();
 		sb.disc(0, 0, 0.05, 0.48, 20, 0x000000);
 		for (m in sb.build(this, false)) {
+			shadowMeshes.push(m);
 			m.material.blendMode = Alpha;
 			m.material.color.set(1, 1, 1, 0.22);
 			m.material.mainPass.depthWrite = false;
@@ -131,7 +142,19 @@ class UnitView extends h3d.scene.Object {
 		body.z = Math.abs(Math.sin(walkTime)) * 0.03 * (swing / SWING);
 	}
 
+	public var isDown(get, never):Bool;
+
+	inline function get_isDown()
+		return ragdoll != null;
+
 	public function syncFromSim(dt:Float) {
+		if (!unit.alive) {
+			if (ragdoll == null) startRagdoll();
+			ragdoll.update(dt);
+			applyRagdoll();
+			return;
+		}
+
 		// Ease toward the sim position (the sim ticks at 30 Hz).
 		var k = Math.min(1, dt * 15);
 		var nx = x + (unit.x - x) * k;
@@ -154,5 +177,85 @@ class UnitView extends h3d.scene.Object {
 		while (diff < -Math.PI) diff += Math.PI * 2;
 		heading += diff * Math.min(1, dt * 10);
 		body.setRotation(0, 0, heading);
+	}
+
+	// --- rag doll ----------------------------------------------------------
+
+	function startRagdoll() {
+		selected = false;
+		for (m in shadowMeshes) m.visible = false;
+		// Ground in this view's local space (its origin stays where the unit fell).
+		var ox = x, oy = y, oz = z;
+		var ground = (lx:Float, ly:Float) -> Math.max(groundAt(ox + lx, oy + ly), -0.25) - oz;
+		ragdoll = new Ragdoll(heading, SCALE, body.z, ground);
+
+		// Fling away from the hit, with a little per-unit variety so a group doesn't fall in lockstep.
+		var v = ((unit.id * 7919 + 13) % 101) / 100;
+		var dx = unit.x - unit.hitFromX, dy = unit.y - unit.hitFromY;
+		var d = Math.sqrt(dx * dx + dy * dy);
+		var falloff = Math.max(0.35, 1 - d / 6);
+		ragdoll.kick(dx + (v - 0.5) * 0.6 * d, dy, 3.2 * falloff + v * 0.8, 2.2 * falloff + v * 0.6);
+
+		// Detach the parts from the walking skeleton; from now on they follow the joints.
+		for (o in [torso, head, legL, legR, armL, armR]) {
+			o.remove();
+			addChild(o);
+			o.setScale(SCALE);
+		}
+		torso.scaleX = SCALE * 0.85;
+		body.visible = false;
+		applyRagdoll();
+	}
+
+	function applyRagdoll() {
+		var r = ragdoll;
+		inline function px(i:Int) return new h3d.Vector(r.x[i], r.y[i], r.z[i]);
+
+		// Torso frame: up along the spine, left across the shoulders.
+		var pelvis = px(Ragdoll.PELVIS), chest = px(Ragdoll.CHEST);
+		var up = chest.sub(pelvis).normalized();
+		var left = orthoLeft(px(Ragdoll.SH_L).sub(px(Ragdoll.SH_R)), up);
+		placeFrame(torso, pelvis.sub(up.scaled(0.45 * SCALE)), left, up);
+
+		var headUp = px(Ragdoll.HEAD).sub(chest).normalized();
+		placeFrame(head, px(Ragdoll.HEAD), orthoLeft(left, headUp), headUp);
+
+		// Limbs: the pivot sits at the joint and the capsule hangs along local -Z.
+		placeLimb(legL, px(Ragdoll.HIP_L), px(Ragdoll.FOOT_L), left);
+		placeLimb(legR, px(Ragdoll.HIP_R), px(Ragdoll.FOOT_R), left);
+		placeLimb(armL, px(Ragdoll.SH_L), px(Ragdoll.HAND_L), left);
+		placeLimb(armR, px(Ragdoll.SH_R), px(Ragdoll.HAND_R), left);
+	}
+
+	function placeLimb(o:h3d.scene.Object, joint:h3d.Vector, end:h3d.Vector, left:h3d.Vector) {
+		var axis = joint.sub(end).normalized(); // local +Z points from the end back to the joint
+		placeFrame(o, joint, orthoLeft(left, axis), axis);
+	}
+
+	/** `left` with its component along `up` removed. **/
+	static function orthoLeft(left:h3d.Vector, up:h3d.Vector):h3d.Vector {
+		var l = left.sub(up.scaled(left.dot(up)));
+		if (l.lengthSq() < 1e-8) l = new h3d.Vector(-up.y, up.x, 0);
+		return l.normalized();
+	}
+
+	/** Place an object with local X = forward, Y = left, Z = up. **/
+	static function placeFrame(o:h3d.scene.Object, pos:h3d.Vector, left:h3d.Vector, up:h3d.Vector) {
+		var fwd = left.cross(up);
+		var m = new h3d.Matrix();
+		m.identity();
+		m._11 = fwd.x;
+		m._12 = fwd.y;
+		m._13 = fwd.z;
+		m._21 = left.x;
+		m._22 = left.y;
+		m._23 = left.z;
+		m._31 = up.x;
+		m._32 = up.y;
+		m._33 = up.z;
+		var q = new h3d.Quat();
+		q.initRotateMatrix(m);
+		o.setRotationQuat(q);
+		o.setPosition(pos.x, pos.y, pos.z);
 	}
 }

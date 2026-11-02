@@ -8,6 +8,8 @@ A Haxe/[Heaps](https://heaps.io) port spike of [atoll-attack](https://github.com
 
 ![units](docs/screenshot-units.png)
 
+![rag dolls](docs/ragdoll.png)
+
 The goal of this spike is to answer one question: does Heaps give the Northgard-style look and a pleasant dev loop? It covers:
 
 - **Two island shapes** (G to switch): *Single*, a direct port of the Flutter game's `island_water.frag` generator (fbm + three seeded peaks + radial falloff, same default amplitude/wavelength/bias/radius), and *Atoll*, a reef ring around a lagoon.
@@ -19,6 +21,7 @@ The goal of this spike is to answer one question: does Heaps give the Northgard-
 - **Camera**: on-screen buttons (bottom right) for zoom in/out, rotate, and re-centre on your squad. Tap for a step, or hold to keep going. Also mouse wheel or trackpad pinch to zoom, two-finger pan/pinch on touch, WASD/arrows/screen edges to pan, Q/E to rotate, +/- to zoom, and Space to re-centre.
 - **Ink rendering**: a screen-space edge pass that inks every silhouette at a constant line weight, plus topo-map contour lines, a bold coastline and slope hatching painted on the terrain. Press I to toggle the ink pass.
 - **Line-art units**: rounded, faceless figures with a paper-white fill and a restrained walk cycle.
+- **Rag dolls**: when a unit dies it's flung away from the hit and tumbles into a Verlet rag doll that collides with the terrain, floats at the water surface, and settles. Press **X** to blast units near the cursor (a test key until combat exists).
 
 ## Architecture
 
@@ -28,7 +31,7 @@ src/
   world/Noise.hx            seeded value noise / fbm (deterministic)
   world/Island.hx           heightfield, heightAt(), walkability, apex
   game/Unit.hx              sim-side unit (no rendering)
-  game/Command.hx           Move / Stop — what you'd send over the network
+  game/Command.hx           Move / Stop / Kill — what you'd send over the network
   game/Sim.hx               fixed 30 Hz tick, applies queued commands
   render/Palette.hx         the whole art direction in one file
   render/FlatMeshBuilder.hx low-poly faceted geometry helper
@@ -40,7 +43,8 @@ src/
   render/ink/InkEdge.hx     edge detection (normals + inverse-depth Laplacian)
   render/ink/TerrainInk.hx  contours, coastline, slope hatching
   render/ink/GeoOut.hx      per-material normal/depth output
-  render/UnitView.hx        unit figures, selection rings, interpolation
+  render/UnitView.hx        unit figures, selection rings, interpolation, rag doll hookup
+  render/Ragdoll.hx         Verlet rag doll (11 particles, terrain collision, sleeps when settled)
   input/RtsCamera.hx        orbit/pan/zoom camera
   input/SelectionController.hx  pointer/touch → selection + Commands
   ui/ControlBar.hx          on-screen camera buttons (touch-sized)
