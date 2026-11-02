@@ -24,6 +24,7 @@ class Main extends hxd.App {
 	var inkRenderer:render.ink.InkRenderer;
 	var controls:ui.ControlBar;
 	var minimap:ui.Minimap;
+	var drafting:ui.DraftingOverlay;
 	/** Size of on-screen UI relative to its design size (2 on Retina screens). **/
 	var uiScale = 1.0;
 	var style:VisualStyle = Classic;
@@ -47,7 +48,7 @@ class Main extends hxd.App {
 		hud = new h2d.Text(hxd.res.DefaultFont.get(), s2d);
 		hud.textColor = 0xF2EEDF;
 		hud.dropShadow = {dx: 1, dy: 1, color: 0x10202A, alpha: 0.8};
-		hud.setPosition(12 * uiScale, 10 * uiScale);
+		hud.setPosition(24 * uiScale, 20 * uiScale);
 		hud.setScale(uiScale);
 
 		seed = Std.int(Date.now().getTime() % 100000);
@@ -79,15 +80,25 @@ class Main extends hxd.App {
 		applyStyle();
 		for (u in sim.units) unitViews.push(new UnitView(u, island.heightAt, s3d));
 		// A dock at each squad's landing beach (the captains start there).
-		islandView.addLandings([for (u in sim.units) if (u.kind == Captain) {x: u.x, y: u.y}]);
+		var captains = [for (u in sim.units) if (u.kind == Captain) u];
+		var docks = islandView.addLandings([for (u in captains) {x: u.x, y: u.y}]);
 		selection = new SelectionController(sim, unitViews, s3d, s2d, rtsCam);
 		if (controls == null) {
+			drafting = new ui.DraftingOverlay(s3d.camera, rtsCam);
+			s2d.addChildAt(drafting, 0);
+			drafting.ui = uiScale;
 			controls = new ui.ControlBar(rtsCam, recenterOnSquad, s2d);
 			controls.setScale(uiScale);
 			minimap = new ui.Minimap(rtsCam, s2d);
 			minimap.setScale(uiScale);
 		}
 		minimap.setIsland(island, sim.units);
+		drafting.setIsland(island, [
+			for (k in 0...docks.length)
+				{x: docks[k].x, y: docks[k].y, label: 'LANDING ' + (captains[k].team == 0 ? "A  -  BLUE" : "B  -  RED")}
+		]);
+		drafting.visible = style == Sketch;
+		selection.onOrder = drafting.addDimension;
 		minimap.onCommand = selection.orderMoveWorld;
 		selection.uiHitTest = (x, y) -> controls.hitTest(x, y) || minimap.hitTest(x, y);
 		selection.onBlast = (x, y) -> islandView.decals.crater(x, y, 2.6);
@@ -99,7 +110,8 @@ class Main extends hxd.App {
 		rtsCam.bounds = island.halfExtent;
 		rtsCam.snap();
 
-		updateHud();
+		// Again now that the 2D UI exists (the minimap filter and overlay depend on the style).
+		applyStyle();
 	}
 
 	/** Centre the camera on the selected units, or the whole blue squad if none. **/
@@ -119,9 +131,26 @@ class Main extends hxd.App {
 	function applyStyle() {
 		islandView.setStyle(style);
 		islandView.setSpriteProps(spriteProps != null ? spriteProps : style != InkMap);
-		inkRenderer.inkEnabled = style == InkMap;
+		inkRenderer.inkEnabled = style == InkMap || style == Sketch;
 		inkRenderer.tiltShift = style == Painted;
+		inkRenderer.paperFade = style == Sketch ? 1 : 0;
+		inkRenderer.setShadowTint(style == Sketch ? Palette.SKETCH_SHADOW : Palette.SHADOW);
+		inkRenderer.inkStrength = style == Sketch ? 0.62 : 0.85;
+		if (drafting != null) drafting.visible = style == Sketch;
+		if (minimap != null) {
+			// The minimap goes graphite too, so the only colour on screen is timber and team.
+			var m = new h3d.Matrix();
+			m.identity();
+			m.colorSaturate(-1);
+			m.colorLightness(0.12);
+			minimap.filter = style == Sketch ? new h2d.filter.ColorMatrix(m) : null;
+		}
+		// Dark notes on paper in Sketch; light text with a shadow over the sea otherwise.
+		hud.textColor = style == Sketch ? Palette.SKETCH_LINE : 0xF2EEDF;
+		hud.dropShadow = style == Sketch ? null : {dx: 1, dy: 1, color: 0x10202A, alpha: 0.8};
+		hud.alpha = style == Sketch ? 0.75 : 1;
 		engine.backgroundColor = switch style {
+			case Sketch: 0xFF000000 | Palette.SKETCH_BG;
 			case InkMap: 0xFF6E9FB5;
 			case Painted: 0xFF235F86;
 			case Classic: 0xFF2185C4;
@@ -150,6 +179,7 @@ class Main extends hxd.App {
 		if (q.get("style") == "inkmap") style = InkMap;
 		if (q.get("style") == "classic") style = Classic;
 		if (q.get("style") == "painted") style = Painted;
+		if (q.get("style") == "sketch") style = Sketch;
 		if (q.get("shape") == "atoll") shape = Atoll;
 		if (q.get("shape") == "single") shape = Single;
 		if (q.get("props") == "sprites") spriteProps = true;
@@ -180,7 +210,8 @@ class Main extends hxd.App {
 			style = switch style {
 				case Classic: Painted;
 				case Painted: InkMap;
-				case InkMap: Classic;
+				case InkMap: Sketch;
+				case Sketch: Classic;
 			};
 			applyStyle();
 		}
@@ -201,6 +232,7 @@ class Main extends hxd.App {
 		selection.update(dt);
 		controls.update(dt, s2d.width, s2d.height);
 		minimap.update(s2d.width, s2d.height);
+		drafting.update(dt, s2d.width, s2d.height);
 	}
 
 	static function main() {

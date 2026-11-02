@@ -43,6 +43,8 @@ class SelectionController {
 	public var localTeam = 0;
 	/** Returns true when a point is over on-screen UI, so taps there aren't orders. **/
 	public var uiHitTest:Null<(Float, Float) -> Bool> = null;
+	/** Called after a move order: (from = selected units' centre, to = target), world xy. **/
+	public var onOrder:Null<(Float, Float, Float, Float) -> Void> = null;
 	public var mouseX(default, null) = -1.0;
 	public var mouseY(default, null) = -1.0;
 
@@ -350,6 +352,7 @@ class SelectionController {
 		var ids = selectedIds();
 		if (ids.length == 0) return;
 		sim.queue(Move(ids, x, y));
+		notifyOrder(x, y);
 		marker.setPosition(x, y, Math.max(sim.island.heightAt(x, y), 0));
 		marker.setScale(1);
 		markerTime = 0;
@@ -362,10 +365,23 @@ class SelectionController {
 		var hit = groundAt(sx, sy);
 		if (hit == null) return;
 		sim.queue(Move(ids, hit.x, hit.y));
+		notifyOrder(hit.x, hit.y);
 		marker.setPosition(hit.x, hit.y, Math.max(hit.z, 0));
 		marker.setScale(1);
 		markerTime = 0;
 		marker.visible = true;
+	}
+
+	function notifyOrder(tx:Float, ty:Float) {
+		if (onOrder == null) return;
+		var sx = 0.0, sy = 0.0, n = 0;
+		for (v in views)
+			if (v.selected && v.unit.alive) {
+				sx += v.unit.x;
+				sy += v.unit.y;
+				n++;
+			}
+		if (n > 0) onOrder(sx / n, sy / n, tx, ty);
 	}
 
 	/** Ray-march from the cursor until we hit terrain or the sea surface. **/

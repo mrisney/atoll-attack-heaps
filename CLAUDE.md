@@ -54,7 +54,7 @@ URL params on the web build make runs reproducible:
 
 ## Art direction (decided — keep consistent)
 
-- Three visual styles, cycled with **T** (Classic → Painted → Ink map):
+- Four visual styles, cycled with **T** (Classic → Painted → Ink map → Sketch):
   - **Classic** (default) is the Flutter game's look. Posterised elevation
     bands (sand/lowland/upland/peak), three stepped water tones, and the fbm
     "relief" highlight. Ported from `atoll-attack/shaders/island_water.frag`.
@@ -66,6 +66,16 @@ URL params on the web build make runs reproducible:
     this instead, because it fits the art direction and must run on phones.
   - **Ink map** uses soft colours, topo contours, coastline, slope hatching,
     and a screen-space ink pass.
+  - **Sketch** comes from architectural presentation drawings the owner
+    shared (graphite on paper, one warm timber material, drafting lines).
+    `SketchTone` greys every island material (a light curve for ground and
+    water, a darker one for props). Anything added *after* it's applied in
+    `IslandView`'s constructor (docks, the flag pole) keeps its colour. That
+    warm timber is the point of the style, so new built things (ships,
+    forts) should be timber and stay un-toned. `ui/DraftingOverlay` is the
+    UI layer: title block, scale bar, north arrow, apex datum, landing
+    labels, and move orders as dimension lines. The page fade lives in
+    `InkEdge` (`paperFade`), so it needs the ink pass on.
 - Two island shapes, toggled with **G**: **Single** (port of the Flutter
   generator, same defaults) and **Atoll** (reef ring).
 - **Units are simple line-art figures.** Rounded shapes, paper-white fill,

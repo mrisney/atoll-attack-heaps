@@ -6,6 +6,8 @@ A Haxe/[Heaps](https://heaps.io) port spike of [atoll-attack](https://github.com
 |---|---|---|
 | ![classic](docs/style-classic.png) | ![painted](docs/style-painted.png) | ![ink map](docs/style-inkmap.png) |
 
+![sketch](docs/style-sketch.png)
+
 ![units](docs/screenshot-units.png)
 
 ![rag dolls](docs/ragdoll.png)
@@ -17,6 +19,7 @@ The goal of this spike is to answer one question: does Heaps give the Northgard-
   - *Classic* carries over the Flutter look, with hard posterised bands (sand, lowland, upland, peak), the stepped three-tone water and the crinkly relief highlight (baked to a texture per island so it's cheap on phones).
   - *Painted* blends painted grass, dirt, rock and sand textures (generated in code, no assets), with wandering patch edges, wet sand at the waterline, soft turquoise water, and a tilt-shift blur for a miniature-diorama feel.
   - *Ink map* adds soft colours, contours, hatching and ink outlines.
+  - *Sketch* is an architectural presentation drawing. Everything is graphite on paper except timber (docks, the flag pole), which keeps its warm colour. Water is drawn as ruled pen strokes along the shore, the frame dissolves into the page at the top and margins, and a drafting layer adds a title block, scale bar, north arrow, a datum through the apex, landing labels, and move orders drawn as dimension lines in metres.
 - **Procedural atoll**: a seeded, deterministic heightfield (Int32 hashing, so every platform generates the same island) with a wobbly reef ring broken into islets, a shallow lagoon, and a raised apex where the flag stands.
 - **Units**: Captain, Swordsmen, and Archers for blue and red, built from low-poly primitives.
 - **RTS controls**: box select, click or right-click to move with formation spreading, shift to add to the selection, slope-aware movement, and units that stop at the shoreline.
@@ -55,6 +58,7 @@ src/
   render/Props.hx           vegetation and rocks: species, biome placement, clustering
   render/SpriteProps.hx     painted sprites on alpha-tested domes (one draw call per sprite)
   render/Rocks.hx           procedural 3D boulders and stones (triplanar painted texture)
+  render/SketchTone.hx      Sketch style: greys everything but timber, with paper grain
   render/SwayShader.hx      subtle foliage sway (vertices ripple, the tree doesn't swing)
   render/Surf.hx            animated breaking waves along the coast (one draw call)
   render/Decals.hx          terrain-draped decals (blast craters)
@@ -73,6 +77,7 @@ res/                        art from WildCurrent (embedded into the build; see r
   input/RtsCamera.hx        orbit/pan/zoom camera
   input/SelectionController.hx  pointer/touch → selection + Commands
   ui/ControlBar.hx          on-screen camera buttons (touch-sized, Retina-scaled)
+  ui/DraftingOverlay.hx     Sketch style's drafting layer (title block, scale bar, dimension lines)
   ui/Minimap.hx             click-to-fly minimap with view outline and unit dots
 ```
 

@@ -17,6 +17,10 @@ class InkRenderer extends h3d.scene.fwd.Renderer {
 	/** Miniature-style blur toward the top and bottom of the screen. **/
 	public var tiltShift = false;
 	var tiltFx:h3d.pass.ScreenFx<TiltShift>;
+	/** Sketch style: fade the far part of the frame and the margins to paper (0 = off). **/
+	public var paperFade = 0.0;
+	/** Ink line strength (the Sketch style draws lighter, finer lines). **/
+	public var inkStrength = 0.85;
 
 	var geoPass:h3d.pass.Output;
 	var inkFx:h3d.pass.ScreenFx<InkEdge>;
@@ -31,10 +35,14 @@ class InkRenderer extends h3d.scene.fwd.Renderer {
 
 		// Soft sun shadows, tinted cool rather than black.
 		shadow.size = 2048;
-		shadow.color.set(Palette.r(Palette.SHADOW), Palette.g(Palette.SHADOW), Palette.b(Palette.SHADOW));
+		setShadowTint(Palette.SHADOW);
 		shadow.power = 60;
 		shadow.bias = 0.004;
 		shadow.blur.radius = 1.5;
+	}
+
+	public function setShadowTint(c:Int) {
+		shadow.color.set(Palette.r(c), Palette.g(c), Palette.b(c));
 	}
 
 	override function render() {
@@ -61,6 +69,8 @@ class InkRenderer extends h3d.scene.fwd.Renderer {
 			ctx.engine.popTarget();
 			inkFx.shader.geo = geo;
 			inkFx.shader.texel.set(1 / geo.width, 1 / geo.height);
+			inkFx.shader.fade = paperFade;
+			inkFx.shader.strength = inkStrength;
 		}
 
 		renderPass(defaultPass, opaque);

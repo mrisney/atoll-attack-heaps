@@ -27,6 +27,9 @@ class WaterShader extends hxsl.Shader {
 		@param var tMid:Float;
 		/** Extra blur on band edges (0 = hard Classic bands). **/
 		@param var softness:Float;
+		/** Sketch style: ruled pen strokes along the shore (0 = off). **/
+		@param var ruled:Float;
+		@param var ruleInk:Vec3;
 
 		var relativePosition:Vec3;
 		var transformedPosition:Vec3;
@@ -51,7 +54,23 @@ class WaterShader extends hxsl.Shader {
 
 			var t = global.time;
 			var s = sin(transformedPosition.x * 0.9 + t * 1.7) * sin(transformedPosition.y * 0.8 - t * 1.3);
-			pixelColor.rgb = c + vec3(shimmer * s);
+			c += vec3(shimmer * s);
+			if (ruled > 0.0) {
+				// Short horizontal pen strokes, dense near the shore and fading out to sea,
+				// like water drawn in an architect's site plan.
+				var q = transformedPosition.xy;
+				var yy = q.y / 0.5;
+				var fw = max(fwidth(yy), 0.0001);
+				var dl = abs(fract(yy) - 0.5);
+				var line = 1.0 - smoothstep(fw * 0.5, fw * 1.4, dl);
+				line *= 1.0 - smoothstep(0.18, 0.4, fw); // fade out before the strokes alias
+				var row = floor(yy);
+				var seg = floor(q.x / (1.6 + fract(row * 0.618) * 1.8) + row * 0.37);
+				var dash = step(0.42, fract(sin(row * 12.9898 + seg * 78.233) * 43758.5453));
+				var near = (1.0 - smoothstep(0.2, 4.5, depth)) * step(0.05, depth);
+				c = mix(c, ruleInk, line * dash * near * ruled);
+			}
+			pixelColor.rgb = c;
 			pixelColor.a = 1.0;
 		}
 	};
@@ -62,6 +81,8 @@ class WaterShader extends hxsl.Shader {
 		this.shimmer = shimmer;
 		heightRange = 10.0;
 		softness = 0;
+		ruled = 0;
+		TerrainStyle.setColor(ruleInk, Palette.SKETCH_LINE);
 		setClassicColors();
 		// Same elevation thresholds as the original shader (0.25 and 0.18).
 		tShallow = -world.Island.classicHeight(0.25);
@@ -86,6 +107,13 @@ class WaterShader extends hxsl.Shader {
 		TerrainStyle.setColor(shallow, 0xC9E3E2);
 		TerrainStyle.setColor(mid, 0x9CC6CF);
 		TerrainStyle.setColor(deep, 0x6E9FB5);
+	}
+
+	/** Near-white page; the shore is drawn with ruled strokes instead. **/
+	public function setSketchColors() {
+		TerrainStyle.setColor(shallow, 0xE6E5E1);
+		TerrainStyle.setColor(mid, 0xDCDCD9);
+		TerrainStyle.setColor(deep, 0xD3D4D2);
 	}
 
 	/** Bake the island's heights into a texture the water can sample. **/

@@ -15,6 +15,11 @@ enum VisualStyle {
 	InkMap;
 	/** Painted ground textures (grass/dirt/sand/rock), soft water, tilt-shift. **/
 	Painted;
+	/**
+		Architectural presentation drawing: graphite on paper, only timber in
+		colour, ruled water, drafting annotations, edges dissolving to the page.
+	**/
+	Sketch;
 }
 
 class IslandView extends h3d.scene.Object {
@@ -28,8 +33,19 @@ class IslandView extends h3d.scene.Object {
 		buildApexFlag();
 		buildWater();
 		surf = Surf.build(island, this);
-		decals = new Decals(island, this);
+		// Everything built so far is "nature" and goes grey in the Sketch style.
+		// Things added later (docks, the flag pole) are timber and keep their colour.
+		for (m in getMaterials()) m.mainPass.addShader(m == terrainMat || m == waterMat ? sketchTone : sketchProps);
+		decals = new Decals(island, this, sketchTone);
+		buildFlagPole();
 	}
+
+	/** Greys everything for the Sketch style (amount 0 in the others). **/
+	public final sketchTone = new SketchTone();
+	/** Props go darker than the ground, so trees read as graphite on the page. **/
+	public final sketchProps = new SketchTone(1.0, 1.3);
+	var terrainMat:h3d.mat.Material;
+	var waterMat:h3d.mat.Material;
 
 	function vertex(i:Int, j:Int):Point {
 		var he = island.halfExtent;
@@ -75,6 +91,7 @@ class IslandView extends h3d.scene.Object {
 		poly.normals = nrm;
 		poly.colors = cols;
 		var m = new h3d.scene.Mesh(poly, this);
+		terrainMat = m.material;
 		// Shaded by TerrainStyle rather than the scene lights, so the look is fully ours.
 		FlatMeshBuilder.setupMaterial(m.material, false);
 		terrainStyle.bakeRelief(island);
@@ -92,14 +109,20 @@ class IslandView extends h3d.scene.Object {
 
 	public function setStyle(style:VisualStyle) {
 		terrainStyle.painted = style == Painted ? 1 : 0;
+		sketchTone.amount = style == Sketch ? 1 : 0;
+		sketchProps.amount = sketchTone.amount;
+		waterShader.ruled = style == Sketch ? 0.55 : 0;
 		// Surf body: a deeper shade of each style's shallow water.
 		if (surf != null) {
 			var c = switch style {
 				case Classic: 0x3D8FC4;
 				case Painted: 0x2F8C9C;
 				case InkMap: 0x86AFBC;
+				case Sketch: 0xC9CAC7;
 			};
 			TerrainStyle.setColor(surf.body, c);
+			// On paper the grey wave backs read as heavy brush strokes; keep them faint.
+			surf.opacity = style == Sketch ? 0.35 : 0.9;
 		}
 		waterShader.softness = 0;
 		switch style {
@@ -127,6 +150,14 @@ class IslandView extends h3d.scene.Object {
 				terrainInk.majorAlpha = 0.55;
 				terrainInk.hatchAlpha = 0.3;
 				terrainInk.coastWidth = 2.2;
+				terrainInk.coastLevel = 0.1;
+			case Sketch:
+				terrainStyle.bands = 0;
+				waterShader.setSketchColors();
+				terrainInk.minorAlpha = 0.1;
+				terrainInk.majorAlpha = 0.28;
+				terrainInk.hatchAlpha = 0.38;
+				terrainInk.coastWidth = 1.6;
 				terrainInk.coastLevel = 0.1;
 		}
 	}
@@ -156,6 +187,7 @@ class IslandView extends h3d.scene.Object {
 		poly.colors = cols;
 		poly.normals = nrm;
 		var m = new h3d.scene.Mesh(poly, this);
+		waterMat = m.material;
 		// Opaque, unlit: colour comes entirely from the banded water shader.
 		FlatMeshBuilder.setupMaterial(m.material, false);
 		waterShader.setIsland(island);
@@ -177,7 +209,8 @@ class IslandView extends h3d.scene.Object {
 		A wooden dock at each landing beach, pointing from the beach out to sea.
 		`points` are on land near the shore (the squads' spawn spots).
 	**/
-	public function addLandings(points:Array<{x:Float, y:Float}>) {
+	public function addLandings(points:Array<{x:Float, y:Float}>):Array<{x:Float, y:Float}> {
+		var ends = [];
 		var sp = new SpriteProps();
 		var posts = new FlatMeshBuilder();
 		for (p in points) {
@@ -202,6 +235,7 @@ class IslandView extends h3d.scene.Object {
 			var sx = p.x + bdx * (t - 1.2), sy = p.y + bdy * (t - 1.2);
 			var cx = sx + bdx * len / 2, cy = sy + bdy * len / 2;
 			var deck = 0.45;
+			ends.push({x: sx + bdx * len * 0.7, y: sy + bdy * len * 0.7});
 			// Image-up (the shore end) points back toward land.
 			sp.add("structures/dock.png", cx, cy, deck, len, 0, Math.atan2(bdx, -bdy), 1.0);
 			// Pilings along both sides, down into the water.
@@ -219,6 +253,7 @@ class IslandView extends h3d.scene.Object {
 		var docks = new h3d.scene.Object(this);
 		sp.build(docks, true);
 		posts.build(docks, true, true, true);
+		return ends;
 	}
 
 	function buildProps() {
@@ -231,12 +266,18 @@ class IslandView extends h3d.scene.Object {
 		props.lowPoly.visible = !on;
 	}
 
+	/** The flag pole is timber: built after the Sketch tone is applied, so it keeps its colour. **/
+	function buildFlagPole() {
+		var b = new FlatMeshBuilder();
+		b.prism(island.apexX, island.apexY, island.apexH - 0.05 + 0.4, 0.05, 2.6, 5, Palette.WOOD);
+		b.build(this, true, true, true);
+	}
+
 	function buildApexFlag() {
 		var b = new FlatMeshBuilder();
 		var x = island.apexX, y = island.apexY, z = island.apexH - 0.05;
 		// Stone cairn + pole + neutral banner, waiting to be claimed.
 		b.cone(x, y, z, 0.7, 0.45, 6, Palette.STONE, 0.45);
-		b.prism(x, y, z + 0.4, 0.05, 2.6, 5, Palette.WOOD);
 		var top = z + 2.9;
 		var f0 = new Point(x, y, top), f1 = new Point(x + 1.1, y + 0.15, top - 0.35), f2 = new Point(x, y, top - 0.7);
 		b.tri(f0, f1, f2, 0xEFE8D8);

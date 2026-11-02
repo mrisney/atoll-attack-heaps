@@ -21,6 +21,9 @@ class InkEdge extends h3d.shader.ScreenShader {
 		@param var width:Float;
 		@param var normalThreshold:Float;
 		@param var depthThreshold:Float;
+		/** Sketch style: the drawing dissolves into the page toward the top and edges. **/
+		@param var fade:Float;
+		@param var paper:Vec3;
 
 		function decodeN(c:Vec4):Vec3 {
 			return c.rgb * 2.0 - 1.0;
@@ -58,7 +61,19 @@ class InkEdge extends h3d.shader.ScreenShader {
 
 				edge = max(smoothstep(normalThreshold, normalThreshold * 1.8, nd), smoothstep(depthThreshold, depthThreshold * 2.5, dd));
 			}
-			pixelColor = vec4(ink, edge * strength);
+			var inkA = edge * strength;
+			if (fade > 0.0) {
+				// Upper part of the frame (far away) and the margins fade to paper.
+				var top = 1.0 - smoothstep(0.02, 0.45, uv.y);
+				var side = 1.0 - smoothstep(0.0, 0.14, min(uv.x, 1.0 - uv.x));
+				var bottom = 1.0 - smoothstep(0.0, 0.1, 1.0 - uv.y);
+				var f = fade * clamp(max(top * 0.92, max(side, bottom) * 0.75), 0.0, 1.0);
+				inkA *= 1.0 - f * 0.85;
+				var a = 1.0 - (1.0 - f) * (1.0 - inkA);
+				var col = (paper * f * (1.0 - inkA) + ink * inkA) / max(a, 0.0001);
+				pixelColor = vec4(col, a);
+			} else
+				pixelColor = vec4(ink, inkA);
 		}
 	};
 
@@ -69,5 +84,7 @@ class InkEdge extends h3d.shader.ScreenShader {
 		width = 1.3;
 		normalThreshold = 0.35;
 		depthThreshold = 0.03;
+		fade = 0;
+		paper.set(Palette.r(Palette.SKETCH_BG), Palette.g(Palette.SKETCH_BG), Palette.b(Palette.SKETCH_BG));
 	}
 }

@@ -5,7 +5,7 @@
 //
 // Options (all optional):
 //   --seed=12345        island seed (default 4242, so runs are comparable)
-//   --style=classic     classic | painted | inkmap
+//   --style=classic     classic | painted | inkmap | sketch
 //   --shape=single      single | atoll
 //   --dist=55           camera distance (zoom)
 //   --out=snapshots     output folder

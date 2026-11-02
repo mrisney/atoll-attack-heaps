@@ -20,9 +20,12 @@ class Decals extends h3d.scene.Object {
 	final craters:Array<{x:Float, y:Float, r:Float, rot:Float}> = [];
 	var mesh:Null<h3d.scene.Mesh> = null;
 
-	public function new(island:world.Island, ?parent:h3d.scene.Object) {
+	final tone:Null<hxsl.Shader>;
+
+	public function new(island:world.Island, ?parent:h3d.scene.Object, ?tone:hxsl.Shader) {
 		super(parent);
 		this.island = island;
+		this.tone = tone;
 	}
 
 	public function crater(x:Float, y:Float, radius:Float) {
@@ -67,6 +70,7 @@ class Decals extends h3d.scene.Object {
 		mat.blendMode = Alpha;
 		mat.mainPass.depthWrite = false;
 		mat.mainPass.culling = None;
+		if (tone != null) mat.mainPass.addShader(tone);
 		FlatMeshBuilder.shadows(mat, false, true);
 	}
 

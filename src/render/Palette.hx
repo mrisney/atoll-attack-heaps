@@ -65,6 +65,19 @@ class Palette {
 	public static inline var CLOTH_BLUE = 0xC5D3E6;
 	public static inline var CLOTH_RED = 0xEBC9C1;
 
+	// Sketch style (architectural presentation drawing).
+	/** The page: a cool, slightly warm off-white. **/
+	public static inline var SKETCH_PAPER = 0xEDECE8;
+	/** Background beyond the page: a touch greyer, so the island floats on it. **/
+	public static inline var SKETCH_BG = 0xE2E2DF;
+	public static inline var SKETCH_GRAPHITE = 0x2E2D2B;
+	/** Shadows go neutral grey on paper (the other styles tint them cool). **/
+	public static inline var SKETCH_SHADOW = 0x8A8986;
+	/** Drafting lines and annotation text. **/
+	public static inline var SKETCH_LINE = 0x3A3936;
+	/** The one warm material: timber. **/
+	public static inline var SKETCH_TIMBER = 0xB8773A;
+
 	public static inline function r(c:Int):Float
 		return ((c >> 16) & 0xFF) / 255;
 
