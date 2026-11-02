@@ -5,7 +5,7 @@
 //
 // Options (all optional):
 //   --seed=12345        island seed (default 4242, so runs are comparable)
-//   --style=sketch      sketch | classic | painted | inkmap
+//   --style=painted     painted | sketch | classic | inkmap
 //   --shape=single      single | atoll
 //   --dist=55           camera distance (zoom)
 //   --out=snapshots     output folder
@@ -35,7 +35,7 @@ const args = Object.fromEntries(
 );
 
 const seed = args.seed ?? "4242";
-const style = args.style ?? "sketch";
+const style = args.style ?? "painted";
 const shape = args.shape ?? "single";
 const outDir = resolve(root, args.out ?? "snapshots");
 const name = args.name ?? `${shape}-${style}-${seed}`;
