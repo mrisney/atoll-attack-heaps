@@ -87,11 +87,16 @@ URL params on the web build make runs reproducible:
   alpha-tested smooth dome, trims the art's 1 px pale outline, and bleeds edge
   colour so mipmaps don't halo. Ink map keeps low-poly by default.
 - **WildCurrent art in use** (see `res/SOURCE.md`): canopies (plain and
-  vine), bushes, boulders, vine mats, waterline/tall grass, reeds, the floating
-  log, the swell sheet (surf), white-sail dinghies (ambient boats) and the
-  dock (landing beaches). Racing spinnakers, rafts, buoys and city pieces were
-  judged off-theme for the island. Foliage sways subtly, per the WildCurrent
+  vine), bushes, vine mats, waterline/tall grass, reeds, the floating
+  log, the swell sheet (surf) and the dock (landing beaches). Racing
+  spinnakers, rafts, buoys and city pieces were judged off-theme for the island.
+  Ambient sailboats were tried and **removed at the owner's request**. Foliage sways subtly, per the WildCurrent
   art notes ("never rotate the whole canopy").
+- **Rocks are 3D, not sprites** (`render/Rocks.hx`). The owner found the sprite
+  boulders "very artificial": their painted-in light disagreed with our sun
+  and the dome silhouette read as a sticker. Rocks are noise-deformed
+  icospheres with fracture planes, sunk into the ground, with vertex AO and a
+  triplanar painted texture. Use them for any new stone, never `ball()` gems.
 - The surf sprite's dark teal back was painted for San Francisco's ocean.
   `SurfShader` keeps the white foam and recolours the back per style.
 - All colours live in `render/Palette.hx` and the style shaders. Don't

@@ -28,7 +28,6 @@ class IslandView extends h3d.scene.Object {
 		buildApexFlag();
 		buildWater();
 		surf = Surf.build(island, this);
-		boats = new Boats(island, this);
 		decals = new Decals(island, this);
 	}
 
@@ -169,14 +168,10 @@ class IslandView extends h3d.scene.Object {
 
 	var surf:Null<Surf.SurfShader>;
 
-	/** Ambient sailboats offshore; call `update` every frame. **/
-	public var boats(default, null):Boats;
 	/** Ground marks (blast craters). **/
 	public var decals(default, null):Decals;
 
-	public function update(dt:Float) {
-		boats.update(dt);
-	}
+	public function update(dt:Float) {}
 
 	/**
 		A wooden dock at each landing beach, pointing from the beach out to sea.

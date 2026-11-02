@@ -29,9 +29,10 @@ The goal of this spike is to answer one question: does Heaps give the Northgard-
 - **Ink rendering**: a screen-space edge pass that inks every silhouette at a constant line weight, plus topo-map contour lines, a bold coastline and slope hatching painted on the terrain. Press I to toggle the ink pass.
 - **Line-art units**: rounded, faceless figures with a paper-white fill and a restrained walk cycle.
 - **Sun shadows**: soft, cool-tinted directional shadows from trees, rocks, units and hills onto terrain and water.
-- **Sprite trees** (P toggles sprite/low-poly; sprites are the default in Classic and Painted): painted top-down canopies, bushes and boulders from the WildCurrent asset bank, mapped onto shallow domes with alpha-cut silhouettes that cast leaf-shaped shadows. Reeds and cattails stand in the shallows.
-- **Coast and sea life** (from WildCurrent's art): animated breaking surf along the shallows (each wave on its own timing), white-sail dinghies looping offshore with the right heading frame, a wooden dock with pilings at each landing beach, and floating-log driftwood.
+- **Sprite trees** (P toggles sprite/low-poly; sprites are the default in Classic and Painted): painted top-down canopies and bushes from the WildCurrent asset bank, mapped onto shallow domes with alpha-cut silhouettes that cast leaf-shaped shadows. Reeds and cattails stand in the shallows.
+- **Coast and sea life** (from WildCurrent's art): animated breaking surf along the shallows (each wave on its own timing), a wooden dock with pilings at each landing beach, and floating-log driftwood.
 - **More foliage**: weeping vine-draped canopies (commoner near water), creeping vine mats along forest edges, tall dune grass on the beaches. All foliage sways subtly in the breeze, shadows included.
+- **3D rocks**: boulders and loose stones are procedural meshes (a noise-deformed icosphere with fracture planes, sunk into the ground, darkened at the base, with the painted rock texture projected from three sides) lit by the scene's sun, so they agree with the light and cast real shadows.
 - **Blast craters**: scorched pits with thrown soil, draped over the terrain where X blasts land.
 - **Micro-scatter**: wildflowers in the meadows, shells on the beaches, loose pebbles in the uplands.
 - **Tilt-shift** (B to toggle; on by default in Painted).
@@ -53,9 +54,9 @@ src/
   render/IslandView.hx      terrain, water, apex flag; shadow setup per mesh
   render/Props.hx           vegetation and rocks: species, biome placement, clustering
   render/SpriteProps.hx     painted sprites on alpha-tested domes (one draw call per sprite)
+  render/Rocks.hx           procedural 3D boulders and stones (triplanar painted texture)
   render/SwayShader.hx      subtle foliage sway (vertices ripple, the tree doesn't swing)
   render/Surf.hx            animated breaking waves along the coast (one draw call)
-  render/Boats.hx           ambient sailboats with 12 heading frames
   render/Decals.hx          terrain-draped decals (blast craters)
 res/                        art from WildCurrent (embedded into the build; see res/SOURCE.md)
   render/WaterShader.hx     banded water from a heightmap texture + swell/shimmer
@@ -136,7 +137,7 @@ Use VS Code with the **Haxe** extension (vshaxe) for completion and go-to-defini
 
 Everything in `res/` is embedded into the build (`hxd.Res.initEmbed()`), so the web version needs no asset server.
 
-- **A new tree, bush or rock sprite:** drop a top-down PNG with transparency into `res/props/`, then add its name to one of the lists at the top of `src/render/Props.hx` (`CANOPIES`, `VINE_CANOPIES`, `VINE_MATS`, `TALL_GRASS`, `BUSHES`, `BOULDERS`, `REEDS`). Names containing `canopy`, `bush`, `vine-mat` or `waterline` sway automatically. Placement, size variation, shadows and edge clean-up are automatic.
+- **A new tree, bush or rock sprite:** drop a top-down PNG with transparency into `res/props/`, then add its name to one of the lists at the top of `src/render/Props.hx` (`CANOPIES`, `VINE_CANOPIES`, `VINE_MATS`, `TALL_GRASS`, `BUSHES`, `REEDS`). Names containing `canopy`, `bush`, `vine-mat` or `waterline` sway automatically. Placement, size variation, shadows and edge clean-up are automatic.
 - **3D models (later):** Heaps loads FBX. Put `res/models/x.fbx` in and load it with `hxd.Res.load("models/x.fbx").toHmd().makeObject()`. That's the route for rigged characters.
 
 ## Snapshots (for you or an agent)

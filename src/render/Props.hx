@@ -57,6 +57,10 @@ class Props {
 	final low = new FlatMeshBuilder();
 	/** Sprite trees, bushes, boulders, reeds. **/
 	final spr = new SpriteProps();
+	/** Real 3D boulders for the sprite look (sprites read as stickers for rocks). **/
+	final rocks = new Rocks();
+	/** Small loose stones, shared by both looks. **/
+	final pebbles = new Rocks();
 	/** Sprite trunks (mostly hidden under the canopy, they ground the tree). **/
 	final trunks = new FlatMeshBuilder();
 	final rnd:Noise;
@@ -147,7 +151,7 @@ class Props {
 					else if (roll < 0.36) stones(x, y, z, 2);
 				} else {
 					// Peak
-					if (roll < 0.1) rockCluster(x, y, z, 4);
+					if (roll < 0.06) rockCluster(x, y, z, 2 + Std.int(r() * 3));
 					else if (roll < 0.18) stones(x, y, z, 3);
 					else if (roll < 0.21) snag(x, y, z);
 				}
@@ -164,6 +168,8 @@ class Props {
 		var sprites = new h3d.scene.Object(parent);
 		trunks.build(sprites, true, true, true);
 		spr.build(sprites);
+		rocks.build(sprites);
+		pebbles.build(parent);
 		return {lowPoly: lowPoly, sprites: sprites};
 	}
 
@@ -332,7 +338,7 @@ class Props {
 			var rx = x + Math.cos(a) * d, ry = y + Math.sin(a) * d;
 			var rz = island.heightAt(rx, ry) - 0.08;
 			low.ball(rx, ry, rz, rs, tint(c, 0.15), 5 + Std.int(r() * 2), 3, 0.55 + r() * 0.25, r() * 3);
-			spr.add(SPRITES + pickName(BOULDERS) + ".png", rx, ry, rz, rs * 2.8, rs * 0.9, r() * Math.PI * 2, 0.95 + r() * 0.1);
+			rocks.add(rx, ry, island.heightAt(rx, ry), rs * 2.4, salt * 31 + k, tint(c, 0.14));
 		}
 	}
 
@@ -340,7 +346,7 @@ class Props {
 		for (k in 0...count) {
 			var a = r() * Math.PI * 2, d = r() * 0.6;
 			var sx = x + Math.cos(a) * d, sy = y + Math.sin(a) * d;
-			solid.ball(sx, sy, island.heightAt(sx, sy) - 0.03, 0.08 + r() * 0.1, tint(pick(Palette.ROCKS), 0.2), 5, 3, 0.6, r() * 3);
+			pebbles.add(sx, sy, island.heightAt(sx, sy), 0.18 + r() * 0.22, salt * 31 + 100 + k, tint(pick(Palette.ROCKS), 0.2));
 		}
 	}
 
