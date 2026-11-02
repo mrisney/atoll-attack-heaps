@@ -16,7 +16,7 @@ The goal of this spike is to answer one question: does Heaps give the Northgard-
 - **Stylized rendering**: flat-shaded vertex-colored terrain by elevation band, depth-tinted water with an animated HXSL swell and shimmer shader, scattered low-poly pines and rocks, and warm sun with cool ambient lighting.
 - **Units**: Captain, Swordsmen, and Archers for blue and red, built from low-poly primitives.
 - **RTS controls**: box select, click or right-click to move with formation spreading, shift to add to the selection, slope-aware movement, and units that stop at the shoreline.
-- **Camera**: WASD/arrows or edge pan, wheel zoom, and Q/E rotate. On touch, two fingers pan and pinch-zoom.
+- **Camera**: on-screen buttons (bottom right) for zoom in/out, rotate, and re-centre on your squad. Tap for a step, or hold to keep going. Also mouse wheel or trackpad pinch to zoom, two-finger pan/pinch on touch, WASD/arrows/screen edges to pan, Q/E to rotate, +/- to zoom, and Space to re-centre.
 - **Ink rendering**: a screen-space edge pass that inks every silhouette at a constant line weight, plus topo-map contour lines, a bold coastline and slope hatching painted on the terrain. Press I to toggle the ink pass.
 - **Line-art units**: rounded, faceless figures with a paper-white fill and a restrained walk cycle.
 
@@ -43,6 +43,7 @@ src/
   render/UnitView.hx        unit figures, selection rings, interpolation
   input/RtsCamera.hx        orbit/pan/zoom camera
   input/SelectionController.hx  pointer/touch → selection + Commands
+  ui/ControlBar.hx          on-screen camera buttons (touch-sized)
 ```
 
 The simulation (`world/`, `game/`) never touches rendering or input. Input produces `Command`s, and the `Sim` consumes them on fixed ticks. That is the shape you need for lockstep multiplayer (Steam P2P or WebRTC) and for porting the rules from the Flutter version.
@@ -101,6 +102,16 @@ On an Intel Mac, `haxe build-hl.hxml && hl bin/game.hl` also works and compiles 
 ### Editor
 
 Use VS Code with the **Haxe** extension (vshaxe) for completion and go-to-definition. Point it at `build-js.hxml`.
+
+## Snapshots (for you or an agent)
+
+```sh
+npm install && npx playwright install chromium     # once
+node scripts/snapshot.mjs                           # → snapshots/single-classic-4242.png
+node scripts/snapshot.mjs --style=inkmap --shape=atoll --seed=777 --walk
+```
+
+This builds the web version, runs it headless, and saves screenshots. It exits non-zero if the page errors, so it doubles as a smoke test. See `CLAUDE.md` for project rules and known Heaps gotchas.
 
 ## Testing on mobile
 

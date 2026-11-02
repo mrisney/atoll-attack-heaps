@@ -6,3 +6,5 @@ dump/
 .DS_Store
 .vscode/
 out/
+node_modules/
+snapshots/

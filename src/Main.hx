@@ -22,6 +22,7 @@ class Main extends hxd.App {
 	var selection:SelectionController;
 	var hud:h2d.Text;
 	var inkRenderer:render.ink.InkRenderer;
+	var controls:ui.ControlBar;
 	var style:VisualStyle = Classic;
 	var shape:IslandShape = Single;
 
@@ -38,7 +39,12 @@ class Main extends hxd.App {
 		hud.setPosition(12, 10);
 
 		seed = Std.int(Date.now().getTime() % 100000);
+		readUrlParams();
 		buildWorld();
+		if (startDistance > 0) {
+			rtsCam.distance = startDistance;
+			rtsCam.apply();
+		}
 	}
 
 	function setupLighting() {
@@ -61,6 +67,8 @@ class Main extends hxd.App {
 		applyStyle();
 		for (u in sim.units) unitViews.push(new UnitView(u, s3d));
 		selection = new SelectionController(sim, unitViews, s3d, s2d, rtsCam);
+		if (controls == null) controls = new ui.ControlBar(rtsCam, recenterOnSquad, s2d);
+		selection.uiHitTest = controls.hitTest;
 
 		// Start looking at the blue squad's beach.
 		var blue = sim.units[0];
@@ -70,6 +78,22 @@ class Main extends hxd.App {
 		rtsCam.apply();
 
 		updateHud();
+	}
+
+	/** Centre the camera on the selected units, or the whole blue squad if none. **/
+	function recenterOnSquad() {
+		var ids = selection.selectedIds();
+		var sx = 0.0, sy = 0.0, n = 0;
+		for (u in sim.units)
+			if (u.team == selection.localTeam && (ids.length == 0 || ids.indexOf(u.id) >= 0)) {
+				sx += u.x;
+				sy += u.y;
+				n++;
+			}
+		if (n == 0) return;
+		rtsCam.targetX = sx / n;
+		rtsCam.targetY = sy / n;
+		rtsCam.apply();
 	}
 
 	function applyStyle() {
@@ -82,17 +106,47 @@ class Main extends hxd.App {
 	function updateHud() {
 		hud.text = 'ATOLL ATTACK  ·  seed $seed  ·  ${shape} island  ·  ${style} style\n'
 			+ 'Drag: select   Click/RMB: move   Shift: add\n'
-			+ 'WASD/edges: pan   Wheel: zoom   Q/E: rotate\n'
+			+ 'WASD/edges: pan   Wheel/pinch/+ -: zoom   Q/E: rotate   Space: recentre\n'
 			+ 'R: new island   G: island shape   T: visual style   I: ink lines';
 	}
 
+	var frames = 0;
+	var startDistance = 0.0;
+
+	/**
+		Web build only: `index.html?seed=123&style=inkmap&shape=atoll&dist=80`
+		makes a run reproducible — used by scripts/snapshot.mjs.
+	**/
+	function readUrlParams() {
+		#if js
+		var q = new js.html.URLSearchParams(js.Browser.location.search);
+		if (q.has("seed")) seed = Std.parseInt(q.get("seed"));
+		if (q.get("style") == "inkmap") style = InkMap;
+		if (q.get("style") == "classic") style = Classic;
+		if (q.get("shape") == "atoll") shape = Atoll;
+		if (q.get("shape") == "single") shape = Single;
+		if (q.has("dist")) startDistance = Std.parseFloat(q.get("dist"));
+		#end
+	}
+
 	override function update(dt:Float) {
+		frames++;
+		#if js
+		// Lets automation know the game is up and rendering.
+		js.Syntax.code("window.atollFrames = {0}", frames);
+		#end
 		if (hxd.Key.isPressed(hxd.Key.R)) {
 			seed = Std.random(100000);
 			buildWorld();
 		}
 		if (hxd.Key.isPressed(hxd.Key.I))
 			inkRenderer.inkEnabled = !inkRenderer.inkEnabled;
+		if (hxd.Key.isPressed(hxd.Key.SPACE))
+			recenterOnSquad();
+		if (hxd.Key.isDown(hxd.Key.QWERTY_EQUALS) || hxd.Key.isDown(hxd.Key.NUMPAD_ADD))
+			rtsCam.zoom(Math.pow(1 / 2.2, dt));
+		if (hxd.Key.isDown(hxd.Key.QWERTY_MINUS) || hxd.Key.isDown(hxd.Key.NUMPAD_SUB))
+			rtsCam.zoom(Math.pow(2.2, dt));
 		if (hxd.Key.isPressed(hxd.Key.T)) {
 			style = style == Classic ? InkMap : Classic;
 			applyStyle();
@@ -105,6 +159,7 @@ class Main extends hxd.App {
 		sim.update(dt);
 		for (v in unitViews) v.syncFromSim(dt);
 		selection.update(dt);
+		controls.update(dt, s2d.width, s2d.height);
 	}
 
 	static function main() {

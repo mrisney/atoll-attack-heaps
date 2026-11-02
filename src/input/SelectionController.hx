@@ -24,6 +24,8 @@ class SelectionController {
 	final box:h2d.Graphics;
 
 	public var localTeam = 0;
+	/** Returns true when a point is over on-screen UI, so taps there aren't orders. **/
+	public var uiHitTest:Null<(Float, Float) -> Bool> = null;
 	public var mouseX(default, null) = -1.0;
 	public var mouseY(default, null) = -1.0;
 
@@ -75,6 +77,7 @@ class SelectionController {
 	function onEvent(e:hxd.Event) {
 		switch e.kind {
 			case EPush:
+				if (uiHitTest != null && uiHitTest(e.relX, e.relY)) return;
 				pointers.set(e.touchId, {x: e.relX, y: e.relY});
 				if (countPointers() >= 2) {
 					startGesture();

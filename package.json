@@ -1,0 +1,13 @@
+{
+  "name": "atoll-attack-heaps",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:web": "haxe build-js.hxml",
+    "serve": "./scripts/run-web.sh",
+    "snapshot": "node scripts/snapshot.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.48.0"
+  }
+}

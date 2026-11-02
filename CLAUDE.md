@@ -1,0 +1,105 @@
+# Atoll Attack (Heaps) — notes for agents
+
+A Haxe/Heaps RTS: procedural islands, small squads, box-select and move. It's a
+port of the Flutter/Flame game at github.com/mrisney/atoll-attack. Targets are
+**Steam** (HashLink/C native), **web** (JS/WebGL), and **iOS/Android**
+(the same WebGL build in a Capacitor shell, planned).
+
+## Commands
+
+```sh
+haxe build-js.hxml                       # web build → bin/game.js (fast; use this to compile-check)
+./scripts/run-web.sh                     # build + serve on http://localhost:8080
+node scripts/snapshot.mjs                # build + headless screenshot → snapshots/
+node scripts/snapshot.mjs --style=inkmap --shape=atoll --seed=777 --walk
+haxe build-hl.hxml && hl bin/game.hl     # desktop HashLink (x86 only)
+./scripts/build-mac-native.sh            # HashLink/C native build (Apple Silicon)
+```
+
+URL params on the web build make runs reproducible:
+`bin/index.html?seed=123&style=inkmap|classic&shape=atoll|single&dist=80`.
+
+## How to verify a change
+
+1. `haxe build-js.hxml` must compile cleanly.
+2. Run `node scripts/snapshot.mjs` (add `--walk` if units or animation changed)
+   and **look at the PNG**. It exits non-zero on page errors or if the game
+   never starts.
+3. Gameplay feel (camera speed, unit speed, readability) can't be judged from
+   a screenshot. Say what you changed and ask the human to try it.
+
+`npm install && npx playwright install chromium` once for the snapshot script.
+
+## Architecture rules
+
+- `world/` and `game/` are the **simulation**. They must not import `h3d`,
+  `h2d`, `hxd` or anything in `render/`/`input/`. They must stay runnable
+  headless, which matters for lockstep multiplayer and a future server.
+- Input never mutates units directly. It produces `game.Command` values and
+  calls `sim.queue()`. The `Sim` applies them on a fixed 30 Hz tick. Commands
+  are what goes over the network.
+- The sim must be deterministic: no `Math.random`/`Std.random`, no time-based
+  logic in `world/` or `game/`. Noise uses Int32 hashing (`world.Noise`).
+  `Std.random` is only used in `Main` to pick seeds. Floats will eventually
+  need care (or fixed-point) for cross-platform lockstep.
+- `render/` reads the sim and draws. `UnitView.syncFromSim` interpolates
+  toward sim state each frame.
+- Platform services (storage, multiplayer, achievements) will go behind small
+  interfaces with one implementation per target. Don't call Steam/Capacitor
+  APIs from game code.
+
+## Art direction (decided — keep consistent)
+
+- Two visual styles, toggled with **T**:
+  - **Classic** (default) is the Flutter game's look. Posterised elevation
+    bands (sand/lowland/upland/peak), three stepped water tones, and the fbm
+    "relief" highlight. Ported from `atoll-attack/shaders/island_water.frag`.
+  - **Ink map** uses soft colours, topo contours, coastline, slope hatching,
+    and a screen-space ink pass.
+- Two island shapes, toggled with **G**: **Single** (port of the Flutter
+  generator, same defaults) and **Atoll** (reef ring).
+- **Units are simple line-art figures.** Rounded shapes, paper-white fill,
+  bold ink outline, no faces or surface detail. Team is shown only by tunic
+  tint and the captain's pennant. **Animation is restrained:** a gentle limb
+  swing while walking, still when idle. The owner explicitly does not want
+  cartoony or over-animated characters.
+- All colours live in `render/Palette.hx` and the style shaders. Don't
+  hard-code colours elsewhere.
+
+## Heaps/Haxe gotchas we've already hit
+
+- **Heaps base classes have common method names.** `h3d.scene.Object` already
+  has `sync(ctx)` (we use `syncFromSim`), and `h2d.Object` already has
+  `rotate(v)` (we use `turnCamera`). A "should be declared with override" error
+  means you've hit one of these. Pick a more specific name.
+- **Every opaque material must have `render.ink.GeoOut`**, or the ink geometry
+  pass fails to link its shader. `FlatMeshBuilder.setupMaterial()` adds it, so
+  use that for any new mesh.
+- **Winding:** with `culling = Back`, front faces are counter-clockwise when
+  the normal points outward. `InkShape.addTri` fixes winding automatically.
+- **Inverted-hull outlines** are the same mesh pushed out along normals and
+  drawn with `culling = Front` in ink colour (see `InkShape`, `FlatMeshBuilder.outline`).
+- **Enum constructor names clash across imported enums.** That's why it's
+  `IslandShape.Single` rather than a second `Classic`.
+- **Web keyboard input:** the canvas needs `globalEvents="1"` (in
+  `bin/index.html`), or keys only work after focusing the canvas.
+- **`hxd.Key.isPressed` is per frame.** Under slow software rendering, quick
+  taps can be missed. Hold keys about 400 ms in automation.
+- **Keep fragment shaders cheap**, because mobile is a target. Bake expensive
+  noise into textures once per island (see `TerrainStyle.bakeRelief`,
+  `WaterShader.setIsland`). Per-pixel fbm was too slow.
+- 16-bit index buffers: `FlatMeshBuilder` splits geometry into chunks under
+  65k vertices.
+- HXSL has `fwidth`, `fract`, `smoothstep`, `mix`, and small helper functions
+  inside `SRC`. Use `fwidth` for constant-pixel-width lines.
+- **HashLink's JIT doesn't run natively on Apple Silicon.** Develop with the
+  web build, and ship native through HashLink/C.
+- When unsure of an API, read the Heaps source rather than guessing. It's
+  small and readable (`h3d/`, `h2d/`, `hxd/`, `hxsl/`).
+
+## Conventions
+
+- Small, focused commits with a body explaining *why*.
+- Keep `README.md` architecture and controls sections in sync with changes.
+- Update this file when you learn a new gotcha or the owner makes a design
+  decision.
