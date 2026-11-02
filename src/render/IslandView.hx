@@ -125,11 +125,11 @@ class IslandView extends h3d.scene.Object {
 		waterShader.glint = w[1];
 		waterShader.whitecap = w[2];
 		// Waves breaking on the beach: breaker lines in the water, swash on the sand.
-		// A slight break in Sketch (owner: "a slight amount of froth"); a bit more in Painted.
+		// Waves crash on the beaches (owner asked for "a little more" after the slight version).
 		waterShader.breakers = switch style {
-			case Painted: 0.9;
+			case Painted: 1.0;
 			case InkMap: 0.5;
-			case Sketch: 0.6;
+			case Sketch: 0.8;
 		};
 		terrainStyle.swash = style == InkMap ? 0.5 : 1.0;
 		TerrainStyle.setColor(terrainStyle.swashColor, switch style {

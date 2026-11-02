@@ -48,6 +48,34 @@ class Island {
 				generate();
 				smooth(2);
 		}
+		roughenCoast();
+	}
+
+	/**
+		Make the shoreline irregular. The generators give smooth, round coasts
+		(the owner found them "a little too simple"). Domain-warped noise at
+		two scales (coves and points ~10 m across, ragged bits ~3 m) is added
+		only near sea level, so the hills and the deep sea don't change. Some
+		low spots become tide pools and some shallows become sandbars or
+		skerries. Deterministic (seeded Noise), so the sim stays lockstep-safe.
+	**/
+	function roughenCoast() {
+		var w = size + 1;
+		var big = new Noise(seed * 31 + 7), fine = new Noise(seed * 17 + 3), wn = new Noise(seed * 5 + 19);
+		for (j in 0...w)
+			for (i in 0...w) {
+				var k = j * w + i;
+				var h = heights[k];
+				var near = Math.exp(-(h * h) / (1.4 * 1.4));
+				if (near < 0.01) continue;
+				var x = i * cell, y = j * cell;
+				// Warp the lookup a little, so coves curl instead of looking like blobs.
+				var ox = (wn.fbm(x / 14 + 3.1, y / 14 + 7.7, 2) - 0.5) * 9;
+				var oy = (wn.fbm(x / 14 + 9.4, y / 14 + 1.3, 2) - 0.5) * 9;
+				var d = (big.fbm((x + ox) / 10, (y + oy) / 10, 3) - 0.5) * 2.2
+					+ (fine.fbm((x + ox) / 3.5, (y + oy) / 3.5, 2) - 0.5) * 1.0;
+				heights[k] = h + d * near;
+			}
 	}
 
 	// --- Classic: a port of atoll-attack's island_water.frag getElevation() ---------

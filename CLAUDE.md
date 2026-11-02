@@ -93,6 +93,10 @@ URL params on the web build make runs reproducible:
     `InkEdge` (`paperFade`), so it needs the ink pass on.
 - Two island shapes, toggled with **G**: **Single** (port of the Flutter
   generator, same defaults) and **Atoll** (reef ring).
+  Both get `Island.roughenCoast()` afterwards: warped noise added only near
+  sea level, so coasts have coves, points, tide pools and skerries (the
+  owner found the smooth coastline "a little too simple"). It changes the
+  sim heightfield, so it must stay deterministic.
 - **Units are simple line-art figures.** Rounded shapes, paper-white fill,
   bold ink outline, no faces or surface detail. Team is shown only by tunic
   tint and the captain's pennant. **Animation is restrained:** a gentle limb

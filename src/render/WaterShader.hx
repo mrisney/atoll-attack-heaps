@@ -145,7 +145,12 @@ class WaterShader extends hxsl.Shader {
 				var zone = 1.0 - smoothstep(0.1, 0.6, depth);
 				var foamy = fine * 0.8 + fo * 0.5;
 				// Lacy rather than blotchy: mostly along the breaking fronts and right at the beach.
-				var surf = smoothstep(0.45, 0.62, foamy + front * 0.35 + zone * 0.15) * (0.25 + 0.75 * max(front, zone * 0.7));
+				var surf = smoothstep(0.42, 0.6, foamy + front * 0.45 + zone * 0.15) * (0.3 + 0.7 * max(front, zone * 0.7));
+				// The crash: as each breaker reaches the beach (the cycle wrapping round),
+				// a burst of white water churns the last few tens of centimetres.
+				var arrive = smoothstep(0.82, 1.0, sc) + (1.0 - smoothstep(0.0, 0.18, sc));
+				var burst = arrive * (1.0 - smoothstep(0.0, 0.4, depth)) * smoothstep(0.3, 0.55, foamy + 0.3);
+				surf = max(surf, burst * 0.9);
 				froth = max(froth, surf * shoal);
 				// Foam clings to the waterline.
 				var edge = (1.0 - smoothstep(0.0, 0.04, depth)) * step(0.0, depth) * smoothstep(0.35, 0.65, fine + 0.2) * breakers;
