@@ -14,6 +14,9 @@ import render.Palette;
 **/
 class InkRenderer extends h3d.scene.fwd.Renderer {
 	public var inkEnabled = true;
+	/** Miniature-style blur toward the top and bottom of the screen. **/
+	public var tiltShift = false;
+	var tiltFx:h3d.pass.ScreenFx<TiltShift>;
 
 	var geoPass:h3d.pass.Output;
 	var inkFx:h3d.pass.ScreenFx<InkEdge>;
@@ -24,6 +27,7 @@ class InkRenderer extends h3d.scene.fwd.Renderer {
 		allPasses.push(geoPass);
 		inkFx = new h3d.pass.ScreenFx(new InkEdge());
 		inkFx.pass.setBlendMode(Alpha);
+		tiltFx = new h3d.pass.ScreenFx(new TiltShift());
 
 		// Soft sun shadows, tinted cool rather than black.
 		shadow.size = 2048;
@@ -38,6 +42,15 @@ class InkRenderer extends h3d.scene.fwd.Renderer {
 			renderPass(shadow, get("shadow"));
 
 		var opaque = get("default");
+
+		// With tilt-shift on, render the whole 3D frame off-screen, then blur it onto the screen.
+		var frame:h3d.mat.Texture = null;
+		if (tiltShift) {
+			frame = allocTarget("frame", true);
+			ctx.engine.pushTarget(frame);
+			var bg = ctx.engine.backgroundColor;
+			ctx.engine.clear(bg == null ? 0xFF000000 : bg, 1);
+		}
 
 		if (inkEnabled) {
 			var geo = allocTarget("inkGeo", true, 1., RGBA16F);
@@ -56,5 +69,12 @@ class InkRenderer extends h3d.scene.fwd.Renderer {
 
 		if (inkEnabled)
 			inkFx.render();
+
+		if (frame != null) {
+			ctx.engine.popTarget();
+			tiltFx.shader.frame = frame;
+			tiltFx.shader.texel.set(1 / frame.width, 1 / frame.height);
+			tiltFx.render();
+		}
 	}
 }

@@ -17,7 +17,7 @@ haxe build-hl.hxml && hl bin/game.hl     # desktop HashLink (x86 only)
 ```
 
 URL params on the web build make runs reproducible:
-`bin/index.html?seed=123&style=inkmap|classic&shape=atoll|single&dist=80`.
+`bin/index.html?seed=123&style=classic|painted|inkmap&shape=atoll|single&dist=80`.
 
 ## How to verify a change
 
@@ -54,10 +54,16 @@ URL params on the web build make runs reproducible:
 
 ## Art direction (decided — keep consistent)
 
-- Two visual styles, toggled with **T**:
+- Three visual styles, cycled with **T** (Classic → Painted → Ink map):
   - **Classic** (default) is the Flutter game's look. Posterised elevation
     bands (sand/lowland/upland/peak), three stepped water tones, and the fbm
     "relief" highlight. Ported from `atoll-attack/shaders/island_water.frag`.
+  - **Painted** blends painted grass/dirt/rock/sand textures
+    (`GroundTextures`, generated in code, no external assets), uses soft
+    turquoise water, and turns tilt-shift on (**B** toggles it). It's the
+    "richer ground" direction: stylized and hand-painted, **not**
+    photoreal. The owner looked at Defilade's photo-scanned terrain and chose
+    this instead, because it fits the art direction and must run on phones.
   - **Ink map** uses soft colours, topo contours, coastline, slope hatching,
     and a screen-space ink pass.
 - Two island shapes, toggled with **G**: **Single** (port of the Flutter
@@ -111,7 +117,7 @@ URL params on the web build make runs reproducible:
 - **To keep something out of the ink outlines** (grass), put it in the alpha
   pass (`blendMode = Alpha`, still opaque). The geometry buffer only reads the
   default pass.
-- `cast` is a Haxe keyword. Don't use it as a parameter name.
+- `cast` and `macro` are Haxe keywords. Don't use them as variable or parameter names.
 - 16-bit index buffers: `FlatMeshBuilder` splits geometry into chunks under
   65k vertices.
 - HXSL has `fwidth`, `fract`, `smoothstep`, `mix`, and small helper functions

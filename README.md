@@ -2,9 +2,9 @@
 
 A Haxe/[Heaps](https://heaps.io) port spike of [atoll-attack](https://github.com/mrisney/atoll-attack): a stylized, low-poly procedural atoll with two squads you can box-select and move.
 
-| Classic style (ported from the Flutter game) | Ink map style |
-|---|---|
-| ![classic](docs/style-classic.png) | ![ink map](docs/style-inkmap.png) |
+| Classic (ported from the Flutter game) | Painted | Ink map |
+|---|---|---|
+| ![classic](docs/style-classic.png) | ![painted](docs/style-painted.png) | ![ink map](docs/style-inkmap.png) |
 
 ![units](docs/screenshot-units.png)
 
@@ -13,7 +13,10 @@ A Haxe/[Heaps](https://heaps.io) port spike of [atoll-attack](https://github.com
 The goal of this spike is to answer one question: does Heaps give the Northgard-style look and a pleasant dev loop? It covers:
 
 - **Two island shapes** (G to switch): *Single*, a direct port of the Flutter game's `island_water.frag` generator (fbm + three seeded peaks + radial falloff, same default amplitude/wavelength/bias/radius), and *Atoll*, a reef ring around a lagoon.
-- **Two visual styles** (T to switch): *Classic* carries over the Flutter look, with hard posterised bands (sand, lowland, upland, peak), the stepped three-tone water and the crinkly relief highlight (baked to a texture per island so it's cheap on phones). *Ink map* adds soft colours, contours, hatching and ink outlines.
+- **Three visual styles** (T cycles them):
+  - *Classic* carries over the Flutter look, with hard posterised bands (sand, lowland, upland, peak), the stepped three-tone water and the crinkly relief highlight (baked to a texture per island so it's cheap on phones).
+  - *Painted* blends painted grass, dirt, rock and sand textures (generated in code, no assets), with wandering patch edges, wet sand at the waterline, soft turquoise water, and a tilt-shift blur for a miniature-diorama feel.
+  - *Ink map* adds soft colours, contours, hatching and ink outlines.
 - **Procedural atoll**: a seeded, deterministic heightfield (Int32 hashing, so every platform generates the same island) with a wobbly reef ring broken into islets, a shallow lagoon, and a raised apex where the flag stands.
 - **Units**: Captain, Swordsmen, and Archers for blue and red, built from low-poly primitives.
 - **RTS controls**: box select, click or right-click to move with formation spreading, shift to add to the selection, slope-aware movement, and units that stop at the shoreline.
@@ -21,6 +24,8 @@ The goal of this spike is to answer one question: does Heaps give the Northgard-
 - **Ink rendering**: a screen-space edge pass that inks every silhouette at a constant line weight, plus topo-map contour lines, a bold coastline and slope hatching painted on the terrain. Press I to toggle the ink pass.
 - **Line-art units**: rounded, faceless figures with a paper-white fill and a restrained walk cycle.
 - **Sun shadows**: soft, cool-tinted directional shadows from trees, rocks, units and hills onto terrain and water.
+- **Micro-scatter**: wildflowers in the meadows, shells on the beaches, loose pebbles in the uplands.
+- **Tilt-shift** (B to toggle; on by default in Painted).
 - **Prop variety**: palms leaning toward the sea, mixed broadleaf and pine woods with the odd turning tree, bushes, grass meadows, rock outcrops, driftwood, loose stones and dead snags on the heights. Placed by elevation band and clustered by noise, with a colour and size per instance, merged into a handful of draw calls.
 - **Rag dolls**: when a unit dies it's flung away from the hit and tumbles into a Verlet rag doll that collides with the terrain, floats at the water surface, and settles. Press **X** to blast units near the cursor (a test key until combat exists).
 
@@ -39,12 +44,14 @@ src/
   render/IslandView.hx      terrain, water, apex flag; shadow setup per mesh
   render/Props.hx           vegetation and rocks: species, biome placement, clustering
   render/WaterShader.hx     banded water from a heightmap texture + swell/shimmer
-  render/TerrainStyle.hx    Classic bands + baked relief, or soft vertex colours
+  render/TerrainStyle.hx    Classic bands + baked relief, Painted texture blend, or soft vertex colours
+  render/GroundTextures.hx  painted, tileable grass/dirt/sand/rock textures generated at startup
   render/InkShape.hx        rounded line-art shapes for units
   render/ink/InkRenderer.hx geometry pass + screen-space ink composite
   render/ink/InkEdge.hx     edge detection (normals + inverse-depth Laplacian)
   render/ink/TerrainInk.hx  contours, coastline, slope hatching
   render/ink/GeoOut.hx      per-material normal/depth output
+  render/ink/TiltShift.hx   miniature-style blur toward the top and bottom of the frame
   render/UnitView.hx        unit figures, selection rings, interpolation, rag doll hookup
   render/Ragdoll.hx         Verlet rag doll (11 particles, terrain collision, sleeps when settled)
   input/RtsCamera.hx        orbit/pan/zoom camera

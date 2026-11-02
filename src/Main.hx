@@ -99,7 +99,12 @@ class Main extends hxd.App {
 	function applyStyle() {
 		islandView.setStyle(style);
 		inkRenderer.inkEnabled = style == InkMap;
-		engine.backgroundColor = style == InkMap ? 0xFF6E9FB5 : 0xFF2185C4;
+		inkRenderer.tiltShift = style == Painted;
+		engine.backgroundColor = switch style {
+			case InkMap: 0xFF6E9FB5;
+			case Painted: 0xFF235F86;
+			case Classic: 0xFF2185C4;
+		};
 		updateHud();
 	}
 
@@ -107,7 +112,7 @@ class Main extends hxd.App {
 		hud.text = 'ATOLL ATTACK  ·  seed $seed  ·  ${shape} island  ·  ${style} style\n'
 			+ 'Drag: select   Click/RMB: move   Shift: add\n'
 			+ 'WASD/edges: pan   Wheel/pinch/+ -: zoom   Q/E: rotate   Space: recentre\n'
-			+ 'R: new island   G: island shape   T: visual style   I: ink lines   X: blast at cursor (test)';
+			+ 'R: new island   G: island shape   T: visual style   I: ink lines   B: tilt-shift   X: blast at cursor (test)';
 	}
 
 	var frames = 0;
@@ -123,6 +128,7 @@ class Main extends hxd.App {
 		if (q.has("seed")) seed = Std.parseInt(q.get("seed"));
 		if (q.get("style") == "inkmap") style = InkMap;
 		if (q.get("style") == "classic") style = Classic;
+		if (q.get("style") == "painted") style = Painted;
 		if (q.get("shape") == "atoll") shape = Atoll;
 		if (q.get("shape") == "single") shape = Single;
 		if (q.has("dist")) startDistance = Std.parseFloat(q.get("dist"));
@@ -148,9 +154,15 @@ class Main extends hxd.App {
 		if (hxd.Key.isDown(hxd.Key.QWERTY_MINUS) || hxd.Key.isDown(hxd.Key.NUMPAD_SUB))
 			rtsCam.zoom(Math.pow(2.2, dt));
 		if (hxd.Key.isPressed(hxd.Key.T)) {
-			style = style == Classic ? InkMap : Classic;
+			style = switch style {
+				case Classic: Painted;
+				case Painted: InkMap;
+				case InkMap: Classic;
+			};
 			applyStyle();
 		}
+		if (hxd.Key.isPressed(hxd.Key.B))
+			inkRenderer.tiltShift = !inkRenderer.tiltShift;
 		if (hxd.Key.isPressed(hxd.Key.G)) {
 			shape = shape == Single ? Atoll : Single;
 			buildWorld();

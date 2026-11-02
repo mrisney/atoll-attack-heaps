@@ -13,6 +13,8 @@ enum VisualStyle {
 	Classic;
 	/** Hand-drawn map: soft colours, contours, hatching, ink outlines. **/
 	InkMap;
+	/** Painted ground textures (grass/dirt/sand/rock), soft water, tilt-shift. **/
+	Painted;
 }
 
 class IslandView extends h3d.scene.Object {
@@ -87,7 +89,18 @@ class IslandView extends h3d.scene.Object {
 	public final waterShader = new WaterShader();
 
 	public function setStyle(style:VisualStyle) {
+		terrainStyle.painted = style == Painted ? 1 : 0;
+		waterShader.softness = 0;
 		switch style {
+			case Painted:
+				terrainStyle.bands = 0;
+				waterShader.setPaintedColors();
+				waterShader.softness = 0.45;
+				terrainInk.minorAlpha = 0;
+				terrainInk.majorAlpha = 0;
+				terrainInk.hatchAlpha = 0;
+				terrainInk.coastWidth = 0;
+				terrainInk.coastLevel = -999;
 			case Classic:
 				terrainStyle.bands = 1;
 				waterShader.setClassicColors();

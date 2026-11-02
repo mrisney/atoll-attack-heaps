@@ -25,6 +25,8 @@ class WaterShader extends hxsl.Shader {
 		@param var deep:Vec3;
 		@param var tShallow:Float;
 		@param var tMid:Float;
+		/** Extra blur on band edges (0 = hard Classic bands). **/
+		@param var softness:Float;
 
 		var relativePosition:Vec3;
 		var transformedPosition:Vec3;
@@ -43,7 +45,7 @@ class WaterShader extends hxsl.Shader {
 			var h = (heightMap.get(uv).r * 2.0 - 1.0) * heightRange;
 			var depth = mix(heightRange, -h, inside);
 
-			var aa = max(fwidth(depth), 0.0001);
+			var aa = max(fwidth(depth), 0.0001) + softness;
 			var c = mix(shallow, mid, smoothstep(tShallow - aa, tShallow + aa, depth));
 			c = mix(c, deep, smoothstep(tMid - aa, tMid + aa, depth));
 
@@ -59,6 +61,7 @@ class WaterShader extends hxsl.Shader {
 		this.amplitude = amplitude;
 		this.shimmer = shimmer;
 		heightRange = 10.0;
+		softness = 0;
 		setClassicColors();
 		// Same elevation thresholds as the original shader (0.25 and 0.18).
 		tShallow = -world.Island.classicHeight(0.25);
@@ -69,6 +72,13 @@ class WaterShader extends hxsl.Shader {
 		TerrainStyle.setColor(shallow, 0x87D1FA);
 		TerrainStyle.setColor(mid, 0x4AABE8);
 		TerrainStyle.setColor(deep, 0x2185C4);
+	}
+
+	/** Natural turquoise shallows to deep blue, with soft transitions. **/
+	public function setPaintedColors() {
+		TerrainStyle.setColor(shallow, 0x8FD3C6);
+		TerrainStyle.setColor(mid, 0x3E9DB0);
+		TerrainStyle.setColor(deep, 0x235F86);
 	}
 
 	/** Muted, nautical-chart tones for the ink style. **/

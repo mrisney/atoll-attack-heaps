@@ -84,13 +84,17 @@ class Props {
 					if (roll < 0.03 && h > 0.35) palm(x, y, z, -gx, -gy);
 					else if (roll < 0.05) stones(x, y, z, 2);
 					else if (roll < 0.056 && h < 0.6) driftwood(x, y, z);
+					else if (roll < 0.12) shells(x, y, z);
 				} else if (h < tLow) {
 					// Lowland
 					if (steep && roll < 0.25) rockCluster(x, y, z, 2);
 					else if (forest > 0.56 && roll < 0.55) {
 						if (r() < 0.75) broadleaf(x, y, z) else pine(x, y, z);
 					} else if (forest > 0.5 && roll < 0.2) bush(x, y, z);
-					else if (meadow > 0.48 && roll < 0.75) grassTuft(x, y, z);
+					else if (meadow > 0.48 && roll < 0.75) {
+						grassTuft(x, y, z);
+						if (r() < 0.35) flowers(x, y, z);
+					}
 					else if (roll < 0.015) rockCluster(x, y, z, 1);
 				} else if (h < tUp) {
 					// Upland
@@ -99,6 +103,7 @@ class Props {
 						if (r() < 0.8) pine(x, y, z) else broadleaf(x, y, z);
 					} else if (roll < 0.12) bush(x, y, z);
 					else if (roll < 0.3) grassTuft(x, y, z);
+					else if (roll < 0.36) stones(x, y, z, 2);
 				} else {
 					// Peak
 					if (roll < 0.1) rockCluster(x, y, z, 4);
@@ -205,6 +210,35 @@ class Props {
 			var w = 0.035;
 			grass.twoSided(new Point(ox - Math.sin(ba) * w, oy + Math.cos(ba) * w, z), new Point(ox + Math.sin(ba) * w, oy - Math.cos(ba) * w, z),
 				new Point(ox + Math.cos(ba) * lean, oy + Math.sin(ba) * lean, z + bh), tint(c, 0.2));
+		}
+	}
+
+	/** A small cluster of wildflowers: flat star-shaped heads on short stems. **/
+	function flowers(x:Float, y:Float, z:Float) {
+		var c = pick(Palette.FLOWERS);
+		for (k in 0...3 + Std.int(r() * 5)) {
+			var a = r() * Math.PI * 2, d = r() * 0.55;
+			var fx = x + Math.cos(a) * d, fy = y + Math.sin(a) * d;
+			var fz = island.heightAt(fx, fy) + 0.07 + r() * 0.08;
+			var petals = 5;
+			var rad = 0.05 + r() * 0.03;
+			var rot = r() * Math.PI;
+			var centre = new Point(fx, fy, fz);
+			for (p in 0...petals) {
+				var a0 = rot + p / petals * Math.PI * 2;
+				var a1 = a0 + Math.PI * 2 / petals * 0.55;
+				grass.twoSided(centre, new Point(fx + Math.cos(a0) * rad, fy + Math.sin(a0) * rad, fz),
+					new Point(fx + Math.cos(a1) * rad, fy + Math.sin(a1) * rad, fz), c);
+			}
+		}
+	}
+
+	/** Pale shells scattered on the sand. **/
+	function shells(x:Float, y:Float, z:Float) {
+		for (k in 0...1 + Std.int(r() * 3)) {
+			var a = r() * Math.PI * 2, d = r() * 0.5;
+			var sx = x + Math.cos(a) * d, sy = y + Math.sin(a) * d;
+			grass.ball(sx, sy, island.heightAt(sx, sy) + 0.01, 0.04 + r() * 0.03, pick(Palette.SHELLS), 5, 2, 0.5, r() * 3);
 		}
 	}
 

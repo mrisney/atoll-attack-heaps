@@ -35,6 +35,8 @@ class Palette {
 	public static final PALM_BARK = [0xA08560, 0x92785A];
 	public static final ROCKS = [0xA39C90, 0x938C82, 0xB0A99D, 0x877F75];
 	public static inline var DRIFTWOOD = 0xC8B79A;
+	public static final FLOWERS = [0xF4F1E6, 0xF2D65C, 0xE9B8C4, 0xC9B6E4, 0xF6E9A8];
+	public static final SHELLS = [0xF3E6D6, 0xEBD2C0, 0xF7F0E4];
 	public static inline var COCONUT = 0x6E5236;
 
 	/** Shadow tint: cool and light, so shade reads as colour rather than black. **/
