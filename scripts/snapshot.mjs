@@ -12,6 +12,7 @@
 //   --name=shot         file name prefix
 //   --walk              also box-select blue squad, order a move, and take a second shot mid-walk
 //   --fly=0.4,0.2       click the minimap at (u,v) fractions to fly there; ';' for several
+//   --at=-38,0          start the camera looking at this world point (x,y)
 //   --no-build          skip `haxe build-js.hxml`
 //   --size=1280x760     viewport
 //
@@ -58,6 +59,7 @@ mkdirSync(outDir, { recursive: true });
 
 const params = new URLSearchParams({ seed, style, shape });
 if (args.dist) params.set("dist", args.dist);
+if (args.at) params.set("at", args.at);
 const url = `file://${join(root, "bin", "index.html")}?${params}`;
 
 // Software GL fallback keeps this working on CI/headless boxes without a GPU.

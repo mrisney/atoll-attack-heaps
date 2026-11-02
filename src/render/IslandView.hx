@@ -125,7 +125,12 @@ class IslandView extends h3d.scene.Object {
 		waterShader.glint = w[1];
 		waterShader.whitecap = w[2];
 		// Waves breaking on the beach: breaker lines in the water, swash on the sand.
-		waterShader.breakers = style == InkMap ? 0.5 : 1.0;
+		// A slight break in Sketch (owner: "a slight amount of froth"); a bit more in Painted.
+		waterShader.breakers = switch style {
+			case Painted: 0.9;
+			case InkMap: 0.5;
+			case Sketch: 0.6;
+		};
 		terrainStyle.swash = style == InkMap ? 0.5 : 1.0;
 		TerrainStyle.setColor(terrainStyle.swashColor, switch style {
 			case Painted: 0x8FD3C6;
@@ -155,8 +160,9 @@ class IslandView extends h3d.scene.Object {
 				terrainInk.minorAlpha = 0;
 				terrainInk.majorAlpha = 0;
 				terrainInk.hatchAlpha = 0;
-				terrainInk.coastWidth = 1.4;
-				terrainInk.coastLevel = 0.1;
+				// No inked coastline either: the shore reads from the water and froth alone.
+				terrainInk.coastWidth = 0;
+				terrainInk.coastLevel = -999;
 		}
 	}
 

@@ -18,7 +18,8 @@ haxe build-hl.hxml && hl bin/game.hl     # desktop HashLink (x86 only)
 ```
 
 URL params on the web build make runs reproducible:
-`bin/index.html?seed=123&style=painted|sketch|inkmap&shape=atoll|single&dist=80`.
+`bin/index.html?seed=123&style=painted|sketch|inkmap&shape=atoll|single&dist=80&at=-38,0`
+(`at` aims the camera at a world point; more reliable than `--fly` for close-ups).
 
 ## How to verify a change
 
@@ -78,6 +79,9 @@ URL params on the web build make runs reproducible:
     island material's brightness and keeps a fraction of its hue (`chroma`),
     biased warm (`Palette.SKETCH_EARTH`). The ground gets a lighter curve,
     props a darker one. The ground uses the painted textures for detail.
+    **No inked coastline** either (owner: remove "the black lines that trace
+    the outline of the coastline"); the shore reads from the water and a
+    slight froth (`breakers` 0.6).
     **The water is not toned and has no line work**: the owner preferred
     it "like the others, but darker" (`WaterShader.setSketchColors`, a dark,
     muted slate-teal, with the same waves and froth). Anything added *after* it's applied in

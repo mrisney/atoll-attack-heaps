@@ -54,6 +54,11 @@ class Main extends hxd.App {
 		seed = Std.int(Date.now().getTime() % 100000);
 		readUrlParams();
 		buildWorld();
+		if (startAt != null) {
+			rtsCam.targetX = startAt.x;
+			rtsCam.targetY = startAt.y;
+			rtsCam.snap();
+		}
 		if (startDistance > 0) {
 			rtsCam.distance = startDistance;
 			rtsCam.snap();
@@ -165,6 +170,8 @@ class Main extends hxd.App {
 
 	var frames = 0;
 	var startDistance = 0.0;
+	/** `?at=x,y`: start the camera looking at this world point (for reproducible shots). **/
+	var startAt:Null<{x:Float, y:Float}> = null;
 
 	/**
 		Web build only: `index.html?seed=123&style=inkmap&shape=atoll&dist=80`
@@ -183,6 +190,10 @@ class Main extends hxd.App {
 		if (q.get("props") == "sprites") spriteProps = true;
 		if (q.get("props") == "lowpoly") spriteProps = false;
 		if (q.has("dist")) startDistance = Std.parseFloat(q.get("dist"));
+		if (q.has("at")) {
+			var a = q.get("at").split(",");
+			if (a.length == 2) startAt = {x: Std.parseFloat(a[0]), y: Std.parseFloat(a[1])};
+		}
 		#end
 	}
 
