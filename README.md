@@ -20,7 +20,12 @@ The goal of this spike is to answer one question: does Heaps give the Northgard-
 - **Procedural atoll**: a seeded, deterministic heightfield (Int32 hashing, so every platform generates the same island) with a wobbly reef ring broken into islets, a shallow lagoon, and a raised apex where the flag stands.
 - **Units**: Captain, Swordsmen, and Archers for blue and red, built from low-poly primitives.
 - **RTS controls**: box select, click or right-click to move with formation spreading, shift to add to the selection, slope-aware movement, and units that stop at the shoreline.
-- **Camera**: on-screen buttons (bottom right) for zoom in/out, rotate, and re-centre on your squad. Tap for a step, or hold to keep going. Also mouse wheel or trackpad pinch to zoom, two-finger pan/pinch on touch, WASD/arrows/screen edges to pan, Q/E to rotate, +/- to zoom, and Space to re-centre.
+- **Camera** (smoothly eased, with direct manipulation where it matters):
+  - *Pan*: right- or middle-drag to grab the map (a right-click without dragging is still a move order); two-finger swipe on a Mac trackpad; WASD/arrows (hold Shift for faster); screen edges; one-finger drag on touch.
+  - *Zoom*: mouse wheel, trackpad pinch, two-finger pinch on touch, +/-, or the on-screen buttons.
+  - *Rotate*: Q/E or the on-screen buttons. *Re-centre*: Space or the target button.
+  - *Minimap* (bottom left): click or drag to fly there, right-click to send the selected units. It shows your view and both squads.
+  - Touch box-select: press and hold, then drag.
 - **Ink rendering**: a screen-space edge pass that inks every silhouette at a constant line weight, plus topo-map contour lines, a bold coastline and slope hatching painted on the terrain. Press I to toggle the ink pass.
 - **Line-art units**: rounded, faceless figures with a paper-white fill and a restrained walk cycle.
 - **Sun shadows**: soft, cool-tinted directional shadows from trees, rocks, units and hills onto terrain and water.
@@ -59,7 +64,8 @@ res/props/                  sprite PNGs (embedded into the build; see SOURCE.md)
   render/Ragdoll.hx         Verlet rag doll (11 particles, terrain collision, sleeps when settled)
   input/RtsCamera.hx        orbit/pan/zoom camera
   input/SelectionController.hx  pointer/touch → selection + Commands
-  ui/ControlBar.hx          on-screen camera buttons (touch-sized)
+  ui/ControlBar.hx          on-screen camera buttons (touch-sized, Retina-scaled)
+  ui/Minimap.hx             click-to-fly minimap with view outline and unit dots
 ```
 
 The simulation (`world/`, `game/`) never touches rendering or input. Input produces `Command`s, and the `Sim` consumes them on fixed ticks. That is the shape you need for lockstep multiplayer (Steam P2P or WebRTC) and for porting the rules from the Flutter version.

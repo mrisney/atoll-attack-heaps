@@ -43,8 +43,8 @@ class ControlBar extends h2d.Object {
 	/** True if a screen point is over a button, so the game can ignore that tap. **/
 	public function hitTest(x:Float, y:Float):Bool {
 		for (b in buttons) {
-			var p = b.hit.localToGlobal(new h2d.col.Point(0, 0));
-			if (x >= p.x && x <= p.x + SIZE && y >= p.y && y <= p.y + SIZE) return true;
+			var r = b.hit.getBounds();
+			if (x >= r.xMin && x <= r.xMax && y >= r.yMin && y <= r.yMax) return true;
 		}
 		return false;
 	}
@@ -52,8 +52,9 @@ class ControlBar extends h2d.Object {
 	public function update(dt:Float, screenW:Float, screenH:Float) {
 		// Vertical stack anchored bottom-right; re-laid out every frame so resizes just work.
 		var n = buttons.length;
-		x = screenW - MARGIN - SIZE;
-		y = screenH - MARGIN - n * SIZE - (n - 1) * GAP;
+		var s = scaleX; // UI scale (Retina)
+		x = screenW - (MARGIN + SIZE) * s;
+		y = screenH - (MARGIN + n * SIZE + (n - 1) * GAP) * s;
 		if (held != null) {
 			heldTime += dt;
 			if (heldTime > HOLD_DELAY) held(dt);

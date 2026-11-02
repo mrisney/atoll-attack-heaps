@@ -4,13 +4,30 @@ import game.Command;
 import game.Sim;
 import render.UnitView;
 
-/**
-	Turns raw pointer events into selection state and Commands.
+enum PointerMode {
+	Idle;
+	/** Button/finger down, not yet decided between a click and a drag. **/
+	Pending;
+	BoxSelect;
+	/** Grab-pan: the grabbed ground point stays under the cursor/finger. **/
+	Pan;
+	/** Two fingers: pan + pinch. **/
+	Gesture;
+}
 
-	Mouse:  left-drag = box select, left-click = select / move,
-	        right-click = move, shift = add to selection.
-	Touch:  drag = box select, tap = select / move,
-	        two fingers = pan + pinch zoom.
+/**
+	Turns raw pointer events into selection state, camera moves and Commands.
+
+	Mouse:
+	  left-drag = box select, left-click = select / move order
+	  right-click = move order, right- or middle-drag = grab and pan the map
+	  shift = add to selection
+	Trackpad (web): two-finger swipe = pan, pinch = zoom
+	Mouse wheel: zoom
+	Touch:
+	  one-finger drag = pan, tap = select / move order
+	  press and hold, then drag = box select
+	  two fingers = pan + pinch zoom
 **/
 class SelectionController {
 	static inline var DRAG_THRESHOLD = 8.0;
@@ -29,12 +46,17 @@ class SelectionController {
 	public var mouseX(default, null) = -1.0;
 	public var mouseY(default, null) = -1.0;
 
+	static inline var HOLD_TO_SELECT = 0.35;
+
 	var pointers:Map<Int, {x:Float, y:Float}> = new Map();
+	var mode:PointerMode = Idle;
 	var pressX = 0.0;
 	var pressY = 0.0;
-	var pressing = false;
-	var dragging = false;
-	var gesture = false;
+	var pressButton = 0;
+	var pressTouch = false;
+	var pressTime = 0.0;
+	/** Grab-pan anchor: world point under the cursor when the drag started. **/
+	var anchor:Null<h3d.Vector> = null;
 	var lastPinchDist = 0.0;
 	var lastMidX = 0.0;
 	var lastMidY = 0.0;
@@ -57,10 +79,16 @@ class SelectionController {
 		marker.visible = false;
 
 		hxd.Window.getInstance().addEventTarget(onEvent);
+		#if js
+		installWebInput(this);
+		#end
 	}
 
 	public function dispose() {
 		hxd.Window.getInstance().removeEventTarget(onEvent);
+		#if js
+		if (webTarget == this) webTarget = null;
+		#end
 		box.remove();
 		marker.remove();
 	}
@@ -85,6 +113,14 @@ class SelectionController {
 
 	public function update(dt:Float) {
 		if (hxd.Key.isPressed(hxd.Key.X) && mouseX >= 0) blastAt(mouseX, mouseY);
+		// Touch: holding still turns the press into a box select.
+		if (mode == Pending && pressTouch) {
+			pressTime += dt;
+			if (pressTime >= HOLD_TO_SELECT) {
+				mode = BoxSelect;
+				drawBox(pressX + 1, pressY + 1);
+			}
+		}
 		if (marker.visible) {
 			markerTime += dt;
 			var s = 1 + markerTime * 2.5;
@@ -102,66 +138,158 @@ class SelectionController {
 					startGesture();
 					return;
 				}
-				if (e.button == 1) {
-					// Right click: move order.
-					orderMoveAt(e.relX, e.relY);
-					return;
-				}
-				if (e.button != 0) return;
-				pressing = true;
-				dragging = false;
 				pressX = e.relX;
 				pressY = e.relY;
+				pressButton = e.button;
+				pressTouch = lastInputWasTouch;
+				pressTime = 0;
+				if (e.button == 2) {
+					// Middle button: always pan.
+					startPan(e.relX, e.relY);
+				} else {
+					mode = Pending;
+				}
 
 			case EMove:
 				mouseX = e.relX;
 				mouseY = e.relY;
 				if (pointers.exists(e.touchId)) pointers.set(e.touchId, {x: e.relX, y: e.relY});
-				if (gesture) {
-					updateGesture();
-					return;
-				}
-				if (pressing) {
-					var dx = e.relX - pressX, dy = e.relY - pressY;
-					if (!dragging && dx * dx + dy * dy > DRAG_THRESHOLD * DRAG_THRESHOLD) dragging = true;
-					if (dragging) drawBox(e.relX, e.relY);
+				switch mode {
+					case Gesture:
+						updateGesture();
+					case Pending:
+						var dx = e.relX - pressX, dy = e.relY - pressY;
+						if (dx * dx + dy * dy > DRAG_THRESHOLD * DRAG_THRESHOLD) {
+							// Left mouse drags select; right drag and one-finger touch drag pan.
+							if (pressButton == 0 && !pressTouch) {
+								mode = BoxSelect;
+								drawBox(e.relX, e.relY);
+							} else {
+								startPan(pressX, pressY);
+								dragPan(e.relX, e.relY);
+							}
+						}
+					case BoxSelect:
+						drawBox(e.relX, e.relY);
+					case Pan:
+						dragPan(e.relX, e.relY);
+					case Idle:
 				}
 
 			case ERelease, EReleaseOutside:
 				pointers.remove(e.touchId);
-				if (gesture) {
-					if (countPointers() == 0) gesture = false;
-					return;
+				switch mode {
+					case Gesture:
+						if (countPointers() == 0) mode = Idle;
+					case BoxSelect:
+						box.clear();
+						selectInRect(pressX, pressY, e.relX, e.relY, hxd.Key.isDown(hxd.Key.SHIFT));
+						mode = Idle;
+					case Pan:
+						anchor = null;
+						mode = Idle;
+					case Pending:
+						mode = Idle;
+						if (e.kind == EReleaseOutside) return;
+						if (pressButton == 1) orderMoveAt(e.relX, e.relY) else if (pressButton == 0) click(e.relX, e.relY);
+					case Idle:
 				}
-				if (!pressing || e.button != 0) return;
-				pressing = false;
-				box.clear();
-				var additive = hxd.Key.isDown(hxd.Key.SHIFT);
-				if (dragging) {
-					selectInRect(pressX, pressY, e.relX, e.relY, additive);
-				} else {
-					var hit = pickUnit(e.relX, e.relY);
-					if (hit != null && hit.unit.team == localTeam) {
-						if (additive) {
-							hit.selected = !hit.selected;
-						} else {
-							clearSelection();
-							hit.selected = true;
-						}
-					} else if (selectedIds().length > 0) {
-						orderMoveAt(e.relX, e.relY);
-					} else {
-						clearSelection();
-					}
-				}
-				dragging = false;
 
 			case EWheel:
+				// On the web the DOM handler below deals with wheel/trackpad/pinch.
+				#if !js
 				camera.zoom(e.wheelDelta > 0 ? 1.12 : 1 / 1.12);
+				#end
+
+			case EOut, EFocusLost:
+				// Stop edge-scrolling when the cursor leaves the window.
+				mouseX = -1;
+				mouseY = -1;
 
 			default:
 		}
 	}
+
+	/** A click/tap without dragging: select a unit, or order selected units there. **/
+	function click(sx:Float, sy:Float) {
+		var additive = hxd.Key.isDown(hxd.Key.SHIFT);
+		var hit = pickUnit(sx, sy);
+		if (hit != null && hit.unit.team == localTeam) {
+			if (additive) {
+				hit.selected = !hit.selected;
+			} else {
+				clearSelection();
+				hit.selected = true;
+			}
+		} else if (selectedIds().length > 0) {
+			orderMoveAt(sx, sy);
+		} else {
+			clearSelection();
+		}
+	}
+
+	// --- grab pan -----------------------------------------------------------
+
+	function startPan(sx:Float, sy:Float) {
+		mode = Pan;
+		box.clear();
+		var g = groundAt(sx, sy);
+		var z = g == null ? 0.0 : Math.max(g.z, 0);
+		anchor = camera.screenToPlane(sx, sy, s2d.width, s2d.height, z);
+	}
+
+	function dragPan(sx:Float, sy:Float) {
+		if (anchor == null) return;
+		var p = camera.screenToPlane(sx, sy, s2d.width, s2d.height, anchor.z);
+		if (p == null) return;
+		camera.shift(anchor.x - p.x, anchor.y - p.y);
+	}
+
+	// --- web wheel / trackpad --------------------------------------------------
+	#if js
+	static var webTarget:Null<SelectionController> = null;
+	static var webInstalled = false;
+	static var lastInputWasTouch = false;
+
+	/**
+		The browser tells us more than Heaps' wheel event does: horizontal
+		deltas, and ctrlKey for trackpad pinches. Use it to make a Mac trackpad
+		behave like a map (swipe pans, pinch zooms) while a mouse wheel still zooms.
+	**/
+	static function installWebInput(target:SelectionController) {
+		webTarget = target;
+		if (webInstalled) return;
+		webInstalled = true;
+		var w = js.Browser.window;
+		w.addEventListener("touchstart", (_) -> lastInputWasTouch = true, {capture: true, passive: true});
+		w.addEventListener("mousedown", (_) -> lastInputWasTouch = false, {capture: true, passive: true});
+		w.addEventListener("wheel", (e:js.html.WheelEvent) -> {
+			e.preventDefault();
+			e.stopPropagation();
+			if (webTarget != null) webTarget.onWebWheel(e);
+		}, {capture: true, passive: false});
+	}
+
+	function onWebWheel(e:js.html.WheelEvent) {
+		var px = e.deltaMode == 1 ? 16.0 : (e.deltaMode == 2 ? 400.0 : 1.0);
+		var dx = e.deltaX * px, dy = e.deltaY * px;
+		if (e.ctrlKey) {
+			// Trackpad pinch (browsers report it as ctrl + wheel).
+			camera.zoom(Math.exp(dy * 0.01), true);
+		} else if (dx != 0 || Math.abs(dy) < 40 || dy % 1 != 0) {
+			// Two-finger swipe: move the map with the fingers.
+			var k = camera.distance / Math.max(1, js.Browser.window.innerHeight) * 1.1;
+			var fx = -Math.cos(camera.yaw), fy = -Math.sin(camera.yaw);
+			var rx = fy, ry = -fx;
+			camera.shift((rx * dx - fx * dy) * k, (ry * dx - fy * dy) * k);
+		} else {
+			// Mouse wheel notch.
+			camera.zoom(dy > 0 ? 1.15 : 1 / 1.15);
+		}
+	}
+	#else
+	static var lastInputWasTouch = false;
+	#end
 
 	// --- selection -------------------------------------------------------
 
@@ -214,6 +342,17 @@ class SelectionController {
 
 	// --- orders ----------------------------------------------------------
 
+	/** Order the selected units to a world position (used by the minimap). **/
+	public function orderMoveWorld(x:Float, y:Float) {
+		var ids = selectedIds();
+		if (ids.length == 0) return;
+		sim.queue(Move(ids, x, y));
+		marker.setPosition(x, y, Math.max(sim.island.heightAt(x, y), 0));
+		marker.setScale(1);
+		markerTime = 0;
+		marker.visible = true;
+	}
+
 	function orderMoveAt(sx:Float, sy:Float) {
 		var ids = selectedIds();
 		if (ids.length == 0) return;
@@ -232,7 +371,6 @@ class SelectionController {
 		var len = Math.sqrt(ray.lx * ray.lx + ray.ly * ray.ly + ray.lz * ray.lz);
 		var lx = ray.lx / len, ly = ray.ly / len, lz = ray.lz / len;
 		var t = 0.0, stepLen = 0.5;
-		var prevAbove = true;
 		while (t < 500) {
 			var x = ray.px + lx * t, y = ray.py + ly * t, z = ray.pz + lz * t;
 			var ground = Math.max(sim.island.heightAt(x, y), world.Island.SEA_LEVEL);
@@ -270,9 +408,8 @@ class SelectionController {
 	}
 
 	function startGesture() {
-		gesture = true;
-		pressing = false;
-		dragging = false;
+		mode = Gesture;
+		anchor = null;
 		box.clear();
 		var p = twoPointers();
 		lastPinchDist = dist(p[0], p[1]);
@@ -285,10 +422,11 @@ class SelectionController {
 		var p = twoPointers();
 		var d = dist(p[0], p[1]);
 		var midX = (p[0].x + p[1].x) * 0.5, midY = (p[0].y + p[1].y) * 0.5;
-		if (lastPinchDist > 1 && d > 1) camera.zoom(lastPinchDist / d);
-		// Convert pixel drag to world pan, scaled by zoom.
-		var k = camera.distance / Math.max(1, s2d.height) * 1.2;
-		camera.panScreen(-(midX - lastMidX) * k, (midY - lastMidY) * k);
+		if (lastPinchDist > 1 && d > 1) camera.zoom(lastPinchDist / d, true);
+		// Move the map with the fingers' midpoint.
+		var a = camera.screenToPlane(lastMidX, lastMidY, s2d.width, s2d.height, 0);
+		var b = camera.screenToPlane(midX, midY, s2d.width, s2d.height, 0);
+		if (a != null && b != null) camera.shift(a.x - b.x, a.y - b.y);
 		lastPinchDist = d;
 		lastMidX = midX;
 		lastMidY = midY;

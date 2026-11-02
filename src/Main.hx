@@ -23,6 +23,9 @@ class Main extends hxd.App {
 	var hud:h2d.Text;
 	var inkRenderer:render.ink.InkRenderer;
 	var controls:ui.ControlBar;
+	var minimap:ui.Minimap;
+	/** Size of on-screen UI relative to its design size (2 on Retina screens). **/
+	var uiScale = 1.0;
 	var style:VisualStyle = Classic;
 	var shape:IslandShape = Single;
 	/** null = follow the style's default (sprites except in Ink map). **/
@@ -37,17 +40,22 @@ class Main extends hxd.App {
 		setupLighting();
 		rtsCam = new RtsCamera(s3d.camera);
 
+		#if js
+		// The 2D layer is in device pixels; scale UI up on Retina so it isn't tiny.
+		uiScale = Math.max(1, js.Browser.window.devicePixelRatio);
+		#end
 		hud = new h2d.Text(hxd.res.DefaultFont.get(), s2d);
 		hud.textColor = 0xF2EEDF;
 		hud.dropShadow = {dx: 1, dy: 1, color: 0x10202A, alpha: 0.8};
-		hud.setPosition(12, 10);
+		hud.setPosition(12 * uiScale, 10 * uiScale);
+		hud.setScale(uiScale);
 
 		seed = Std.int(Date.now().getTime() % 100000);
 		readUrlParams();
 		buildWorld();
 		if (startDistance > 0) {
 			rtsCam.distance = startDistance;
-			rtsCam.apply();
+			rtsCam.snap();
 		}
 	}
 
@@ -71,15 +79,22 @@ class Main extends hxd.App {
 		applyStyle();
 		for (u in sim.units) unitViews.push(new UnitView(u, island.heightAt, s3d));
 		selection = new SelectionController(sim, unitViews, s3d, s2d, rtsCam);
-		if (controls == null) controls = new ui.ControlBar(rtsCam, recenterOnSquad, s2d);
-		selection.uiHitTest = controls.hitTest;
+		if (controls == null) {
+			controls = new ui.ControlBar(rtsCam, recenterOnSquad, s2d);
+			controls.setScale(uiScale);
+			minimap = new ui.Minimap(rtsCam, s2d);
+			minimap.setScale(uiScale);
+		}
+		minimap.setIsland(island, sim.units);
+		minimap.onCommand = selection.orderMoveWorld;
+		selection.uiHitTest = (x, y) -> controls.hitTest(x, y) || minimap.hitTest(x, y);
 
 		// Start looking at the blue squad's beach.
 		var blue = sim.units[0];
 		rtsCam.targetX = blue.x;
 		rtsCam.targetY = blue.y;
 		rtsCam.bounds = island.halfExtent;
-		rtsCam.apply();
+		rtsCam.snap();
 
 		updateHud();
 	}
@@ -95,9 +110,7 @@ class Main extends hxd.App {
 				n++;
 			}
 		if (n == 0) return;
-		rtsCam.targetX = sx / n;
-		rtsCam.targetY = sy / n;
-		rtsCam.apply();
+		rtsCam.lookAt(sx / n, sy / n);
 	}
 
 	function applyStyle() {
@@ -115,8 +128,8 @@ class Main extends hxd.App {
 
 	function updateHud() {
 		hud.text = 'ATOLL ATTACK  ·  seed $seed  ·  ${shape} island  ·  ${style} style\n'
-			+ 'Drag: select   Click/RMB: move   Shift: add\n'
-			+ 'WASD/edges: pan   Wheel/pinch/+ -: zoom   Q/E: rotate   Space: recentre\n'
+			+ 'Drag: select   Click/RMB: move   Shift: add   Minimap: click to fly, right-click to send units\n'
+			+ 'Pan: right/middle-drag, trackpad swipe, WASD (Shift = fast), edges   Zoom: wheel/pinch/+ -   Q/E: rotate   Space: recentre\n'
 			+ 'R: new island   G: island shape   T: visual style   I: ink lines   B: tilt-shift   P: sprite/low-poly trees   X: blast at cursor (test)';
 	}
 
@@ -183,6 +196,7 @@ class Main extends hxd.App {
 		for (v in unitViews) v.syncFromSim(dt);
 		selection.update(dt);
 		controls.update(dt, s2d.width, s2d.height);
+		minimap.update(s2d.width, s2d.height);
 	}
 
 	static function main() {

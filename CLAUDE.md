@@ -89,6 +89,27 @@ URL params on the web build make runs reproducible:
 - All colours live in `render/Palette.hx` and the style shaders. Don't
   hard-code colours elsewhere.
 
+## Camera and input
+
+- `RtsCamera` fields (`targetX/Y`, `distance`, `yaw`) are the *desired* view,
+  and the rendered view eases toward them. Use `lookAt()`/`zoom()` for glides,
+  and `shift()`/`snap()`/`zoom(f, true)` for direct manipulation (drag, pinch,
+  swipe) so the map stays glued to the pointer. After changing targets
+  in bulk (new island), call `snap()`.
+- Grab-pan keeps the grabbed ground point under the cursor
+  (`screenToPlane` at the grabbed height), so it feels like moving a sheet
+  of paper.
+- `SelectionController` is a small state machine (`PointerMode`: Pending,
+  BoxSelect, Pan, Gesture). Left mouse drag selects. Right/middle drag and
+  one-finger touch drag pan. Touch press-and-hold then drag selects.
+- On the web, a DOM `wheel` listener replaces Heaps' wheel event (it needs
+  `deltaX` and `ctrlKey`). ctrl + wheel is a trackpad pinch and zooms, a
+  small/fractional/horizontal delta is a trackpad swipe and pans, and a big
+  integer delta is a mouse-wheel notch and zooms. The heuristic can misjudge
+  unusual mice.
+- The 2D layer is in device pixels. Scale UI by `uiScale` (devicePixelRatio)
+  and use `getBounds()` for hit tests so Retina works.
+
 ## Heaps/Haxe gotchas we've already hit
 
 - **Heaps base classes have common method names.** `h3d.scene.Object` already
