@@ -9,7 +9,10 @@ package render;
 	shows, then used for:
 	- light and shade from the wave slopes (sun on the faces, darker troughs);
 	- sun glints (specular reflection toward the camera);
-	- slightly lighter crests, and sparse whitecaps on the highest ones.
+	- slightly lighter crests;
+	- froth from the wave simulation's own foam (where crests fold over):
+	  sparse whitecaps at sea, and in the shallows the swell breaks into
+	  white water that rolls in and runs up the beach (with TerrainStyle's swash).
 	Waves fade out over the reef and in the lagoon (they need depth), and
 	toward the horizon where the texture would shimmer.
 **/
@@ -29,6 +32,8 @@ class WaterShader extends hxsl.Shader {
 		@param var glint:Float;
 		@param var whitecap:Float;
 		@param var sunDir:Vec3;
+		/** Breaking waves in the shallows, rolling onto the beach (0 = off). **/
+		@param var breakers:Float;
 
 		@param var amplitude:Float;
 		@param var shimmer:Float;
@@ -53,13 +58,23 @@ class WaterShader extends hxsl.Shader {
 		var transformedPosition:Vec3;
 		var pixelColor:Vec4;
 
-		/** One sample of the baked wave atlas: (slope x, slope y, height), each 0..1. **/
-		function waveAt(p:Vec2, frame:Float):Vec3 {
+		/** One sample of the baked wave atlas: (slope x, slope y, height, foam), each 0..1. **/
+		function waveAt4(p:Vec2, frame:Float):Vec4 {
 			var t = fract(p);
 			var col = mod(frame, 8.0);
 			var row = floor(frame / 8.0);
 			var uv = (vec2(col, row) * 66.0 + 1.0 + t * 64.0) / vec2(528.0, 264.0);
-			return waveTex.get(uv).rgb;
+			return waveTex.get(uv);
+		}
+
+		/**
+			Where this stretch of coast is in its breaking cycle (0..1).
+			Shared with TerrainStyle (same formula) so the swash on the sand follows
+			the breaker in the water. Each stretch of shore has its own timing.
+		**/
+		function shoreCycle(p:Vec2, time:Float):Float {
+			var ph = waveTex.get((1.0 + fract(p / 70.0) * 64.0) / vec2(528.0, 264.0)).b;
+			return fract(time / 6.5 + ph * 2.5);
 		}
 
 		function vertex() {
@@ -84,8 +99,7 @@ class WaterShader extends hxsl.Shader {
 			var s = sin(transformedPosition.x * 0.9 + t * 1.7) * sin(transformedPosition.y * 0.8 - t * 1.3);
 			c += vec3(shimmer * s * (1.0 - waves));
 
-			var amp = smoothstep(0.3, 4.0, depth) * waves;
-			if (amp > 0.001) {
+			if (waves > 0.0 && depth > -0.05) {
 				var q = transformedPosition.xy;
 				var fr = fract(t / 9.0) * 32.0;
 				var f0 = floor(fr);
@@ -93,10 +107,12 @@ class WaterShader extends hxsl.Shader {
 				var ft = fr - f0;
 				var p1 = q / 34.0;
 				var p2 = vec2(q.x * 0.8 - q.y * 0.6, q.x * 0.6 + q.y * 0.8) / 13.0 + vec2(0.37, 0.71);
-				var w1 = mix(waveAt(p1, f0), waveAt(p1, f1), ft);
-				var w2 = mix(waveAt(p2, f0), waveAt(p2, f1), ft);
+				var w1 = mix(waveAt4(p1, f0), waveAt4(p1, f1), ft);
+				var w2 = mix(waveAt4(p2, f0), waveAt4(p2, f1), ft);
 				// Fade detail where a pixel spans several texels (far away), so it doesn't shimmer.
-				amp *= 1.0 - smoothstep(0.03, 0.09, fwidth(p2.x));
+				var near = 1.0 - smoothstep(0.03, 0.09, fwidth(p2.x));
+				// Waves need depth: full swell at sea, calm over the reef and in the lagoon.
+				var amp = smoothstep(0.3, 4.0, depth) * waves * near;
 				var sl = (w1.xy * 2.0 - 1.0) + (w2.xy * 2.0 - 1.0) * 0.55;
 				var hh = w1.z * 0.65 + w2.z * 0.35;
 				var n = normalize(vec3(-sl * 0.55 * amp, 1.0));
@@ -107,9 +123,37 @@ class WaterShader extends hxsl.Shader {
 				c *= 1.0 + (hh - 0.5) * 0.35 * amp;
 				var r = reflect(-view, n);
 				var spec = pow(max(dot(r, sunDir), 0.0), 48.0) * glint * amp;
-				var cap = smoothstep(0.74, 0.9, hh) * whitecap * amp;
-				c = mix(c, vec3(0.95, 0.97, 1.0), cap);
-				c += vec3(spec);
+
+				// Froth: foam from the wave simulation (where crests fold over), with a
+				// finer sample for the lacy breakup.
+				var p3 = vec2(q.x * 0.6 + q.y * 0.8, -q.x * 0.8 + q.y * 0.6) / 4.5 + vec2(0.11, 0.53);
+				var fine = mix(waveAt4(p3, f0), waveAt4(p3, f1), ft).a;
+				var fo = w1.a * 0.7 + w2.a * 0.6;
+				var lace = smoothstep(0.15, 0.55, fine + fo * 0.5);
+				// Open sea: whitecaps only on the strongest folds.
+				var froth = smoothstep(0.2, 0.65, fo) * lace * min(1.0, whitecap * 3.0) * amp;
+				// Shoaling: as the water gets shallow the swell trips and breaks, so foam forms
+				// far more easily, and rolls in toward the beach.
+				var exposed = heightMap.get(uv).g;
+				var shoal = (1.0 - smoothstep(0.1, 1.8, depth)) * step(0.0, depth) * breakers * near * exposed;
+				var sc = shoreCycle(q, t);
+				// Two sets of breakers, half a cycle apart, each a frothy front with a fading
+				// trail, rolling in along the depth contours to reach the shore as the cycle wraps.
+				var ddA = depth - (1.0 - sc) * 1.5;
+				var ddB = depth - (1.0 - fract(sc + 0.5)) * 1.5;
+				var frontA = smoothstep(-0.08, 0.0, ddA) * (1.0 - smoothstep(0.0, 0.6, ddA)) * smoothstep(0.05, 0.4, sc);
+				var frontB = smoothstep(-0.08, 0.0, ddB) * (1.0 - smoothstep(0.0, 0.6, ddB)) * smoothstep(0.05, 0.4, fract(sc + 0.5)) * 0.7;
+				var front = max(frontA, frontB);
+				// The surf zone: churned white water hugging the shore.
+				var zone = 1.0 - smoothstep(0.15, 1.1, depth);
+				var foamy = fine * 0.8 + fo * 0.5;
+				var surf = smoothstep(0.35, 0.62, foamy + front * 0.45 + zone * 0.25) * (0.45 + 0.55 * max(front, zone));
+				froth = max(froth, surf * shoal);
+				// Foam clings to the waterline.
+				var edge = (1.0 - smoothstep(0.0, 0.04, depth)) * step(0.0, depth) * smoothstep(0.35, 0.65, fine + 0.2) * breakers;
+				froth = clamp(max(froth, edge * (0.25 + 0.5 * exposed)), 0.0, 1.0);
+				c = mix(c, vec3(0.95, 0.97, 1.0), froth);
+				c += vec3(spec * (1.0 - froth));
 			}
 			if (ruled > 0.0) {
 				// Short horizontal pen strokes, dense near the shore and fading out to sea,
@@ -142,6 +186,7 @@ class WaterShader extends hxsl.Shader {
 		waves = 0.8;
 		glint = 0.6;
 		whitecap = 0.3;
+		breakers = 1.0;
 		sunDir.set(0.55, 0.35, 0.76);
 		sunDir.normalize();
 		TerrainStyle.setColor(ruleInk, Palette.SKETCH_LINE);
@@ -179,17 +224,56 @@ class WaterShader extends hxsl.Shader {
 		TerrainStyle.setColor(deep, 0x84979A);
 	}
 
-	/** Bake the island's heights into a texture the water can sample. **/
+	/**
+		Bake the island into a texture the water (and the terrain's swash) can sample:
+		R = height. G = exposure to the open-ocean swell: 1 for open water (deep
+		water connected to the map edge), fading to 0 over ~14 m of shallows.
+		That keeps breakers and swash on exposed shores and leaves lagoons and
+		sheltered sandbars calm.
+	**/
 	public function setIsland(island:world.Island) {
 		var w = island.size + 1;
+		var hs = [for (j in 0...w) for (i in 0...w) island.heightAtVertex(i, j)];
+		// Open ocean: deep water reachable from the map edge.
+		var dist = [for (_ in 0...w * w) -1];
+		var queue:Array<Int> = [];
+		for (k in 0...w * w) {
+			var i = k % w, j = Std.int(k / w);
+			if ((i == 0 || j == 0 || i == w - 1 || j == w - 1) && hs[k] < -1.0) {
+				dist[k] = 0;
+				queue.push(k);
+			}
+		}
+		var head = 0;
+		while (head < queue.length) {
+			var k = queue[head++];
+			var i = k % w, j = Std.int(k / w);
+			for (d in [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+				var ni = i + d[0], nj = j + d[1];
+				if (ni < 0 || nj < 0 || ni >= w || nj >= w) continue;
+				var nk = nj * w + ni;
+				if (dist[nk] >= 0) continue;
+				if (hs[nk] < -1.0) {
+					dist[nk] = 0; // still open ocean
+					queue.push(nk);
+				} else if (hs[nk] < 0.4 && dist[k] < 40) {
+					dist[nk] = dist[k] + 1; // shallows and beach, counting steps in from open water
+					queue.push(nk);
+				}
+			}
+		}
+		var reach = 14.0 / island.cell;
 		var px = hxd.Pixels.alloc(w, w, RGBA);
 		for (j in 0...w)
 			for (i in 0...w) {
-				var h = island.heightAtVertex(i, j) / heightRange;
+				var k = j * w + i;
+				var h = hs[k] / heightRange;
 				if (h < -1) h = -1;
 				if (h > 1) h = 1;
 				var v = Std.int((h * 0.5 + 0.5) * 255 + 0.5);
-				px.setPixel(i, j, 0xFF000000 | (v << 16) | (v << 8) | v);
+				var e = dist[k] < 0 ? 0.0 : Math.max(0, 1 - dist[k] / reach);
+				var ev = Std.int(e * 255 + 0.5);
+				px.setPixel(i, j, 0xFF000000 | (v << 16) | (ev << 8) | v);
 			}
 		if (heightMap != null) heightMap.dispose();
 		heightMap = h3d.mat.Texture.fromPixels(px);

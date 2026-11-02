@@ -34,6 +34,20 @@ class TerrainStyle extends hxsl.Shader {
 		@param var tUpland:Float;
 
 		@param var painted:Float;
+
+		@global var global:{
+			var time:Float;
+		};
+		/** Swash: each breaker runs up the beach as a film of water with a foam edge (0 = off). **/
+		@param var swash:Float;
+		/** How high (in metres of elevation) the swash climbs. **/
+		@param var swashHeight:Float;
+		/** Colour of the thin film of water (the style's shallow-water colour). **/
+		@param var swashColor:Vec3;
+		/** OceanWaves atlas: only used for the per-shore timing (same as WaterShader.shoreCycle). **/
+		@param var waveTex:Sampler2D;
+		/** The water's island map (G = exposure to open swell; see WaterShader.setIsland). **/
+		@param var exposureMap:Sampler2D;
 		@param var grassTex:Sampler2D;
 		@param var dirtTex:Sampler2D;
 		@param var sandTex:Sampler2D;
@@ -106,6 +120,27 @@ class TerrainStyle extends hxsl.Shader {
 
 				col = c * hl * mix(1.0, form, 0.6);
 			}
+			var exposed = exposureMap.get(clamp((transformedPosition.xy - mapOrigin) / mapSize, vec2(0.0), vec2(1.0))).g;
+			if (swash > 0.0 && exposed > 0.01 && h > -0.05 && h < swashHeight * 1.6) {
+				var p = transformedPosition.xy;
+				var ph = waveTex.get((1.0 + fract(p / 70.0) * 64.0) / vec2(528.0, 264.0)).b;
+				var sc = fract(global.time / 6.5 + ph * 2.5);
+				// Quick run-up, slow drain back (the breaker reaches the shore as sc wraps to 0).
+				var run = sc < 0.25 ? smoothstep(0.0, 0.25, sc) : 1.0 - smoothstep(0.25, 0.95, sc);
+				// The reach varies along the beach.
+				var nb = waveTex.get((1.0 + fract(p / 6.0) * 64.0) / vec2(528.0, 264.0)).b;
+				var lvl = run * swashHeight * (0.7 + 0.6 * nb) * exposed;
+				var px = max(fwidth(h), 0.0001);
+				var cover = 1.0 - smoothstep(lvl - 2.0 * px, lvl, h);
+				// Wet sand: darker where the swash has been.
+				var wet = 1.0 - smoothstep(0.0, swashHeight * 1.3, h);
+				col *= 1.0 - 0.13 * wet * swash;
+				col = mix(col, swashColor, cover * 0.45 * swash);
+				// Foam lace at the leading edge, brightest while it rushes in.
+				var edge = 1.0 - smoothstep(0.6, 2.2, abs(h - lvl) / px);
+				edge *= step(0.004, lvl) * (sc < 0.25 ? 1.0 : 0.55) * (0.5 + 0.5 * nb);
+				col = mix(col, vec3(0.96, 0.97, 0.97), edge * 0.8 * swash);
+			}
 			pixelColor.rgb = col;
 		}
 	};
@@ -114,6 +149,10 @@ class TerrainStyle extends hxsl.Shader {
 		super();
 		bands = 1;
 		painted = 0;
+		swash = 1;
+		swashHeight = 0.13;
+		setColor(swashColor, 0x8FD3C6);
+		waveTex = OceanWaves.texture();
 		relief = 1;
 		light = 0;
 		var gt = GroundTextures.get();

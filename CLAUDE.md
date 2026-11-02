@@ -104,7 +104,9 @@ URL params on the web build make runs reproducible:
   colour so mipmaps don't halo. Ink map keeps low-poly by default.
 - **WildCurrent art in use** (see `res/SOURCE.md`): canopies (plain and
   vine), bushes, vine mats, waterline/tall grass, reeds, the floating
-  log, the swell sheet (surf) and the dock (landing beaches). Racing
+  log and the dock (landing beaches). The swell-sheet surf sprites
+  (crescent "arches") were **removed at the owner's request**: breaking waves
+  are now froth from the wave simulation (see Ocean waves). Racing
   spinnakers, rafts, buoys and city pieces were judged off-theme for the island.
   Ambient sailboats were tried and **removed at the owner's request**. Foliage sways subtly, per the WildCurrent
   art notes ("never rotate the whole canopy").
@@ -131,8 +133,12 @@ URL params on the web build make runs reproducible:
   phones. Wave strength, glint and whitecaps are set per style in
   `IslandView.setStyle`. Waves need depth, so the lagoon stays calm. The
   same data could later drive cosmetic ship bobbing.
-- The surf sprite's dark teal back was painted for San Francisco's ocean.
-  `SurfShader` keeps the white foam and recolours the back per style.
+  **Foam** is in the atlas alpha: the Jacobian of the choppy displacement
+  (where crests fold), accumulated with decay and spread over the loop, as
+  in the reference demo the owner liked. In the shallows the threshold drops
+  (shoaling), so the swell breaks into froth that rolls in along the depth
+  contours (`WaterShader.shoreCycle`) and then runs up the sand as swash
+  (`TerrainStyle.swash`, same cycle formula, so keep the two in sync).
 - All colours live in `render/Palette.hx` and the style shaders. Don't
   hard-code colours elsewhere.
 

@@ -14,8 +14,15 @@ package render;
 	   seamless loop.
 	3. For FRAMES moments in that loop, inverse-FFT the spectrum into a height
 	   map and its x/y slopes (64×64, tiling).
-	4. Pack all frames into one atlas: R = slope x, G = slope y, B = height,
-	   each normalised to 0..1. Every tile has a 1-pixel wrapped border, so
+	4. Foam, as in choppy-wave ocean renderers: the waves are also displaced
+	   sideways toward their crests, and where that squeezes the surface (the
+	   Jacobian of the displacement drops below ~0.35) the water breaks into
+	   white froth. Foam is accumulated over the loop, decaying and spreading
+	   a little each frame, so it lingers in patches and streaks behind
+	   crests instead of blinking. The loop is run twice so the start
+	   and end match.
+	5. Pack all frames into one atlas: R = slope x, G = slope y, B = height,
+	   A = foam, each normalised to 0..1. Every tile has a 1-pixel wrapped border, so
 	   bilinear filtering tiles seamlessly without mipmaps.
 
 	`WaterShader` samples it at two scales and rotations (hiding the tiling),
@@ -77,7 +84,12 @@ class OceanWaves {
 			}
 
 		// --- frames ---------------------------------------------------------------
-		var frames:Array<{h:Array<Float>, sx:Array<Float>, sy:Array<Float>}> = [];
+		var frames:Array<{h:Array<Float>, sx:Array<Float>, sy:Array<Float>, jxx:Array<Float>, jyy:Array<Float>, jxy:Array<Float>}> = [];
+		var axr = new Array<Float>(), axi = new Array<Float>();
+		var ayr = new Array<Float>(), ayi = new Array<Float>();
+		var cxr = new Array<Float>(), cxi = new Array<Float>();
+		for (a in [axr, axi, ayr, ayi, cxr, cxi]) a.resize(nn);
+		var maxDiv = 1e-9;
 		var hr = new Array<Float>(), hi = new Array<Float>();
 		var xr = new Array<Float>(), xi = new Array<Float>();
 		var yr = new Array<Float>(), yi = new Array<Float>();
@@ -102,17 +114,72 @@ class OceanWaves {
 					xi[id] = kxs[id] * Hr;
 					yr[id] = -kys[id] * Hi;
 					yi[id] = kys[id] * Hr;
+					// Derivatives of the choppy displacement D = -i·k/|k|·H:
+					// ∂Dx/∂x = kx²/|k|·H, ∂Dy/∂y = ky²/|k|·H, ∂Dx/∂y = kx·ky/|k|·H.
+					var kk = Math.sqrt(kxs[id] * kxs[id] + kys[id] * kys[id]);
+					var inv = kk > 1e-6 ? 1 / kk : 0;
+					var fxx = kxs[id] * kxs[id] * inv, fyy = kys[id] * kys[id] * inv, fxy = kxs[id] * kys[id] * inv;
+					axr[id] = fxx * Hr;
+					axi[id] = fxx * Hi;
+					ayr[id] = fyy * Hr;
+					ayi[id] = fyy * Hi;
+					cxr[id] = fxy * Hr;
+					cxi[id] = fxy * Hi;
 				}
 			fft2(hr, hi, n);
 			fft2(xr, xi, n);
 			fft2(yr, yi, n);
+			fft2(axr, axi, n);
+			fft2(ayr, ayi, n);
+			fft2(cxr, cxi, n);
 			var fh = hr.copy(), fx = xr.copy(), fy = yr.copy();
 			for (k in 0...nn) {
 				maxH = Math.max(maxH, Math.abs(fh[k]));
 				maxS = Math.max(maxS, Math.max(Math.abs(fx[k]), Math.abs(fy[k])));
+				maxDiv = Math.max(maxDiv, axr[k] + ayr[k]);
 			}
-			frames.push({h: fh, sx: fx, sy: fy});
+			frames.push({h: fh, sx: fx, sy: fy, jxx: axr.copy(), jyy: ayr.copy(), jxy: cxr.copy()});
 		}
+
+		// --- foam from the Jacobian, accumulated over the loop ---------------------
+		// Choppiness chosen from the distribution of crest sharpness, so the sharpest
+		// ~9% of the surface folds enough to foam (scaling from the single maximum left
+		// almost nothing foaming).
+		var divs = new Array<Float>();
+		for (fr in frames)
+			for (k in 0...nn) divs.push(fr.jxx[k] + fr.jyy[k]);
+		divs.sort(Reflect.compare);
+		var p91 = Math.max(1e-9, divs[Std.int(divs.length * 0.91)]);
+		var lambda = -0.65 / p91;
+		var acc = new Array<Float>();
+		acc.resize(nn);
+		for (k in 0...nn) acc[k] = 0;
+		var foams:Array<Array<Float>> = [for (_ in 0...FRAMES) null];
+		for (pass in 0...2)
+			for (f in 0...FRAMES) {
+				var fr = frames[f];
+				var next = new Array<Float>();
+				next.resize(nn);
+				for (y in 0...n)
+					for (x in 0...n) {
+						var id = y * n + x;
+						// Spread: a little of the neighbours' foam drifts in.
+						var nb = (acc[y * n + (x + 1) % n] + acc[y * n + (x + n - 1) % n] + acc[((y + 1) % n) * n + x] + acc[((y + n - 1) % n) * n + x]) * 0.25;
+						var old = (acc[id] * 0.8 + nb * 0.2) * 0.86; // decays over ~2 s
+						var jx = 1 + lambda * fr.jxx[id], jy = 1 + lambda * fr.jyy[id], jc = lambda * fr.jxy[id];
+						var J = jx * jy - jc * jc;
+						var fresh = Math.max(0, Math.min(1, (0.35 - J) / 0.5));
+						next[id] = Math.max(fresh, old);
+					}
+				acc = next;
+				if (pass == 1) foams[f] = acc;
+			}
+		// Normalise so the densest foam is fully white.
+		var maxF = 1e-9;
+		for (fa in foams)
+			for (v in fa) maxF = Math.max(maxF, v);
+		for (fa in foams)
+			for (k in 0...nn) fa[k] = Math.min(1, fa[k] / maxF);
 
 		// --- pack into a padded atlas -------------------------------------------
 		var W = COLS * PAD, H = ROWS * PAD;
@@ -128,7 +195,8 @@ class OceanWaves {
 					var r = fr.sx[id] / maxS * 0.5 + 0.5;
 					var gg = fr.sy[id] / maxS * 0.5 + 0.5;
 					var b = fr.h[id] / maxH * 0.5 + 0.5;
-					px.setPixel(ox + x, oy + y, 0xFF000000 | (c8(r) << 16) | (c8(gg) << 8) | c8(b));
+					var a = foams[f][id];
+					px.setPixel(ox + x, oy + y, (c8(a) << 24) | (c8(r) << 16) | (c8(gg) << 8) | c8(b));
 				}
 		}
 		var t = h3d.mat.Texture.fromPixels(px);

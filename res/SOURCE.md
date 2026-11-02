@@ -7,7 +7,6 @@ WildCurrent project (`github.com/mrisney/WildCurrent`, `assets/art/`):
 |---|---|
 | `props/tree-canopy-*` (incl. `-vine-`), `bush-clump-*`, `landmark-boulder-*`, `vine-mat-*`, `waterline-*` | `bank/` |
 | `props/floating-log.png` | `hazards/floating-log-river-01.png` |
-| `effects/surf-sheet.png` | `effects/fort-point-swell/fort-point-swell-sheet.png` (3×2 frames, 256×192) |
 | `structures/dock.png` | `structures/dock-small-01.png` (shore end at the top) |
 
 The sprites are top-down. In 3D they're laid on shallow domes or flat cards

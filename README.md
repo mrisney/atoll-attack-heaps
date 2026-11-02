@@ -33,10 +33,10 @@ The goal of this spike is to answer one question: does Heaps give the Northgard-
 - **Line-art units**: rounded, faceless figures with a paper-white fill and a restrained walk cycle.
 - **Sun shadows**: soft, cool-tinted directional shadows from trees, rocks, units and hills onto terrain and water.
 - **Sprite trees** (P toggles sprite/low-poly; sprites are the default in Classic and Painted): painted top-down canopies and bushes from the WildCurrent asset bank, mapped onto shallow domes with alpha-cut silhouettes that cast leaf-shaped shadows. Reeds and cattails stand in the shallows.
-- **Coast and sea life** (from WildCurrent's art): animated breaking surf along the shallows (each wave on its own timing), a wooden dock with pilings at each landing beach, and floating-log driftwood.
+- **Coast** (from WildCurrent's art): a wooden dock with pilings at each landing beach, and floating-log driftwood.
 - **More foliage**: weeping vine-draped canopies (commoner near water), creeping vine mats along forest edges, tall dune grass on the beaches. All foliage sways subtly in the breeze, shadows included.
 - **3D rocks**: boulders and loose stones are procedural meshes (a noise-deformed icosphere with fracture planes, sunk into the ground, darkened at the base, with the painted rock texture projected from three sides) lit by the scene's sun, so they agree with the light and cast real shadows.
-- **Wind waves**: an FFT ocean (Tessendorf's method, Phillips spectrum) baked once at startup into a seamless looping texture, so on the GPU it's just texture lookups. The water is lit by the waves (light and shade, sun glints, lighter crests, sparse whitecaps). Waves die out over the reef and in the lagoon, and fade toward the horizon.
+- **Wind waves**: an FFT ocean (Tessendorf's method, Phillips spectrum) baked once at startup into a seamless looping texture, so on the GPU it's just texture lookups. The water is lit by the waves (light and shade, sun glints, lighter crests). Foam comes from the simulation itself (where crests fold over), lingering in patches: sparse whitecaps at sea, and in the shallows the swell breaks into froth that rolls in along the depth contours and runs up the sand as swash, leaving it wet. Only shores exposed to the open swell break; lagoons stay calm.
 - **Blast craters**: scorched pits with thrown soil, draped over the terrain where X blasts land.
 - **Micro-scatter**: wildflowers in the meadows, shells on the beaches, loose pebbles in the uplands.
 - **Tilt-shift** (B to toggle; on by default in Painted).

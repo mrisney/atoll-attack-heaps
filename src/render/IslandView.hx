@@ -32,7 +32,8 @@ class IslandView extends h3d.scene.Object {
 		buildProps();
 		buildApexFlag();
 		buildWater();
-		surf = Surf.build(island, this);
+		// The swash on the sand reads the water's exposure map (sheltered shores stay calm).
+		terrainStyle.exposureMap = waterShader.heightMap;
 		// Everything built so far is "nature" and goes grey in the Sketch style.
 		// Things added later (docks, the flag pole) are timber and keep their colour.
 		for (m in getMaterials()) m.mainPass.addShader(m == terrainMat || m == waterMat ? sketchTone : sketchProps);
@@ -114,18 +115,6 @@ class IslandView extends h3d.scene.Object {
 		sketchTone.amount = style == Sketch ? 1 : 0;
 		sketchProps.amount = sketchTone.amount;
 		waterShader.ruled = style == Sketch ? 0.35 : 0;
-		// Surf body: a deeper shade of each style's shallow water.
-		if (surf != null) {
-			var c = switch style {
-				case Classic: 0x3D8FC4;
-				case Painted: 0x2F8C9C;
-				case InkMap: 0x86AFBC;
-				case Sketch: 0x8E9C98;
-			};
-			TerrainStyle.setColor(surf.body, c);
-			// On paper the grey wave backs read as heavy brush strokes; keep them faint.
-			surf.opacity = style == Sketch ? 0.35 : 0.9;
-		}
 		waterShader.softness = 0;
 		// Wind waves: (lighting strength, sun glint, whitecaps) per style.
 		var w = switch style {
@@ -137,6 +126,15 @@ class IslandView extends h3d.scene.Object {
 		waterShader.waves = w[0];
 		waterShader.glint = w[1];
 		waterShader.whitecap = w[2];
+		// Waves breaking on the beach: breaker lines in the water, swash on the sand.
+		waterShader.breakers = style == InkMap ? 0.5 : 1.0;
+		terrainStyle.swash = style == InkMap ? 0.5 : 1.0;
+		TerrainStyle.setColor(terrainStyle.swashColor, switch style {
+			case Classic: 0x87D1FA;
+			case Painted: 0x8FD3C6;
+			case InkMap: 0xC9E3E2;
+			case Sketch: 0xC8CFC2;
+		});
 		switch style {
 			case Painted:
 				terrainStyle.bands = 0;
@@ -212,7 +210,6 @@ class IslandView extends h3d.scene.Object {
 
 	var props:Props.PropGroups;
 
-	var surf:Null<Surf.SurfShader>;
 
 	/** Ground marks (blast craters). **/
 	public var decals(default, null):Decals;
