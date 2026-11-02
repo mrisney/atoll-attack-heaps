@@ -9,15 +9,13 @@ import world.Noise;
 	animated water, scattered pines and rocks, and the apex flag.
 **/
 enum VisualStyle {
-	/** The atoll-attack (Flutter) look: posterised bands, bright palette. **/
-	Classic;
 	/** Hand-drawn map: soft colours, contours, hatching, ink outlines. **/
 	InkMap;
 	/** Painted ground textures (grass/dirt/sand/rock), soft water, tilt-shift. **/
 	Painted;
 	/**
 		Architectural presentation drawing: graphite on paper, only timber in
-		colour, ruled water, drafting annotations, edges dissolving to the page.
+		colour, dark muted water, drafting annotations, edges dissolving to the page.
 	**/
 	Sketch;
 }
@@ -36,7 +34,9 @@ class IslandView extends h3d.scene.Object {
 		terrainStyle.exposureMap = waterShader.heightMap;
 		// Everything built so far is "nature" and goes grey in the Sketch style.
 		// Things added later (docks, the flag pole) are timber and keep their colour.
-		for (m in getMaterials()) m.mainPass.addShader(m == terrainMat || m == waterMat ? sketchTone : sketchProps);
+		// The water is left out: in Sketch it keeps its own (darker, muted) colours.
+		for (m in getMaterials())
+			if (m != waterMat) m.mainPass.addShader(m == terrainMat ? sketchTone : sketchProps);
 		decals = new Decals(island, this, sketchTone);
 		buildFlagPole();
 	}
@@ -95,14 +95,14 @@ class IslandView extends h3d.scene.Object {
 		terrainMat = m.material;
 		// Shaded by TerrainStyle rather than the scene lights, so the look is fully ours.
 		FlatMeshBuilder.setupMaterial(m.material, false);
-		terrainStyle.bakeRelief(island);
+		terrainStyle.setIsland(island);
 		m.material.mainPass.addShader(terrainStyle);
 		m.material.mainPass.addShader(terrainInk);
 		// Hills cast shadows too; receive must be enabled last (see FlatMeshBuilder.shadows).
 		FlatMeshBuilder.shadows(m.material, true, true);
 	}
 
-	/** Band colours and relief (Classic) or soft vertex colours (Ink). **/
+	/** Painted ground textures, or soft vertex colours (Ink map). **/
 	public final terrainStyle = new TerrainStyle();
 	/** Contours, coastline and slope hatching — tweak live via this shader's params. **/
 	public final terrainInk = new render.ink.TerrainInk();
@@ -114,14 +114,12 @@ class IslandView extends h3d.scene.Object {
 		terrainStyle.light = style == Sketch ? 1 : 0;
 		sketchTone.amount = style == Sketch ? 1 : 0;
 		sketchProps.amount = sketchTone.amount;
-		waterShader.ruled = style == Sketch ? 0.35 : 0;
 		waterShader.softness = 0;
 		// Wind waves: (lighting strength, sun glint, whitecaps) per style.
 		var w = switch style {
-			case Classic: [0.8, 0.5, 0.22];
 			case Painted: [1.0, 0.6, 0.25];
 			case InkMap: [0.45, 0.3, 0.0];
-			case Sketch: [0.6, 0.45, 0.22];
+			case Sketch: [0.9, 0.45, 0.22];
 		};
 		waterShader.waves = w[0];
 		waterShader.glint = w[1];
@@ -130,14 +128,12 @@ class IslandView extends h3d.scene.Object {
 		waterShader.breakers = style == InkMap ? 0.5 : 1.0;
 		terrainStyle.swash = style == InkMap ? 0.5 : 1.0;
 		TerrainStyle.setColor(terrainStyle.swashColor, switch style {
-			case Classic: 0x87D1FA;
 			case Painted: 0x8FD3C6;
 			case InkMap: 0xC9E3E2;
-			case Sketch: 0xC8CFC2;
+			case Sketch: 0x7FA39B;
 		});
 		switch style {
 			case Painted:
-				terrainStyle.bands = 0;
 				waterShader.setPaintedColors();
 				waterShader.softness = 0.45;
 				terrainInk.minorAlpha = 0;
@@ -145,16 +141,7 @@ class IslandView extends h3d.scene.Object {
 				terrainInk.hatchAlpha = 0;
 				terrainInk.coastWidth = 0;
 				terrainInk.coastLevel = -999;
-			case Classic:
-				terrainStyle.bands = 1;
-				waterShader.setClassicColors();
-				terrainInk.minorAlpha = 0;
-				terrainInk.majorAlpha = 0;
-				terrainInk.hatchAlpha = 0;
-				terrainInk.coastWidth = 0;
-				terrainInk.coastLevel = -999; // no inked coastline in this style
 			case InkMap:
-				terrainStyle.bands = 0;
 				waterShader.setChartColors();
 				terrainInk.minorAlpha = 0.28;
 				terrainInk.majorAlpha = 0.55;
@@ -163,7 +150,6 @@ class IslandView extends h3d.scene.Object {
 				terrainInk.coastLevel = 0.1;
 			case Sketch:
 				// No contours or slope hatching: relief comes from real sun shading.
-				terrainStyle.bands = 0;
 				waterShader.setSketchColors();
 				waterShader.softness = 0.45;
 				terrainInk.minorAlpha = 0;

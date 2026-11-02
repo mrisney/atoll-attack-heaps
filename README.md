@@ -2,9 +2,9 @@
 
 A Haxe/[Heaps](https://heaps.io) port spike of [atoll-attack](https://github.com/mrisney/atoll-attack): a stylized, low-poly procedural atoll with two squads you can box-select and move.
 
-| Classic (ported from the Flutter game) | Painted | Ink map |
-|---|---|---|
-| ![classic](docs/style-classic.png) | ![painted](docs/style-painted.png) | ![ink map](docs/style-inkmap.png) |
+| Painted (default) | Ink map |
+|---|---|
+| ![painted](docs/style-painted.png) | ![ink map](docs/style-inkmap.png) |
 
 ![sketch](docs/style-sketch.png)
 
@@ -16,10 +16,9 @@ The goal of this spike is to answer one question: does Heaps give the Northgard-
 
 - **Two island shapes** (G to switch): *Single*, a direct port of the Flutter game's `island_water.frag` generator (fbm + three seeded peaks + radial falloff, same default amplitude/wavelength/bias/radius), and *Atoll*, a reef ring around a lagoon.
 - **Three visual styles** (T cycles them):
-  - *Classic* carries over the Flutter look, with hard posterised bands (sand, lowland, upland, peak), the stepped three-tone water and the crinkly relief highlight (baked to a texture per island so it's cheap on phones).
   - *Painted* (the default) blends painted grass, dirt, rock and sand textures (generated in code, no assets), with wandering patch edges, wet sand at the waterline, soft turquoise water, and a tilt-shift blur for a miniature-diorama feel.
   - *Ink map* adds soft colours, contours, hatching and ink outlines.
-  - *Sketch* is an architectural presentation drawing. Nature is in muted earth tones (sage, olive, warm stone, slate water) on paper, with real sun shading on the terrain instead of contour lines. Timber (docks, the flag pole) keeps its full colour. Water has ruled pen strokes along the shore, the frame dissolves into the page at the top and margins, and a drafting layer adds a title block, scale bar, north arrow, a datum through the apex, landing labels, and move orders drawn as dimension lines in metres.
+  - *Sketch* is an architectural presentation drawing. Nature is in muted earth tones (sage, olive, warm stone, slate water) on paper, with real sun shading on the terrain instead of contour lines. Timber (docks, the flag pole) keeps its full colour. The water is a dark, muted slate-teal with the same waves and froth as Painted, the frame dissolves into the page at the top and margins, and a drafting layer adds a title block, scale bar, north arrow, a datum through the apex, landing labels, and move orders drawn as dimension lines in metres.
 - **Procedural atoll**: a seeded, deterministic heightfield (Int32 hashing, so every platform generates the same island) with a wobbly reef ring broken into islets, a shallow lagoon, and a raised apex where the flag stands.
 - **Units**: Captain, Swordsmen, and Archers for blue and red, built from low-poly primitives.
 - **RTS controls**: box select, click or right-click to move with formation spreading, shift to add to the selection, slope-aware movement, and units that stop at the shoreline.
@@ -32,7 +31,7 @@ The goal of this spike is to answer one question: does Heaps give the Northgard-
 - **Ink rendering**: a screen-space edge pass that inks every silhouette at a constant line weight, plus topo-map contour lines, a bold coastline and slope hatching painted on the terrain. Press I to toggle the ink pass.
 - **Line-art units**: rounded, faceless figures with a paper-white fill and a restrained walk cycle.
 - **Sun shadows**: soft, cool-tinted directional shadows from trees, rocks, units and hills onto terrain and water.
-- **Sprite trees** (P toggles sprite/low-poly; sprites are the default in Classic and Painted): painted top-down canopies and bushes from the WildCurrent asset bank, mapped onto shallow domes with alpha-cut silhouettes that cast leaf-shaped shadows. Reeds and cattails stand in the shallows.
+- **Sprite trees** (P toggles sprite/low-poly; sprites are the default in Painted and Sketch): painted top-down canopies and bushes from the WildCurrent asset bank, mapped onto shallow domes with alpha-cut silhouettes that cast leaf-shaped shadows. Reeds and cattails stand in the shallows.
 - **Coast** (from WildCurrent's art): a wooden dock with pilings at each landing beach, and floating-log driftwood.
 - **More foliage**: weeping vine-draped canopies (commoner near water), creeping vine mats along forest edges, tall dune grass on the beaches. All foliage sways subtly in the breeze, shadows included.
 - **3D rocks**: boulders and loose stones are procedural meshes (a noise-deformed icosphere with fracture planes, sunk into the ground, darkened at the base, with the painted rock texture projected from three sides) lit by the scene's sun, so they agree with the light and cast real shadows.
@@ -67,7 +66,7 @@ src/
 res/                        art from WildCurrent (embedded into the build; see res/SOURCE.md)
   render/WaterShader.hx     banded water from a heightmap texture, lit by the baked wind waves
   render/OceanWaves.hx      CPU FFT ocean baked into a looping wave atlas (slopes + height)
-  render/TerrainStyle.hx    Classic bands + baked relief, Painted texture blend, or soft vertex colours
+  render/TerrainStyle.hx    Painted texture blend or soft vertex colours, sun shading, beach swash
   render/GroundTextures.hx  painted, tileable grass/dirt/sand/rock textures generated at startup
   render/InkShape.hx        rounded line-art shapes for units
   render/ink/InkRenderer.hx geometry pass + screen-space ink composite

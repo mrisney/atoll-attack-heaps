@@ -18,7 +18,7 @@ haxe build-hl.hxml && hl bin/game.hl     # desktop HashLink (x86 only)
 ```
 
 URL params on the web build make runs reproducible:
-`bin/index.html?seed=123&style=painted|sketch|classic|inkmap&shape=atoll|single&dist=80`.
+`bin/index.html?seed=123&style=painted|sketch|inkmap&shape=atoll|single&dist=80`.
 
 ## How to verify a change
 
@@ -55,13 +55,13 @@ URL params on the web build make runs reproducible:
 
 ## Art direction (decided — keep consistent)
 
-- Four visual styles, cycled with **T** (Classic → Painted → Ink map → Sketch).
+- Three visual styles, cycled with **T** (Painted → Ink map → Sketch).
   **Painted is the default**: the owner judged it "the best looking one,
   most natural" once it had the FFT ocean, froth, palms and 3D rocks. Sketch
-  was the default briefly before that. The others stay for comparison.
-  - **Classic** is the Flutter game's look. Posterised elevation
-    bands (sand/lowland/upland/peak), three stepped water tones, and the fbm
-    "relief" highlight. Ported from `atoll-attack/shaders/island_water.frag`.
+  was the default briefly before that.
+  - **Classic** (the Flutter game's posterised bands and stepped water) was
+    **retired at the owner's request**: "the depth bands are too unnatural".
+    `?style=classic` now opens Painted. Don't reintroduce hard bands.
   - **Painted** blends painted grass/dirt/rock/sand textures
     (`GroundTextures`, generated in code, no external assets), uses soft
     turquoise water, and turns tilt-shift on (**B** toggles it). It's the
@@ -76,8 +76,11 @@ URL params on the web build make runs reproducible:
     Relief comes from real sun shading (`TerrainStyle.light`), and colour is
     **muted earth tones, not bright green/blue**. `SketchTone` remaps each
     island material's brightness and keeps a fraction of its hue (`chroma`),
-    biased warm (`Palette.SKETCH_EARTH`). Ground and water get a lighter curve,
-    props a darker one. The ground uses the painted textures for detail. Anything added *after* it's applied in
+    biased warm (`Palette.SKETCH_EARTH`). The ground gets a lighter curve,
+    props a darker one. The ground uses the painted textures for detail.
+    **The water is not toned and has no line work**: the owner preferred
+    it "like the others, but darker" (`WaterShader.setSketchColors`, a dark,
+    muted slate-teal, with the same waves and froth). Anything added *after* it's applied in
     `IslandView`'s constructor (docks, the flag pole) keeps its colour. That
     warm timber is the point of the style, so new built things (ships,
     forts) should be timber and stay un-toned. `ui/DraftingOverlay` is the
@@ -99,7 +102,7 @@ URL params on the web build make runs reproducible:
   pine forest and outcrops in the uplands; boulders and dead snags on peaks.
   Variety comes from species, per-instance colour and size, and noise
   clustering. Autumn trees are rare (about 6%) and muted.
-- **Sprite trees are the default** in Classic and Painted (P toggles low-poly).
+- **Sprite trees are the default** in Painted and Sketch (P toggles low-poly).
   The owner found the low-poly trees "blocky, artificial". The sprites come
   from his WildCurrent repo (`assets/art/bank`). `SpriteProps` puts each on an
   alpha-tested smooth dome, trims the art's 1 px pale outline, and bleeds edge

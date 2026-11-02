@@ -152,7 +152,6 @@ class Main extends hxd.App {
 			case Sketch: 0xFF000000 | Palette.SKETCH_BG;
 			case InkMap: 0xFF6E9FB5;
 			case Painted: 0xFF235F86;
-			case Classic: 0xFF2185C4;
 		};
 		updateHud();
 	}
@@ -176,7 +175,7 @@ class Main extends hxd.App {
 		var q = new js.html.URLSearchParams(js.Browser.location.search);
 		if (q.has("seed")) seed = Std.parseInt(q.get("seed"));
 		if (q.get("style") == "inkmap") style = InkMap;
-		if (q.get("style") == "classic") style = Classic;
+		if (q.get("style") == "classic") style = Painted; // retired; old links still open
 		if (q.get("style") == "painted") style = Painted;
 		if (q.get("style") == "sketch") style = Sketch;
 		if (q.get("shape") == "atoll") shape = Atoll;
@@ -207,10 +206,9 @@ class Main extends hxd.App {
 			rtsCam.zoom(Math.pow(2.2, dt));
 		if (hxd.Key.isPressed(hxd.Key.T)) {
 			style = switch style {
-				case Classic: Painted;
 				case Painted: InkMap;
 				case InkMap: Sketch;
-				case Sketch: Classic;
+				case Sketch: Painted;
 			};
 			applyStyle();
 		}
