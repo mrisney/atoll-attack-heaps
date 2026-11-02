@@ -121,6 +121,16 @@ URL params on the web build make runs reproducible:
   it could replace the frond texture.
 - **Boulders are sparse** (the owner asked for fewer random boulders), so keep
   the `rockCluster` rates in `Props` low.
+- **Ocean waves** (`render/OceanWaves.hx`): the owner pointed at
+  github.com/codeagent/webgl-ocean. That repo has **no licence**, so don't
+  copy its code. We reimplemented the same technique (a Tessendorf FFT with
+  a Phillips spectrum), but baked: a CPU 64² FFT at startup, 32 frames with
+  dispersion quantised so the loop is exact, packed into a padded atlas
+  (no mipmaps). `WaterShader` samples it at two scales for lighting only
+  (no per-frame GPU FFT, no float render targets), so it stays cheap on
+  phones. Wave strength, glint and whitecaps are set per style in
+  `IslandView.setStyle`. Waves need depth, so the lagoon stays calm. The
+  same data could later drive cosmetic ship bobbing.
 - The surf sprite's dark teal back was painted for San Francisco's ocean.
   `SurfShader` keeps the white foam and recolours the back per style.
 - All colours live in `render/Palette.hx` and the style shaders. Don't
@@ -194,6 +204,9 @@ URL params on the web build make runs reproducible:
   web build, and ship native through HashLink/C.
 - Haxe `Int` is 32-bit: a literal like `2654435761` is a `Float`, which breaks
   integer hashing. Use small multipliers or `haxe.Int32`.
+- **Don't switch the water to a constant depth outside the height map.** A
+  hard `inside ? -h : const` step made `fwidth(depth)` spike at the border,
+  which showed as a thin bright seam across the sea. Clamp the UV instead.
 - When unsure of an API, read the Heaps source rather than guessing. It's
   small and readable (`h3d/`, `h2d/`, `hxd/`, `hxsl/`).
 

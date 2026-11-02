@@ -36,6 +36,7 @@ The goal of this spike is to answer one question: does Heaps give the Northgard-
 - **Coast and sea life** (from WildCurrent's art): animated breaking surf along the shallows (each wave on its own timing), a wooden dock with pilings at each landing beach, and floating-log driftwood.
 - **More foliage**: weeping vine-draped canopies (commoner near water), creeping vine mats along forest edges, tall dune grass on the beaches. All foliage sways subtly in the breeze, shadows included.
 - **3D rocks**: boulders and loose stones are procedural meshes (a noise-deformed icosphere with fracture planes, sunk into the ground, darkened at the base, with the painted rock texture projected from three sides) lit by the scene's sun, so they agree with the light and cast real shadows.
+- **Wind waves**: an FFT ocean (Tessendorf's method, Phillips spectrum) baked once at startup into a seamless looping texture, so on the GPU it's just texture lookups. The water is lit by the waves (light and shade, sun glints, lighter crests, sparse whitecaps). Waves die out over the reef and in the lagoon, and fade toward the horizon.
 - **Blast craters**: scorched pits with thrown soil, draped over the terrain where X blasts land.
 - **Micro-scatter**: wildflowers in the meadows, shells on the beaches, loose pebbles in the uplands.
 - **Tilt-shift** (B to toggle; on by default in Painted).
@@ -64,7 +65,8 @@ src/
   render/Surf.hx            animated breaking waves along the coast (one draw call)
   render/Decals.hx          terrain-draped decals (blast craters)
 res/                        art from WildCurrent (embedded into the build; see res/SOURCE.md)
-  render/WaterShader.hx     banded water from a heightmap texture + swell/shimmer
+  render/WaterShader.hx     banded water from a heightmap texture, lit by the baked wind waves
+  render/OceanWaves.hx      CPU FFT ocean baked into a looping wave atlas (slopes + height)
   render/TerrainStyle.hx    Classic bands + baked relief, Painted texture blend, or soft vertex colours
   render/GroundTextures.hx  painted, tileable grass/dirt/sand/rock textures generated at startup
   render/InkShape.hx        rounded line-art shapes for units

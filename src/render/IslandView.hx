@@ -127,6 +127,16 @@ class IslandView extends h3d.scene.Object {
 			surf.opacity = style == Sketch ? 0.35 : 0.9;
 		}
 		waterShader.softness = 0;
+		// Wind waves: (lighting strength, sun glint, whitecaps) per style.
+		var w = switch style {
+			case Classic: [0.8, 0.5, 0.22];
+			case Painted: [1.0, 0.6, 0.25];
+			case InkMap: [0.45, 0.3, 0.0];
+			case Sketch: [0.6, 0.45, 0.22];
+		};
+		waterShader.waves = w[0];
+		waterShader.glint = w[1];
+		waterShader.whitecap = w[2];
 		switch style {
 			case Painted:
 				terrainStyle.bands = 0;
