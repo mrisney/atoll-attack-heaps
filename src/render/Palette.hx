@@ -34,6 +34,11 @@ class Palette {
 	public static inline var INK = 0x1F1A15;
 	public static inline var LEATHER = 0x5A4130;
 
+	// Line-art figures: paper fill, team shown on the tunic and banner.
+	public static inline var PAPER = 0xF6F3EC;
+	public static inline var CLOTH_BLUE = 0xC5D3E6;
+	public static inline var CLOTH_RED = 0xEBC9C1;
+
 	public static inline function r(c:Int):Float
 		return ((c >> 16) & 0xFF) / 255;
 
