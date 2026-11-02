@@ -81,6 +81,11 @@ URL params on the web build make runs reproducible:
   pine forest and outcrops in the uplands; boulders and dead snags on peaks.
   Variety comes from species, per-instance colour and size, and noise
   clustering. Autumn trees are rare (about 6%) and muted.
+- **Sprite trees are the default** in Classic and Painted (P toggles low-poly).
+  The owner found the low-poly trees "blocky, artificial". The sprites come
+  from his WildCurrent repo (`assets/art/bank`). `SpriteProps` puts each on an
+  alpha-tested smooth dome, trims the art's 1 px pale outline, and bleeds edge
+  colour so mipmaps don't halo. Ink map keeps low-poly by default.
 - All colours live in `render/Palette.hx` and the style shaders. Don't
   hard-code colours elsewhere.
 
@@ -117,6 +122,10 @@ URL params on the web build make runs reproducible:
 - **To keep something out of the ink outlines** (grass), put it in the alpha
   pass (`blendMode = Alpha`, still opaque). The geometry buffer only reads the
   default pass.
+- **Assets live in `res/`** and are embedded at compile time (`hxd.Res.initEmbed()`
+  in `Main.init`). Load with `hxd.Res.load("props/x.png")`. A textured mesh
+  still needs vertex colours if it uses `setupMaterial` (that adds the
+  VertexColor shader): give the Polygon `colors` (white or a tint).
 - `cast` and `macro` are Haxe keywords. Don't use them as variable or parameter names.
 - 16-bit index buffers: `FlatMeshBuilder` splits geometry into chunks under
   65k vertices.

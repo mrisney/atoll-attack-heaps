@@ -25,8 +25,12 @@ class Main extends hxd.App {
 	var controls:ui.ControlBar;
 	var style:VisualStyle = Classic;
 	var shape:IslandShape = Single;
+	/** null = follow the style's default (sprites except in Ink map). **/
+	var spriteProps:Null<Bool> = null;
 
 	override function init() {
+		// Bakes res/ into the build, so the web version needs no file server for assets.
+		hxd.Res.initEmbed();
 		engine.backgroundColor = 0xFF2185C4;
 		inkRenderer = new render.ink.InkRenderer();
 		s3d.renderer = inkRenderer;
@@ -98,6 +102,7 @@ class Main extends hxd.App {
 
 	function applyStyle() {
 		islandView.setStyle(style);
+		islandView.setSpriteProps(spriteProps != null ? spriteProps : style != InkMap);
 		inkRenderer.inkEnabled = style == InkMap;
 		inkRenderer.tiltShift = style == Painted;
 		engine.backgroundColor = switch style {
@@ -112,7 +117,7 @@ class Main extends hxd.App {
 		hud.text = 'ATOLL ATTACK  ·  seed $seed  ·  ${shape} island  ·  ${style} style\n'
 			+ 'Drag: select   Click/RMB: move   Shift: add\n'
 			+ 'WASD/edges: pan   Wheel/pinch/+ -: zoom   Q/E: rotate   Space: recentre\n'
-			+ 'R: new island   G: island shape   T: visual style   I: ink lines   B: tilt-shift   X: blast at cursor (test)';
+			+ 'R: new island   G: island shape   T: visual style   I: ink lines   B: tilt-shift   P: sprite/low-poly trees   X: blast at cursor (test)';
 	}
 
 	var frames = 0;
@@ -131,6 +136,8 @@ class Main extends hxd.App {
 		if (q.get("style") == "painted") style = Painted;
 		if (q.get("shape") == "atoll") shape = Atoll;
 		if (q.get("shape") == "single") shape = Single;
+		if (q.get("props") == "sprites") spriteProps = true;
+		if (q.get("props") == "lowpoly") spriteProps = false;
 		if (q.has("dist")) startDistance = Std.parseFloat(q.get("dist"));
 		#end
 	}
@@ -160,6 +167,10 @@ class Main extends hxd.App {
 				case InkMap: Classic;
 			};
 			applyStyle();
+		}
+		if (hxd.Key.isPressed(hxd.Key.P)) {
+			spriteProps = !(spriteProps != null ? spriteProps : style != InkMap);
+			islandView.setSpriteProps(spriteProps);
 		}
 		if (hxd.Key.isPressed(hxd.Key.B))
 			inkRenderer.tiltShift = !inkRenderer.tiltShift;

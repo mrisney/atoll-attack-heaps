@@ -24,6 +24,7 @@ The goal of this spike is to answer one question: does Heaps give the Northgard-
 - **Ink rendering**: a screen-space edge pass that inks every silhouette at a constant line weight, plus topo-map contour lines, a bold coastline and slope hatching painted on the terrain. Press I to toggle the ink pass.
 - **Line-art units**: rounded, faceless figures with a paper-white fill and a restrained walk cycle.
 - **Sun shadows**: soft, cool-tinted directional shadows from trees, rocks, units and hills onto terrain and water.
+- **Sprite trees** (P toggles sprite/low-poly; sprites are the default in Classic and Painted): painted top-down canopies, bushes and boulders from the WildCurrent asset bank, mapped onto shallow domes with alpha-cut silhouettes that cast leaf-shaped shadows. Reeds and cattails stand in the shallows.
 - **Micro-scatter**: wildflowers in the meadows, shells on the beaches, loose pebbles in the uplands.
 - **Tilt-shift** (B to toggle; on by default in Painted).
 - **Prop variety**: palms leaning toward the sea, mixed broadleaf and pine woods with the odd turning tree, bushes, grass meadows, rock outcrops, driftwood, loose stones and dead snags on the heights. Placed by elevation band and clustered by noise, with a colour and size per instance, merged into a handful of draw calls.
@@ -43,6 +44,8 @@ src/
   render/FlatMeshBuilder.hx low-poly faceted geometry helper
   render/IslandView.hx      terrain, water, apex flag; shadow setup per mesh
   render/Props.hx           vegetation and rocks: species, biome placement, clustering
+  render/SpriteProps.hx     painted sprites on alpha-tested domes (one draw call per sprite)
+res/props/                  sprite PNGs (embedded into the build; see SOURCE.md)
   render/WaterShader.hx     banded water from a heightmap texture + swell/shimmer
   render/TerrainStyle.hx    Classic bands + baked relief, Painted texture blend, or soft vertex colours
   render/GroundTextures.hx  painted, tileable grass/dirt/sand/rock textures generated at startup
@@ -115,6 +118,13 @@ On an Intel Mac, `haxe build-hl.hxml && hl bin/game.hl` also works and compiles 
 ### Editor
 
 Use VS Code with the **Haxe** extension (vshaxe) for completion and go-to-definition. Point it at `build-js.hxml`.
+
+## Adding art assets
+
+Everything in `res/` is embedded into the build (`hxd.Res.initEmbed()`), so the web version needs no asset server.
+
+- **A new tree, bush or rock sprite:** drop a top-down PNG with transparency into `res/props/`, then add its name to `CANOPIES`, `BUSHES`, `BOULDERS` or `REEDS` at the top of `src/render/Props.hx`. Placement, size variation, shadows and edge clean-up are automatic.
+- **3D models (later):** Heaps loads FBX. Put `res/models/x.fbx` in and load it with `hxd.Res.load("models/x.fbx").toHmd().makeObject()`. That's the route for rigged characters.
 
 ## Snapshots (for you or an agent)
 

@@ -153,8 +153,16 @@ class IslandView extends h3d.scene.Object {
 		FlatMeshBuilder.shadows(m.material, false, true);
 	}
 
+	var props:Props.PropGroups;
+
 	function buildProps() {
-		Props.build(island, this);
+		props = Props.build(island, this);
+	}
+
+	/** Painted sprite trees/bushes/boulders, or the low-poly versions. **/
+	public function setSpriteProps(on:Bool) {
+		props.sprites.visible = on;
+		props.lowPoly.visible = !on;
 	}
 
 	function buildApexFlag() {

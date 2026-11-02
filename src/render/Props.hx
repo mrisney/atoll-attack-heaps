@@ -18,22 +18,52 @@ import world.Noise;
 	- Peak: boulder clusters, loose stones, the odd dead snag
 
 	Everything is merged into a few large meshes (FlatMeshBuilder), so a few
-	thousand props cost only a handful of draw calls. Grass goes in its own
+	thousand props cost only a handful of draw calls. Trees, bushes and rocks
+	are built twice at the same spots: low-poly geometry, and painted sprites
+	from res/props (see SpriteProps). The view shows one set. Grass goes in its own
 	mesh in the alpha pass, so the ink outline pass skips it (otherwise every
 	blade would get an outline).
 
 	Layout is seeded from the island, so the same seed always looks the same.
 	It's purely visual and doesn't affect the sim.
 **/
+typedef PropGroups = {
+	/** Trees, bushes and rocks as low-poly geometry. **/
+	var lowPoly:h3d.scene.Object;
+	/** The same trees, bushes and rocks as painted sprites, plus waterline reeds. **/
+	var sprites:h3d.scene.Object;
+}
+
 class Props {
+	static inline var SPRITES = "props/";
+	static final CANOPIES = ["tree-canopy-01", "tree-canopy-02", "tree-canopy-03", "tree-canopy-04"];
+	static final BUSHES = ["bush-clump-01", "bush-clump-02", "bush-clump-03"];
+	static final BOULDERS = ["landmark-boulder-01", "landmark-boulder-02", "landmark-boulder-03"];
+	static final REEDS = [
+		"waterline-grass-01", "waterline-grass-03", "waterline-reeds-02", "waterline-cattails-sparse-01", "waterline-cattails-sparse-02",
+		"waterline-cattails-sparse-03"
+	];
+
 	final island:Island;
+	/** Shared by both looks: palms, driftwood, stones, snags. **/
 	final solid = new FlatMeshBuilder();
+	/** Shared: grass, flowers, shells (alpha pass, not inked). **/
 	final grass = new FlatMeshBuilder();
+	/** Low-poly trees, bushes, rocks. **/
+	final low = new FlatMeshBuilder();
+	/** Sprite trees, bushes, boulders, reeds. **/
+	final spr = new SpriteProps();
+	/** Sprite trunks (mostly hidden under the canopy, they ground the tree). **/
+	final trunks = new FlatMeshBuilder();
 	final rnd:Noise;
 	var salt = 0;
 
-	public static function build(island:Island, parent:h3d.scene.Object) {
-		new Props(island).scatter(parent);
+	/**
+		Builds all props under `parent`. Trees, bushes and rocks exist in two
+		forms at identical positions; show one group or the other.
+	**/
+	public static function build(island:Island, parent:h3d.scene.Object):PropGroups {
+		return new Props(island).scatter(parent);
 	}
 
 	function new(island:Island) {
@@ -52,7 +82,7 @@ class Props {
 	inline function tint(c:Int, amount = 0.12):Int
 		return Palette.shade(c, 1 - amount * 0.5 + r() * amount);
 
-	function scatter(parent:h3d.scene.Object) {
+	function scatter(parent:h3d.scene.Object):PropGroups {
 		var forestN = new Noise(island.seed + 202);
 		var meadowN = new Noise(island.seed + 404);
 		var he = island.halfExtent;
@@ -68,7 +98,12 @@ class Props {
 				var x = i * step - he + (r() - 0.5) * step;
 				var y = j * step - he + (r() - 0.5) * step;
 				var h = island.heightAt(x, y);
-				if (h < 0.18) continue;
+				if (h < -0.15) continue;
+				if (h < 0.18) {
+					// Waterline: reeds and cattails standing in the shallows (sprite look only).
+					if (r() < 0.07) reeds(x, y);
+					continue;
+				}
 
 				var gx = island.heightAt(x + 0.5, y) - island.heightAt(x - 0.5, y);
 				var gy = island.heightAt(x, y + 0.5) - island.heightAt(x, y - 0.5);
@@ -118,6 +153,27 @@ class Props {
 			m.material.blendMode = Alpha;
 			m.material.mainPass.culling = None;
 		}
+		var lowPoly = new h3d.scene.Object(parent);
+		low.build(lowPoly, true, true, true);
+		var sprites = new h3d.scene.Object(parent);
+		trunks.build(sprites, true, true, true);
+		spr.build(sprites);
+		return {lowPoly: lowPoly, sprites: sprites};
+	}
+
+	inline function pickName(list:Array<String>):String
+		return list[Std.int(r() * list.length) % list.length];
+
+	/** A sprite canopy on a short trunk. `s` scales the whole tree. **/
+	function spriteTree(x:Float, y:Float, z:Float, s:Float) {
+		var trunkH = (0.9 + r() * 0.45) * s;
+		trunks.prism(x, y, z, 0.1 * s, trunkH + 0.2, 5, tint(pick(Palette.BARK)), r() * 3);
+		var size = (2.0 + r() * 0.9) * s;
+		spr.add(SPRITES + pickName(CANOPIES) + ".png", x, y, z + trunkH, size, size * 0.28, r() * Math.PI * 2, 0.92 + r() * 0.16);
+	}
+
+	function reeds(x:Float, y:Float) {
+		spr.add(SPRITES + pickName(REEDS) + ".png", x, y, 0.06, 0.9 + r() * 0.6, 0.1, r() * Math.PI * 2);
 	}
 
 	// --- species ------------------------------------------------------------
@@ -126,16 +182,17 @@ class Props {
 		var s = 0.75 + r() * 0.65;
 		var rot = r() * Math.PI;
 		var c1 = tint(pick(Palette.PINE)), c2 = tint(pick(Palette.PINE));
-		solid.prism(x, y, z, 0.08 * s, 0.5 * s, 5, tint(pick(Palette.BARK)), rot);
-		solid.cone(x, y, z + 0.35 * s, 0.68 * s, 1.0 * s, 7, c1, 0, rot);
-		solid.cone(x, y, z + 0.85 * s, 0.52 * s, 0.85 * s, 7, c2, 0, rot + 0.4);
-		if (s > 1.1) solid.cone(x, y, z + 1.35 * s, 0.34 * s, 0.7 * s, 6, c1, 0, rot + 0.8);
+		low.prism(x, y, z, 0.08 * s, 0.5 * s, 5, tint(pick(Palette.BARK)), rot);
+		low.cone(x, y, z + 0.35 * s, 0.68 * s, 1.0 * s, 7, c1, 0, rot);
+		low.cone(x, y, z + 0.85 * s, 0.52 * s, 0.85 * s, 7, c2, 0, rot + 0.4);
+		if (s > 1.1) low.cone(x, y, z + 1.35 * s, 0.34 * s, 0.7 * s, 6, c1, 0, rot + 0.8);
+		spriteTree(x, y, z, 0.75 + s * 0.3);
 	}
 
 	function broadleaf(x:Float, y:Float, z:Float) {
 		var s = 0.7 + r() * 0.6;
 		var trunkH = 0.7 * s;
-		solid.prism(x, y, z, 0.09 * s, trunkH + 0.3 * s, 5, tint(pick(Palette.BARK)), r() * 3);
+		low.prism(x, y, z, 0.09 * s, trunkH + 0.3 * s, 5, tint(pick(Palette.BARK)), r() * 3);
 		// Mostly green, the odd turning tree, like Northgard's mixed woods.
 		var leaf = r() < 0.06 ? pick(Palette.LEAF_AUTUMN) : pick(Palette.LEAF);
 		var top = z + trunkH + 0.45 * s;
@@ -144,8 +201,9 @@ class Props {
 			var a = r() * Math.PI * 2;
 			var d = (k == 0 ? 0 : 0.35 + r() * 0.25) * s;
 			var br = (0.55 + r() * 0.3) * s * (k == 0 ? 1.15 : 0.9);
-			solid.ball(x + Math.cos(a) * d, y + Math.sin(a) * d, top + (r() - 0.3) * 0.35 * s, br, tint(leaf), 7, 4, 0.85, r() * 3);
+			low.ball(x + Math.cos(a) * d, y + Math.sin(a) * d, top + (r() - 0.3) * 0.35 * s, br, tint(leaf), 7, 4, 0.85, r() * 3);
 		}
+		spriteTree(x, y, z, 0.8 + s * 0.35);
 	}
 
 	/** Leaning palm: a curved trunk of short segments, drooping fronds, coconuts. **/
@@ -194,8 +252,9 @@ class Props {
 		var c = pick(Palette.LEAF);
 		for (k in 0...2 + Std.int(r() * 2)) {
 			var a = r() * Math.PI * 2, d = r() * 0.3 * s;
-			solid.ball(x + Math.cos(a) * d, y + Math.sin(a) * d, z + 0.18 * s, (0.3 + r() * 0.15) * s, tint(c, 0.18), 6, 3, 0.75, r() * 3);
+			low.ball(x + Math.cos(a) * d, y + Math.sin(a) * d, z + 0.18 * s, (0.3 + r() * 0.15) * s, tint(c, 0.18), 6, 3, 0.75, r() * 3);
 		}
+		spr.add(SPRITES + pickName(BUSHES) + ".png", x, y, z, (1.0 + r() * 0.5) * (0.6 + s), 0.35 * s, r() * Math.PI * 2, 0.9 + r() * 0.2);
 	}
 
 	function grassTuft(x:Float, y:Float, z:Float) {
@@ -249,7 +308,8 @@ class Props {
 			var rs = (k == 0 ? 0.45 : 0.25) + r() * 0.35;
 			var rx = x + Math.cos(a) * d, ry = y + Math.sin(a) * d;
 			var rz = island.heightAt(rx, ry) - 0.08;
-			solid.ball(rx, ry, rz, rs, tint(c, 0.15), 5 + Std.int(r() * 2), 3, 0.55 + r() * 0.25, r() * 3);
+			low.ball(rx, ry, rz, rs, tint(c, 0.15), 5 + Std.int(r() * 2), 3, 0.55 + r() * 0.25, r() * 3);
+			spr.add(SPRITES + pickName(BOULDERS) + ".png", rx, ry, rz, rs * 2.8, rs * 0.9, r() * Math.PI * 2, 0.95 + r() * 0.1);
 		}
 	}
 
