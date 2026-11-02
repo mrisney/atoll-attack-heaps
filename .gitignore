@@ -5,3 +5,4 @@ dump/
 *.hl
 .DS_Store
 .vscode/
+out/

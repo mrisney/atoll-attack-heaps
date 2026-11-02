@@ -19,9 +19,12 @@ class Main extends hxd.App {
 	var rtsCam:RtsCamera;
 	var selection:SelectionController;
 	var hud:h2d.Text;
+	var inkRenderer:render.ink.InkRenderer;
 
 	override function init() {
 		engine.backgroundColor = 0xFF000000 | Palette.OCEAN_DEEP;
+		inkRenderer = new render.ink.InkRenderer();
+		s3d.renderer = inkRenderer;
 		setupLighting();
 		rtsCam = new RtsCamera(s3d.camera);
 
@@ -63,7 +66,7 @@ class Main extends hxd.App {
 
 		hud.text = 'ATOLL ATTACK  ·  seed $seed\n'
 			+ 'Drag: select   Click/RMB: move   Shift: add\n'
-			+ 'WASD/edges: pan   Wheel: zoom   Q/E: rotate   R: new island';
+			+ 'WASD/edges: pan   Wheel: zoom   Q/E: rotate   R: new island   I: ink lines';
 	}
 
 	override function update(dt:Float) {
@@ -71,6 +74,8 @@ class Main extends hxd.App {
 			seed = Std.random(100000);
 			buildWorld();
 		}
+		if (hxd.Key.isPressed(hxd.Key.I))
+			inkRenderer.inkEnabled = !inkRenderer.inkEnabled;
 		rtsCam.update(dt, selection.mouseX, selection.mouseY, s2d.width, s2d.height);
 		sim.update(dt);
 		for (v in unitViews) v.syncFromSim(dt);

@@ -1,0 +1,5 @@
+# Native build via HashLink/C (compiles Haxe to C, then clang builds an executable).
+# Use this on Apple Silicon, where the HashLink JIT VM doesn't run natively yet.
+common.hxml
+-lib hlsdl
+-hl out/main.c

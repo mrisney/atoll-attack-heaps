@@ -4,6 +4,8 @@ A Haxe/[Heaps](https://heaps.io) port spike of [atoll-attack](https://github.com
 
 ![screenshot](docs/screenshot.png)
 
+![units](docs/screenshot-units.png)
+
 The goal of this spike is to answer one question: does Heaps give the Northgard-style look and a pleasant dev loop? It covers:
 
 - **Procedural atoll**: a seeded, deterministic heightfield (Int32 hashing, so every platform generates the same island) with a wobbly reef ring broken into islets, a shallow lagoon, and a raised apex where the flag stands.
@@ -11,6 +13,8 @@ The goal of this spike is to answer one question: does Heaps give the Northgard-
 - **Units**: Captain, Swordsmen, and Archers for blue and red, built from low-poly primitives.
 - **RTS controls**: box select, click or right-click to move with formation spreading, shift to add to the selection, slope-aware movement, and units that stop at the shoreline.
 - **Camera**: WASD/arrows or edge pan, wheel zoom, and Q/E rotate. On touch, two fingers pan and pinch-zoom.
+- **Ink rendering**: a screen-space edge pass that inks every silhouette at a constant line weight, plus topo-map contour lines, a bold coastline and slope hatching painted on the terrain. Press I to toggle the ink pass.
+- **Line-art units**: rounded, faceless figures with a paper-white fill and a restrained walk cycle.
 
 ## Architecture
 
@@ -26,6 +30,11 @@ src/
   render/FlatMeshBuilder.hx low-poly faceted geometry helper
   render/IslandView.hx      terrain, water, props, apex flag
   render/WaterShader.hx     HXSL swell + shimmer
+  render/InkShape.hx        rounded line-art shapes for units
+  render/ink/InkRenderer.hx geometry pass + screen-space ink composite
+  render/ink/InkEdge.hx     edge detection (normals + inverse-depth Laplacian)
+  render/ink/TerrainInk.hx  contours, coastline, slope hatching
+  render/ink/GeoOut.hx      per-material normal/depth output
   render/UnitView.hx        unit figures, selection rings, interpolation
   input/RtsCamera.hx        orbit/pan/zoom camera
   input/SelectionController.hx  pointer/touch → selection + Commands
@@ -57,6 +66,36 @@ haxe build-js.hxml
 npx http-server bin    # or any static server
 ```
 Then open http://localhost:8080.
+
+## Running on a Mac
+
+### Quickest: the web build (works on any Mac)
+
+```sh
+brew install haxe
+haxelib setup ~/haxelib          # once; pick any folder
+haxelib install heaps
+./scripts/run-web.sh             # builds, serves on :8080, opens the browser
+```
+
+After editing code, run `haxe build-js.hxml` and refresh the page. That's the everyday dev loop.
+
+### Native app (Apple Silicon)
+
+The HashLink VM's JIT is x86-only for now, so `hl bin/game.hl` won't run natively on M-series Macs. Instead, use **HashLink/C**, which compiles to C and builds a real arm64 executable. Shiro uses the same path for consoles.
+
+```sh
+brew install hashlink sdl2
+haxelib install hlsdl
+./scripts/build-mac-native.sh
+./bin/atoll
+```
+
+On an Intel Mac, `haxe build-hl.hxml && hl bin/game.hl` also works and compiles faster.
+
+### Editor
+
+Use VS Code with the **Haxe** extension (vshaxe) for completion and go-to-definition. Point it at `build-js.hxml`.
 
 ## Testing on mobile
 

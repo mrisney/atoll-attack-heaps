@@ -65,7 +65,11 @@ class IslandView extends h3d.scene.Object {
 		poly.colors = cols;
 		var m = new h3d.scene.Mesh(poly, this);
 		FlatMeshBuilder.setupMaterial(m.material, true);
+		m.material.mainPass.addShader(terrainInk);
 	}
+
+	/** Contours, coastline and slope hatching — tweak live via this shader's params. **/
+	public final terrainInk = new render.ink.TerrainInk();
 
 	function buildWater() {
 		// One smooth grid well past the island so the sea reaches the horizon.
@@ -104,7 +108,6 @@ class IslandView extends h3d.scene.Object {
 
 	function buildProps() {
 		var b = new FlatMeshBuilder();
-		b.outline = 0.06;
 		var density = new Noise(island.seed + 202);
 		var rnd = new Noise(island.seed + 303);
 		var he = island.halfExtent;
@@ -144,7 +147,6 @@ class IslandView extends h3d.scene.Object {
 
 	function buildApexFlag() {
 		var b = new FlatMeshBuilder();
-		b.outline = 0.05;
 		var x = island.apexX, y = island.apexY, z = island.apexH - 0.05;
 		// Stone cairn + pole + neutral banner, waiting to be claimed.
 		b.cone(x, y, z, 0.7, 0.45, 6, Palette.STONE, 0.45);

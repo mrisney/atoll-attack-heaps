@@ -156,5 +156,7 @@ class FlatMeshBuilder {
 		mat.mainPass.addShader(new h3d.shader.VertexColor());
 		mat.mainPass.enableLights = lit;
 		mat.specularAmount = 0;
+		// Lets the screen-space ink pass see this object.
+		mat.mainPass.addShader(new render.ink.GeoOut());
 	}
 }

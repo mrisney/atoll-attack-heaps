@@ -12,18 +12,18 @@ class Palette {
 
 	public static inline var SEABED = 0x9C8A5E;
 	public static inline var WET_SAND = 0xC6AE77;
-	public static inline var SAND = 0xE6D29B;
-	public static inline var GRASS = 0x93AE5C;
-	public static inline var MEADOW = 0x7C9C4B;
-	public static inline var JUNGLE = 0x4E7A3A;
-	public static inline var JUNGLE_DARK = 0x3A5F2E;
+	public static inline var SAND = 0xEEDFB4;
+	public static inline var GRASS = 0xA9BF78;
+	public static inline var MEADOW = 0x98B26C;
+	public static inline var JUNGLE = 0x7F9E62;
+	public static inline var JUNGLE_DARK = 0x6C8B55;
 	public static inline var ROCK = 0x8A8072;
 	public static inline var PEAK = 0xB7AE9E;
 
-	public static inline var TRUNK = 0x6B4A32;
-	public static inline var PINE_A = 0x3F6B35;
-	public static inline var PINE_B = 0x557F3E;
-	public static inline var STONE = 0x9A9284;
+	public static inline var TRUNK = 0x8C6A4E;
+	public static inline var PINE_A = 0x6F9157;
+	public static inline var PINE_B = 0x86A66A;
+	public static inline var STONE = 0xC4BCAE;
 
 	public static inline var TEAM_BLUE = 0x3B5F8E;
 	public static inline var TEAM_RED = 0x9C4436;
