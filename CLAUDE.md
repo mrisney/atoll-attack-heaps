@@ -12,6 +12,7 @@ haxe build-js.hxml                       # web build → bin/game.js (fast; use 
 ./scripts/run-web.sh                     # build + serve on http://localhost:8080
 node scripts/snapshot.mjs                # build + headless screenshot → snapshots/
 node scripts/snapshot.mjs --style=inkmap --shape=atoll --seed=777 --walk
+node scripts/snapshot.mjs --dist=30 "--fly=0.24,0.62;0.42,0.13"   # fly via minimap, shot per spot
 haxe build-hl.hxml && hl bin/game.hl     # desktop HashLink (x86 only)
 ./scripts/build-mac-native.sh            # HashLink/C native build (Apple Silicon)
 ```
@@ -112,6 +113,14 @@ URL params on the web build make runs reproducible:
   and the dome silhouette read as a sticker. Rocks are noise-deformed
   icospheres with fracture planes, sunk into the ground, with vertex AO and a
   triplanar painted texture. Use them for any new stone, never `ball()` gems.
+- **Palms are procedural** (`render/Palms.hx`), not low-poly. The owner found the
+  old ones "very angular and not very realistic". Each has a smooth, curved
+  trunk tube with ring scars, plus arched, folded fronds that use a pinnate
+  leaf texture painted in code and alpha-cut (leafy silhouettes and
+  shadows). There's no palm art in WildCurrent; if the owner supplies some,
+  it could replace the frond texture.
+- **Boulders are sparse** (the owner asked for fewer random boulders), so keep
+  the `rockCluster` rates in `Props` low.
 - The surf sprite's dark teal back was painted for San Francisco's ocean.
   `SurfShader` keeps the white foam and recolours the back per style.
 - All colours live in `render/Palette.hx` and the style shaders. Don't

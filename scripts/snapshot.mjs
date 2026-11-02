@@ -11,6 +11,7 @@
 //   --out=snapshots     output folder
 //   --name=shot         file name prefix
 //   --walk              also box-select blue squad, order a move, and take a second shot mid-walk
+//   --fly=0.4,0.2       click the minimap at (u,v) fractions to fly there; ';' for several
 //   --no-build          skip `haxe build-js.hxml`
 //   --size=1280x760     viewport
 //
@@ -86,6 +87,19 @@ const shot = async (suffix) => {
 };
 
 await shot("");
+
+if (args.fly) {
+  // --fly=u,v[;u,v…]: click the minimap at fractions of its size (0,0 = top-left)
+  // to fly the camera there, then take a shot at each spot (-fly1, -fly2…).
+  const spots = String(args.fly).split(";").map((p) => p.split(",").map(Number));
+  const mm = { x: 16, y: height - 188, size: 172 };
+  for (let k = 0; k < spots.length; k++) {
+    const [u, v] = spots[k];
+    await page.mouse.click(mm.x + u * mm.size, mm.y + v * mm.size);
+    await page.waitForTimeout(2500);
+    await shot(`-fly${k + 1}`);
+  }
+}
 
 if (args.walk) {
   // The camera starts on the blue squad: box-select around the centre, then

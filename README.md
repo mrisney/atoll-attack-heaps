@@ -56,6 +56,7 @@ src/
   render/FlatMeshBuilder.hx low-poly faceted geometry helper
   render/IslandView.hx      terrain, water, apex flag; shadow setup per mesh
   render/Props.hx           vegetation and rocks: species, biome placement, clustering
+  render/Palms.hx           coconut palms: curved smooth trunks, arched leafy fronds (texture painted in code)
   render/SpriteProps.hx     painted sprites on alpha-tested domes (one draw call per sprite)
   render/Rocks.hx           procedural 3D boulders and stones (triplanar painted texture)
   render/SketchTone.hx      Sketch style: greys everything but timber, with paper grain

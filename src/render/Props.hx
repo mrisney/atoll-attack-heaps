@@ -59,6 +59,7 @@ class Props {
 	final spr = new SpriteProps();
 	/** Real 3D boulders for the sprite look (sprites read as stickers for rocks). **/
 	final rocks = new Rocks();
+	final palms = new Palms();
 	/** Small loose stones, shared by both looks. **/
 	final pebbles = new Rocks();
 	/** Sprite trunks (mostly hidden under the canopy, they ground the tree). **/
@@ -131,7 +132,7 @@ class Props {
 					else if (roll < 0.2 && h > 0.35) beachGrass(x, y, z);
 				} else if (h < tLow) {
 					// Lowland
-					if (steep && roll < 0.25) rockCluster(x, y, z, 2);
+					if (steep && roll < 0.1) rockCluster(x, y, z, 2);
 					else if (forest > 0.56 && roll < 0.55) {
 						if (r() < 0.75) broadleaf(x, y, z) else pine(x, y, z);
 					} else if (forest > 0.5 && roll < 0.2) bush(x, y, z);
@@ -140,20 +141,21 @@ class Props {
 						grassTuft(x, y, z);
 						if (r() < 0.35) flowers(x, y, z);
 					}
-					else if (roll < 0.015) rockCluster(x, y, z, 1);
+					else if (roll < 0.006) rockCluster(x, y, z, 1);
 				} else if (h < tUp) {
 					// Upland
-					if (steep && roll < 0.35) rockCluster(x, y, z, 3);
+					if (steep && roll < 0.15) rockCluster(x, y, z, 2);
 					else if (forest > 0.48 && roll < 0.65) {
 						if (r() < 0.8) pine(x, y, z) else broadleaf(x, y, z);
 					} else if (roll < 0.12) bush(x, y, z);
 					else if (roll < 0.3) grassTuft(x, y, z);
-					else if (roll < 0.36) stones(x, y, z, 2);
+					else if (roll < 0.33) stones(x, y, z, 2);
 				} else {
 					// Peak
-					if (roll < 0.06) rockCluster(x, y, z, 2 + Std.int(r() * 3));
-					else if (roll < 0.18) stones(x, y, z, 3);
-					else if (roll < 0.21) snag(x, y, z);
+					// Sparse: a few boulder groups and loose stones (the owner found them too many).
+					if (roll < 0.022) rockCluster(x, y, z, 1 + Std.int(r() * 3));
+					else if (roll < 0.08) stones(x, y, z, 2);
+					else if (roll < 0.11) snag(x, y, z);
 				}
 			}
 
@@ -170,6 +172,7 @@ class Props {
 		spr.build(sprites);
 		rocks.build(sprites);
 		pebbles.build(parent);
+		palms.build(parent);
 		return {lowPoly: lowPoly, sprites: sprites};
 	}
 
@@ -235,45 +238,14 @@ class Props {
 		spriteTree(x, y, z, 0.8 + s * 0.35);
 	}
 
-	/** Leaning palm: a curved trunk of short segments, drooping fronds, coconuts. **/
+	/** Coconut palm (see Palms): smooth curved trunk, arched leafy fronds, a few coconuts. **/
 	function palm(x:Float, y:Float, z:Float, towardX:Float, towardY:Float) {
-		var s = 0.85 + r() * 0.5;
+		var s = 0.85 + r() * 0.45;
 		var len = Math.sqrt(towardX * towardX + towardY * towardY);
 		var a = len > 1e-4 ? Math.atan2(towardY, towardX) : r() * Math.PI * 2;
 		a += (r() - 0.5) * 0.9;
 		var lx = Math.cos(a), ly = Math.sin(a);
-		var lean = 0.25 + r() * 0.3;
-		var bark = tint(pick(Palette.PALM_BARK));
-		var segs = 6;
-		var cx = x, cy = y, cz = z;
-		for (k in 0...segs) {
-			var t = (k + 1) / segs;
-			var seg = 0.42 * s;
-			solid.prism(cx, cy, cz, (0.11 - 0.035 * t) * s, seg, 5, k % 2 == 0 ? bark : Palette.shade(bark, 0.9), k * 0.4);
-			// The trunk curves more toward the top.
-			cx += lx * lean * t * seg;
-			cy += ly * lean * t * seg;
-			cz += seg * 0.95;
-		}
-		var top = new Point(cx, cy, cz);
-		var leaf = pick(Palette.PALM);
-		var fronds = 7;
-		for (k in 0...fronds) {
-			var fa = k / fronds * Math.PI * 2 + r() * 0.4;
-			var fx = Math.cos(fa), fy = Math.sin(fa);
-			var L = (1.1 + r() * 0.35) * s;
-			var w = 0.22 * s;
-			var mid = new Point(cx + fx * L * 0.5, cy + fy * L * 0.5, cz + 0.18 * s);
-			var tip = new Point(cx + fx * L, cy + fy * L, cz - (0.35 + r() * 0.2) * s);
-			var side = new Point(-fy * w, fx * w, 0);
-			var c = tint(leaf);
-			solid.twoSided(top, mid.add(side), tip, c);
-			solid.twoSided(top, tip, mid.sub(side), Palette.shade(c, 0.9));
-		}
-		for (k in 0...3) {
-			var ca = k * 2.1 + r();
-			solid.ball(cx + Math.cos(ca) * 0.12 * s, cy + Math.sin(ca) * 0.12 * s, cz - 0.1 * s, 0.09 * s, Palette.COCONUT, 5, 3);
-		}
+		palms.add(x, y, z, lx, ly, s, tint(pick(Palette.PALM_BARK)), tint(pick(Palette.PALM), 0.1), r);
 	}
 
 	function bush(x:Float, y:Float, z:Float) {
