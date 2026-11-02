@@ -70,6 +70,11 @@ URL params on the web build make runs reproducible:
 - **Rag dolls on death** (owner asked for them). Keep them grounded: modest
   impulse, rigid limbs (no knees or elbows), friction, and settling within a
   couple of seconds. Not slapstick.
+- **Props** (`render/Props.hx`) follow the elevation bands: palms, driftwood
+  and stones on beaches; broadleaf groves, bushes and grass in the lowlands;
+  pine forest and outcrops in the uplands; boulders and dead snags on peaks.
+  Variety comes from species, per-instance colour and size, and noise
+  clustering. Autumn trees are rare (about 6%) and muted.
 - All colours live in `render/Palette.hx` and the style shaders. Don't
   hard-code colours elsewhere.
 
@@ -95,6 +100,18 @@ URL params on the web build make runs reproducible:
 - **Keep fragment shaders cheap**, because mobile is a target. Bake expensive
   noise into textures once per island (see `TerrainStyle.bakeRelief`,
   `WaterShader.setIsland`). Per-pixel fbm was too slow.
+- **Shadows are opt-in per mesh** via `FlatMeshBuilder.shadows(mat, cast, receive)`
+  or `build(parent, lit, cast, receive)`. Heaps materials cast and receive by
+  default, so `setupMaterial` turns both off. The receive shader multiplies
+  the final colour, so enable it **after** adding style shaders, or
+  `TerrainStyle`/`WaterShader` (which set the colour outright) erase the
+  shadow. Shadow tint is `Palette.SHADOW`, and map settings are in
+  `InkRenderer`. Debug tip: temporarily set `shadow.color` to red to see where
+  shadows land.
+- **To keep something out of the ink outlines** (grass), put it in the alpha
+  pass (`blendMode = Alpha`, still opaque). The geometry buffer only reads the
+  default pass.
+- `cast` is a Haxe keyword. Don't use it as a parameter name.
 - 16-bit index buffers: `FlatMeshBuilder` splits geometry into chunks under
   65k vertices.
 - HXSL has `fwidth`, `fract`, `smoothstep`, `mix`, and small helper functions

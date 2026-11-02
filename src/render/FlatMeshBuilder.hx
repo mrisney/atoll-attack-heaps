@@ -128,12 +128,13 @@ class FlatMeshBuilder {
 	}
 
 	/** Turn everything into meshes under `parent`. **/
-	public function build(parent:h3d.scene.Object, lit = true):Array<h3d.scene.Mesh> {
+	public function build(parent:h3d.scene.Object, lit = true, castShadow = false, receiveShadow = false):Array<h3d.scene.Mesh> {
 		flush();
 		var out = [];
 		for (p in chunks) {
 			var m = new h3d.scene.Mesh(p, parent);
 			setupMaterial(m.material, lit);
+			shadows(m.material, castShadow, receiveShadow);
 			out.push(m);
 		}
 		chunks = [];
@@ -158,5 +159,54 @@ class FlatMeshBuilder {
 		mat.specularAmount = 0;
 		// Lets the screen-space ink pass see this object.
 		mat.mainPass.addShader(new render.ink.GeoOut());
+		// Heaps materials cast and receive shadows by default; we opt in per object instead.
+		mat.castShadows = false;
+		mat.receiveShadows = false;
+	}
+
+	/**
+		Opt a material into shadows. Call this *after* adding every other shader:
+		the receive shader multiplies the final colour, so it must run last, or a
+		style shader that sets the colour outright would erase the shadow.
+	**/
+	public static function shadows(mat:h3d.mat.Material, castsShadow:Bool, receive:Bool) {
+		mat.castShadows = castsShadow;
+		mat.receiveShadows = false;
+		mat.receiveShadows = receive;
+	}
+
+	// --- extra shapes for props ---------------------------------------------
+
+	/**
+		Faceted ball (lat/long), optionally squashed vertically. Used for
+		canopies, bushes and boulders. Facets alternate shade slightly.
+	**/
+	public function ball(x:Float, y:Float, z:Float, r:Float, color:Int, segs = 7, rings = 4, squash = 1.0, rot = 0.0) {
+		var c = new Point(x, y, z);
+		inline function pt(i:Int, k:Int):Point {
+			var phi = k / rings * Math.PI; // 0 = top
+			var t = rot + i / segs * Math.PI * 2;
+			return new Point(x + Math.sin(phi) * Math.cos(t) * r, y + Math.sin(phi) * Math.sin(t) * r, z + Math.cos(phi) * r * squash);
+		}
+		for (k in 0...rings)
+			for (i in 0...segs) {
+				var a = pt(i, k), b = pt(i + 1, k), d = pt(i, k + 1), e = pt(i + 1, k + 1);
+				var shade = ((i + k) % 2 == 0) ? 1.0 : 0.94;
+				if (k > 0) triOut(a, b, e, c, color, shade);
+				if (k < rings - 1) triOut(a, e, d, c, color, shade);
+			}
+	}
+
+	/** Triangle wound so its face points away from `center`. **/
+	public function triOut(a:Point, b:Point, cc:Point, center:Point, color:Int, shade = 1.0) {
+		var n = b.sub(a).cross(cc.sub(a));
+		var mid = new Point((a.x + b.x + cc.x) / 3, (a.y + b.y + cc.y) / 3, (a.z + b.z + cc.z) / 3);
+		if (n.dot(mid.sub(center)) < 0) tri(a, cc, b, color, shade) else tri(a, b, cc, color, shade);
+	}
+
+	/** A flat two-sided triangle (grass blades, palm fronds). **/
+	public inline function twoSided(a:Point, b:Point, cc:Point, color:Int, shade = 1.0) {
+		tri(a, b, cc, color, shade);
+		tri(a, cc, b, color, shade * 0.9);
 	}
 }

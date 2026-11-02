@@ -25,6 +25,30 @@ class Palette {
 	public static inline var PINE_B = 0x86A66A;
 	public static inline var STONE = 0xC4BCAE;
 
+	// Prop variety: each instance picks from a list, then gets a small tint.
+	public static final LEAF = [0x5C8A3C, 0x6A9A45, 0x77A64D, 0x86B055, 0x9AB352];
+	public static final LEAF_AUTUMN = [0xB2A24A, 0xB89048, 0xA88448];
+	public static final PINE = [0x3F6E45, 0x4A7A4C, 0x557F48, 0x5F8A52];
+	public static final PALM = [0x6FA04A, 0x7EAE52, 0x8BB85A];
+	public static final GRASS_TUFT = [0x8FBF4E, 0x9DC757, 0xA9C25E, 0xB7C96A];
+	public static final BARK = [0x7A5B42, 0x8C6A4E, 0x6B5040];
+	public static final PALM_BARK = [0xA08560, 0x92785A];
+	public static final ROCKS = [0xA39C90, 0x938C82, 0xB0A99D, 0x877F75];
+	public static inline var DRIFTWOOD = 0xC8B79A;
+	public static inline var COCONUT = 0x6E5236;
+
+	/** Shadow tint: cool and light, so shade reads as colour rather than black. **/
+	public static inline var SHADOW = 0x6A7390;
+
+	/** Multiply a colour's brightness. **/
+	public static function shade(c:Int, k:Float):Int {
+		inline function ch(v:Int) {
+			var x = Std.int(v * k);
+			return x < 0 ? 0 : (x > 255 ? 255 : x);
+		}
+		return (ch((c >> 16) & 0xFF) << 16) | (ch((c >> 8) & 0xFF) << 8) | ch(c & 0xFF);
+	}
+
 	public static inline var TEAM_BLUE = 0x3B5F8E;
 	public static inline var TEAM_RED = 0x9C4436;
 	public static inline var SKIN = 0xE0B48C;

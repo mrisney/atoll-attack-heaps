@@ -97,6 +97,7 @@ class InkShape {
 		poly.colors = cols;
 		var m = new h3d.scene.Mesh(poly, o);
 		FlatMeshBuilder.setupMaterial(m.material, false);
+		FlatMeshBuilder.shadows(m.material, true, true);
 
 		if (ink <= 0) return;
 		var hullPts = [for (i in 0...pts.length) pts[i].add(nrm[i].scaled(ink))];

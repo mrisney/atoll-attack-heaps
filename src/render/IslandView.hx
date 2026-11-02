@@ -76,6 +76,8 @@ class IslandView extends h3d.scene.Object {
 		terrainStyle.bakeRelief(island);
 		m.material.mainPass.addShader(terrainStyle);
 		m.material.mainPass.addShader(terrainInk);
+		// Hills cast shadows too; receive must be enabled last (see FlatMeshBuilder.shadows).
+		FlatMeshBuilder.shadows(m.material, true, true);
 	}
 
 	/** Band colours and relief (Classic) or soft vertex colours (Ink). **/
@@ -134,45 +136,12 @@ class IslandView extends h3d.scene.Object {
 		FlatMeshBuilder.setupMaterial(m.material, false);
 		waterShader.setIsland(island);
 		m.material.mainPass.addShader(waterShader);
+		// Trees and cliffs shade the shallows; the sea itself casts nothing.
+		FlatMeshBuilder.shadows(m.material, false, true);
 	}
 
 	function buildProps() {
-		var b = new FlatMeshBuilder();
-		var density = new Noise(island.seed + 202);
-		var rnd = new Noise(island.seed + 303);
-		var he = island.halfExtent;
-		// Scatter on a half-cell lattice with jitter.
-		var step = 1.1;
-		var n = Std.int(island.size * island.cell / step);
-		for (j in 0...n)
-			for (i in 0...n) {
-				var x = i * step - he + (rnd.rand(i, j) - 0.5) * step;
-				var y = j * step - he + (rnd.rand(j + 991, i) - 0.5) * step;
-				var h = island.heightAt(x, y);
-				var d = density.fbm(x * 0.08 + 3, y * 0.08 + 3, 3);
-				var r = rnd.rand(i + 5000, j);
-				if (h > 1.0 && h < 4.4 && d > 0.55 && r < 0.6) {
-					pine(b, x, y, h - 0.05, 0.75 + rnd.rand(i, j + 7000) * 0.6, r);
-				} else if (h > 4.2 && r < 0.18) {
-					rock(b, x, y, h - 0.1, 0.4 + r * 2.0, r);
-				} else if (h > 0.4 && h < 1.1 && r < 0.03) {
-					rock(b, x, y, h - 0.1, 0.25 + r * 4.0, r);
-				}
-			}
-		b.build(this);
-	}
-
-	function pine(b:FlatMeshBuilder, x:Float, y:Float, z:Float, s:Float, r:Float) {
-		var rot = r * Math.PI;
-		b.prism(x, y, z, 0.09 * s, 0.45 * s, 5, Palette.TRUNK, rot);
-		var c1 = r < 0.5 ? Palette.PINE_A : Palette.PINE_B;
-		var c2 = r < 0.5 ? Palette.PINE_B : Palette.PINE_A;
-		b.cone(x, y, z + 0.35 * s, 0.62 * s, 1.0 * s, 8, c1, 0, rot);
-		b.cone(x, y, z + 0.85 * s, 0.45 * s, 0.85 * s, 8, c2, 0, rot + 0.4);
-	}
-
-	function rock(b:FlatMeshBuilder, x:Float, y:Float, z:Float, s:Float, r:Float) {
-		b.cone(x, y, z, 0.6 * s, 0.35 * s, 5, Palette.STONE, 0.3 * s, r * 6);
+		Props.build(island, this);
 	}
 
 	function buildApexFlag() {
@@ -185,6 +154,6 @@ class IslandView extends h3d.scene.Object {
 		var f0 = new Point(x, y, top), f1 = new Point(x + 1.1, y + 0.15, top - 0.35), f2 = new Point(x, y, top - 0.7);
 		b.tri(f0, f1, f2, 0xEFE8D8);
 		b.tri(f0, f2, f1, 0xEFE8D8); // two-sided cloth
-		b.build(this);
+		b.build(this, true, true, true);
 	}
 }

@@ -123,7 +123,7 @@ class UnitView extends h3d.scene.Object {
 		for (m in sb.build(this, false)) {
 			shadowMeshes.push(m);
 			m.material.blendMode = Alpha;
-			m.material.color.set(1, 1, 1, 0.22);
+			m.material.color.set(1, 1, 1, 0.12); // faint contact shadow; the sun shadow does the rest
 			m.material.mainPass.depthWrite = false;
 		}
 	}

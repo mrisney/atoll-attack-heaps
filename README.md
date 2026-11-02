@@ -15,12 +15,13 @@ The goal of this spike is to answer one question: does Heaps give the Northgard-
 - **Two island shapes** (G to switch): *Single*, a direct port of the Flutter game's `island_water.frag` generator (fbm + three seeded peaks + radial falloff, same default amplitude/wavelength/bias/radius), and *Atoll*, a reef ring around a lagoon.
 - **Two visual styles** (T to switch): *Classic* carries over the Flutter look, with hard posterised bands (sand, lowland, upland, peak), the stepped three-tone water and the crinkly relief highlight (baked to a texture per island so it's cheap on phones). *Ink map* adds soft colours, contours, hatching and ink outlines.
 - **Procedural atoll**: a seeded, deterministic heightfield (Int32 hashing, so every platform generates the same island) with a wobbly reef ring broken into islets, a shallow lagoon, and a raised apex where the flag stands.
-- **Stylized rendering**: flat-shaded vertex-colored terrain by elevation band, depth-tinted water with an animated HXSL swell and shimmer shader, scattered low-poly pines and rocks, and warm sun with cool ambient lighting.
 - **Units**: Captain, Swordsmen, and Archers for blue and red, built from low-poly primitives.
 - **RTS controls**: box select, click or right-click to move with formation spreading, shift to add to the selection, slope-aware movement, and units that stop at the shoreline.
 - **Camera**: on-screen buttons (bottom right) for zoom in/out, rotate, and re-centre on your squad. Tap for a step, or hold to keep going. Also mouse wheel or trackpad pinch to zoom, two-finger pan/pinch on touch, WASD/arrows/screen edges to pan, Q/E to rotate, +/- to zoom, and Space to re-centre.
 - **Ink rendering**: a screen-space edge pass that inks every silhouette at a constant line weight, plus topo-map contour lines, a bold coastline and slope hatching painted on the terrain. Press I to toggle the ink pass.
 - **Line-art units**: rounded, faceless figures with a paper-white fill and a restrained walk cycle.
+- **Sun shadows**: soft, cool-tinted directional shadows from trees, rocks, units and hills onto terrain and water.
+- **Prop variety**: palms leaning toward the sea, mixed broadleaf and pine woods with the odd turning tree, bushes, grass meadows, rock outcrops, driftwood, loose stones and dead snags on the heights. Placed by elevation band and clustered by noise, with a colour and size per instance, merged into a handful of draw calls.
 - **Rag dolls**: when a unit dies it's flung away from the hit and tumbles into a Verlet rag doll that collides with the terrain, floats at the water surface, and settles. Press **X** to blast units near the cursor (a test key until combat exists).
 
 ## Architecture
@@ -35,7 +36,8 @@ src/
   game/Sim.hx               fixed 30 Hz tick, applies queued commands
   render/Palette.hx         the whole art direction in one file
   render/FlatMeshBuilder.hx low-poly faceted geometry helper
-  render/IslandView.hx      terrain, water, props, apex flag
+  render/IslandView.hx      terrain, water, apex flag; shadow setup per mesh
+  render/Props.hx           vegetation and rocks: species, biome placement, clustering
   render/WaterShader.hx     banded water from a heightmap texture + swell/shimmer
   render/TerrainStyle.hx    Classic bands + baked relief, or soft vertex colours
   render/InkShape.hx        rounded line-art shapes for units

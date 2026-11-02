@@ -1,5 +1,7 @@
 package render.ink;
 
+import render.Palette;
+
 /**
 	Forward renderer + a screen-space ink pass.
 
@@ -22,6 +24,13 @@ class InkRenderer extends h3d.scene.fwd.Renderer {
 		allPasses.push(geoPass);
 		inkFx = new h3d.pass.ScreenFx(new InkEdge());
 		inkFx.pass.setBlendMode(Alpha);
+
+		// Soft sun shadows, tinted cool rather than black.
+		shadow.size = 2048;
+		shadow.color.set(Palette.r(Palette.SHADOW), Palette.g(Palette.SHADOW), Palette.b(Palette.SHADOW));
+		shadow.power = 60;
+		shadow.bias = 0.004;
+		shadow.blur.radius = 1.5;
 	}
 
 	override function render() {
