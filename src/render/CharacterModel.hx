@@ -81,7 +81,7 @@ class CharacterModel extends h3d.scene.Object {
 			var jname = PROP_JOINT.get(name);
 			var joint = joints.get(jname);
 			if (joint == null) {
-				joint = new JointFollower(skin, jname);
+				joint = new JointFollower(skin, jname, this);
 				joints.set(jname, joint);
 			}
 			p.remove();
@@ -191,7 +191,7 @@ class CharacterModel extends h3d.scene.Object {
 			var ra = new h3d.Matrix();
 			ra.multiply3x4(j.defMat, pRest);
 			restAbs.set(j.index, ra);
-			var f = RAG_FRAME.get(j.name);
+			var f = RAG_FRAME.get(StringTools.replace(j.name, ".", "_"));
 			var a = new h3d.Matrix();
 			if (f == null) {
 				a.multiply3x4(j.defMat, pAbs);
@@ -275,18 +275,25 @@ class CharacterModel extends h3d.scene.Object {
 	Follows one joint of a skin, so rigid props can hang on it. Heaps'
 	own Skin.getObjectByName gives a detached Joint that isn't meant to sit
 	in the scene graph (adding one breaks name lookups during animation
-	binding), so this is a plain child of the skin that copies the joint's
-	world matrix every frame, after the animation has posed it.
+	binding), so this is a plain object beside the figure that copies the
+	joint's world matrix every frame, after the animation has posed it.
 **/
 @:access(h3d.scene.Skin)
 class JointFollower extends h3d.scene.Object {
 	final sk:h3d.scene.Skin;
 	final index:Int;
 
-	public function new(skin:h3d.scene.Skin, joint:String) {
-		super(skin);
+	public function new(skin:h3d.scene.Skin, joint:String, parent:h3d.scene.Object) {
+		// A sibling of the figure (added after it, so it's synced after the skin has
+		// posed), not a child of the skin: children on the Skin itself stopped the
+		// animation reaching the mesh on Heaps 2.1.
+		super(parent);
 		sk = skin;
-		index = skin.getSkinData().namedJoints.get(joint).index;
+		var named = skin.getSkinData().namedJoints;
+		// Heaps 2.1 keeps Blender's "hand.L"; newer Heaps turns it into "hand_L".
+		var j = named.get(joint);
+		if (j == null) j = named.get(StringTools.replace(joint, "_", "."));
+		index = j.index;
 	}
 
 	override function sync(ctx:h3d.scene.RenderContext) {
@@ -294,7 +301,9 @@ class JointFollower extends h3d.scene.Object {
 	}
 
 	override function calcAbsPos() {
-		sk.syncJoints();
+		// No sk.syncJoints() here: the skin poses its joints in its own sync, which runs
+		// before its children's, and forcing it early stopped the animation reaching
+		// the mesh on Heaps 2.1.
 		absPos.load(JointPose.abs(sk.jointsData[index]));
 		if (invPos != null) invPos._44 = 0;
 	}

@@ -117,12 +117,18 @@ URL params on the web build make runs reproducible:
   Gotchas: Heaps merges all skinned meshes of one armature into one geometry
   but keeps only the first one's normals (so props must be rigid, not
   skinned); Blender ≥4 writes per-vertex normals Heaps mishandles (set custom
-  split normals before export); bone "hand.L" becomes "hand_L"; Heaps'
+  split normals before export); Heaps'
   `SmoothTransition` breaks on quick idle/walk switches (cut for now);
   `Skin.getObjectByName` returns a detached Joint that breaks name lookups if
-  added to the scene graph. Heaps renamed `JointData.currentRelPos`/`currentAbsPos`
-  to `currentRelPose`/`currentAbsPose` in newer versions (the owner's Mac has
-  the newer one), so go through `CharacterModel.JointPose`, never the fields.
+  added to the scene graph.
+  **Heaps version**: the owner uses the haxelib **2.1.0 release** (git tag
+  `2.1`); build against that. Heaps' main branch also says 2.1.0 but differs:
+  it renamed `JointData.currentRelPose`/`currentAbsPose` to
+  `currentRelPos`/`currentAbsPos` (go through `CharacterModel.JointPose`,
+  never the fields), and turns bone "hand.L" into "hand_L" where 2.1 keeps
+  "hand.L" (look up both). On 2.1, any child object added to a `Skin`
+  stops its animation reaching the mesh, so `JointFollower` is a sibling of
+  the figure, never a child of the skin.
 - **Rag dolls on death** (owner asked for them). Keep them grounded: modest
   impulse, rigid limbs (no knees or elbows), friction, and settling within a
   couple of seconds. Not slapstick.
@@ -186,12 +192,16 @@ URL params on the web build make runs reproducible:
   MIT files, so **don't copy its code**. The owner asked for terra's settings:
   **blades 85k–100k, depth 85, antialiasing on**. So grass is a **fixed
   budget around the view centre**, not grass everywhere: `blades` (default
-  100000, `?blades=`) and `depth` in metres (default 85, `?depth=`). It's
-  split into two layers: NEAR, 80% of the blades in a dense patch of radius
-  `depth*0.2`, and FAR, the rest out to `depth`, wider and sparser. The
-  patch **shrinks as the camera zooms in** (`GrassShader.scale`, from the
-  view distance in `setGrassFocus`), so the same budget packs denser where
-  blades can be seen. **Windswept** (owner's reference screenshot: "windswept,
+  **200000**: the owner later asked for "more, and denser together"; lower it
+  for phones with `?blades=`) and `depth` in metres (default 85, `?depth=`).
+  It's split into two layers: NEAR, 60% of the blades in a patch of radius
+  `depth*0.25`, fading out over a wide band, and FAR, the rest out to
+  `depth*0.6`, wider, fading in under it (no visible patch edge). The
+  patches **shrink as the camera zooms in** (`GrassShader.scale`, view
+  distance / 45 in `setGrassFocus`), so the budget packs densest where
+  blades can be seen. The ground under fields has windswept streaks
+  (`TerrainStyle`, two unrelated scales, combed along the wind) so thin
+  spots still read as grass. **Windswept** (owner's reference screenshot: "windswept,
   finer, closer together"): fine blades (1.3–2.5 cm wide, 30–70 cm long, 4
   segments), all laid over downwind by a constant `sweep` plus gusts, deep
   green with yellow-green tips, about one in five with a straw seed head,

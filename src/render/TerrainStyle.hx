@@ -125,6 +125,14 @@ class TerrainStyle extends hxsl.Shader {
 				// Mottled like a real meadow: drier, yellower patches among the greener ones.
 				var fg = fieldGround * (0.85 + 0.3 * fm.g);
 				fg = mix(fg, fg * vec3(1.32, 1.22, 0.9), smoothstep(0.35, 0.8, fm.b));
+				// Windswept streaks combed downwind (the grass wind blows toward +0.8, +0.6), so
+				// where blades thin out the ground still reads as grass. Two layers at unrelated
+				// scales so the texture's tiling never lines up into a pattern.
+				var wa = dot(p, vec2(0.8, 0.6));
+				var wc = dot(p, vec2(-0.6, 0.8));
+				var s1 = grassTex.get(vec2(wc / 0.37, wa / 1.9)).a;
+				var s2 = dirtTex.get(vec2(wc / 0.61 + 0.3, wa / 3.3 + 0.7)).a;
+				fg *= 0.78 + 0.32 * s1 + 0.18 * (s2 - 0.5);
 				c = mix(c, fg, smoothstep(0.05, 0.6, fm.r) * 0.85 * (1.0 - sandW));
 
 				// Worn ground (Tracks, in the mask's alpha): pale dusty earth, the edge frayed

@@ -61,7 +61,8 @@ class GrassField {
 	final island:world.Island;
 
 	/** Defaults for new islands; Main sets these from `?blades=` and `?depth=`. **/
-	public static var defaultBlades = 100000;
+	/** Owner first asked for terra's 85k-100k, then "more, and denser together". Phones: lower via ?blades=. **/
+	public static var defaultBlades = 200000;
 	public static var defaultDepth = 85.0;
 
 	public function new(island:world.Island, ?blades:Int, ?depth:Float) {
@@ -77,7 +78,7 @@ class GrassField {
 		// Zoomed in, the same blades are packed into a smaller patch: denser where
 		// individual blades can be seen (owner: "finer, closer together"). Zoomed
 		// out, the patch spreads to `depth` and the ground colour carries the look.
-		var s = viewDistance == null ? 1.0 : Math.max(0.35, Math.min(1.0, viewDistance / 28));
+		var s = viewDistance == null ? 1.0 : Math.max(0.3, Math.min(1.0, viewDistance / 45));
 		for (l in layers) {
 			l.focus.set(x, y);
 			l.scale = s;
@@ -123,10 +124,13 @@ class GrassField {
 		// --- the two layers --------------------------------------------------------
 		// A tighter near patch than terra's: ~70 blades/m² at the defaults (owner: "finer,
 		// closer together").
-		var nearR = depth * 0.2;
-		var nearCount = Std.int(blades * 0.8);
-		addLayer(parent, nearCount, nearR * 2, 1.0, -2, -1, nearR * 0.75, nearR, 101, heightTex, he, span);
-		addLayer(parent, blades - nearCount, depth * 2, 2.0, nearR * 0.7, nearR, depth * 0.8, depth, 202, heightTex, he, span);
+		var nearR = depth * 0.25;
+		// The near patch fades out over a wide band and the far layer (more blades than
+		// terra's, over a shorter reach) fades in under it, so there's no visible edge.
+		var nearCount = Std.int(blades * 0.6);
+		var farR = depth * 0.6;
+		addLayer(parent, nearCount, nearR * 2, 1.0, -2, -1, nearR * 0.55, nearR, 101, heightTex, he, span);
+		addLayer(parent, blades - nearCount, farR * 2, 1.8, nearR * 0.45, nearR * 0.9, farR * 0.8, farR, 202, heightTex, he, span);
 	}
 
 	function addLayer(parent:h3d.scene.Object, count:Int, size:Float, widthScale:Float, inA:Float, inB:Float, outA:Float, outB:Float,
