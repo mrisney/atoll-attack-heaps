@@ -148,6 +148,10 @@ URL params on the web build make runs reproducible:
   it and a band below its rim, in irregular noise clumps). There are almost
   none in the meadows. The owner expects the summit to be the main area of
   conflict, and found the boulders "too scattered".
+  **Coastal outcrops** (`Props.outcropSpot`/`outcrop`): occasional groups of 2–4
+  larger rocks at the waterline running into the shallows, on a raised base
+  so they break the surface. The owner asked for them "sparingly", so keep
+  the noise threshold high.
 - **Palms are procedural** (`render/Palms.hx`), not low-poly. The owner found the
   old ones "very angular and not very realistic". Each has a smooth, curved
   trunk tube with ring scars, plus arched, folded fronds that use a pinnate

@@ -130,6 +130,11 @@ class Props {
 				var x = i * step - he + (r() - 0.5) * step;
 				var y = j * step - he + (r() - 0.5) * step;
 				var h = island.heightAt(x, y);
+				// Rare rock outcrops along the coast, running out into the shallows.
+				if (h > -0.9 && h < 0.45 && outcropSpot(x, y)) {
+					outcrop(x, y, h);
+					continue;
+				}
 				if (h < -0.15) continue;
 				if (h < 0.18) {
 					// Waterline: reeds and cattails standing in the shallows (sprite look only).
@@ -384,6 +389,28 @@ class Props {
 			var a = r() * Math.PI * 2, d = r() * 0.5;
 			var sx = x + Math.cos(a) * d, sy = y + Math.sin(a) * d;
 			grass.ball(sx, sy, island.heightAt(sx, sy) + 0.01, 0.04 + r() * 0.03, pick(Palette.SHELLS), 5, 2, 0.5, r() * 3);
+		}
+	}
+
+	/** A few stretches of coast get outcrops (noise clumps, sparse). **/
+	function outcropSpot(x:Float, y:Float):Bool {
+		var n = boulderN.fbm(x * 0.07 + 51, y * 0.07 + 51, 3);
+		return n > 0.7 && r() < 0.06;
+	}
+
+	/**
+		A group of larger, chipped rocks at the waterline. Rocks in the water
+		sit on a raised base, so they break the surface while their lower part
+		stays hidden under water.
+	**/
+	function outcrop(x:Float, y:Float, h:Float) {
+		var c = pick(Palette.ROCKS);
+		for (k in 0...2 + Std.int(r() * 3)) {
+			var a = r() * Math.PI * 2, d = k == 0 ? 0 : 0.5 + r() * 0.9;
+			var rx = x + Math.cos(a) * d, ry = y + Math.sin(a) * d;
+			var gh = island.heightAt(rx, ry);
+			var size = (k == 0 ? 1.5 : 0.8) + r() * 0.9;
+			rocks.add(rx, ry, Math.max(gh, -0.3), size, salt * 31 + 500 + k, tint(Palette.shade(c, 0.85), 0.14));
 		}
 	}
 
