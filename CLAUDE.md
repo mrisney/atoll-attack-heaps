@@ -74,6 +74,31 @@ to the flag); player orders always override it.
   and the crew wades ashore one at a time and gathers inland. Click open
   water to just sail. Red's ship lands at its home beach on its own for
   now. `?autoland=1` lands blue too (automation).
+- **Combat** (`game/Rules.hx` for all numbers, `Sim.think` for the per-unit
+  AI): stats ported from the Flutter game and rescaled from pixels to metres;
+  health is 1.5x the original (skirmishes were over in seconds), and the
+  captain is sturdier (220 hp, defence 20: he's the loss condition and archers
+  sniped him every time). Pikers are new (reach 2.4 m, beat swordsmen).
+  Loose rock-paper-scissors via `Rules.advantage`. Each unit: player orders
+  win (`Move` walks ignoring enemies, then holds; `Attack` chases one enemy
+  anywhere; `AttackMove` heads somewhere fighting on the way); otherwise it
+  holds its rally point (`guardX/Y`), takes on enemies within its aggro range
+  (scored by `Rules.targetScore`), lets them go past `LEASH`, and hits back
+  when hit. Archers shoot `Arrow`s (homing projectiles, damage fixed at the
+  loose) from 18 m and step back from melee. The captain only defends
+  himself; standing within 2.5 m of the apex for 5 s uncontested he plants
+  the flag. Wins: flag, enemy captain dead, or enemy crew gone. Units think
+  in alternating order each tick (blue spawned first and always struck first).
+  **Right-click an enemy** to attack it.
+- **Computer commander** (`game/TeamAI.hx`, red): lands, attack-moves its band
+  on the apex, keeps the captain ~9 m behind, sends him up once three hold the
+  apex and no enemy is near. It only issues commands, like a player would.
+  `?blueai=1` adds one for blue (watch AI vs AI).
+- **Walking** (`world/NavGrid.hx`): straight line when it's clear of water,
+  else A* on a 1 m grid round it, corners cut by line of sight (`Sim.steer`).
+  Without it units walking into an inlet just stopped.
+- Seen at the screen edges up close, figures look stretched: that's the
+  camera's wide angle, not a scaling bug.
 - The sim advances on **wall-clock time** (Heaps' `dt` is smoothed and lags
   badly when frames are slow), capped by `Sim.maxCatchUp` (0.25 s; snapshots
   pass `?catchup=10` since software rendering takes seconds per frame).

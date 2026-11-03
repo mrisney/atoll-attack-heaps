@@ -29,9 +29,34 @@ class Unit {
 	public var hitFromX = 0.0;
 	public var hitFromY = 0.0;
 
+	/** Movement goal (the AI and orders set it; Sim moves toward it). **/
 	public var hasTarget = false;
 	public var tx = 0.0;
 	public var ty = 0.0;
+
+	// --- combat and AI (see Sim.think) ---
+	public var hp:Float;
+	/** Ticks until it can strike again. **/
+	public var cooldown = 0;
+	/** The enemy it's fighting (-1 = none). **/
+	public var targetId = -1;
+	/** The player ordered this target: chase it anywhere, don't swap. **/
+	public var forcedTarget = false;
+	/** A player move in progress: walk there, ignoring enemies, then hold. **/
+	public var ordered = false;
+	/** Where it holds when it has nothing to fight (the rally point). **/
+	public var guardX:Float;
+	public var guardY:Float;
+	/** Tick of its last strike (the view animates the swing / draw). **/
+	public var lastAttackTick = -1000;
+	/** Waypoints around water to the movement goal (x0, y0, ...), see Sim.steer. **/
+	public var path:Null<Array<Float>> = null;
+	/** The goal that path was found for, and when (tick). **/
+	public var pathGoalX = 1e9;
+	public var pathGoalY = 1e9;
+	public var pathTick = -1000;
+	/** Captain only: seconds spent raising the flag at the apex. **/
+	public var flagProgress = 0.0;
 
 	public var baseSpeed(get, never):Float;
 
@@ -41,7 +66,15 @@ class Unit {
 		this.kind = kind;
 		this.x = x;
 		this.y = y;
+		guardX = x;
+		guardY = y;
+		hp = Rules.stats(kind).hp;
 	}
+
+	public var maxHp(get, never):Float;
+
+	inline function get_maxHp()
+		return Rules.stats(kind).hp;
 
 	function get_baseSpeed():Float {
 		return switch kind {

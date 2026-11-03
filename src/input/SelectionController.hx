@@ -401,6 +401,18 @@ class SelectionController {
 		var ids = selectedIds();
 		var ship = selectedShip();
 		if (ids.length == 0 && ship == null) return;
+		// Clicking an enemy is an attack order.
+		if (ids.length > 0) {
+			var foe = pickUnit(sx, sy);
+			if (foe != null && foe.unit.team != localTeam) {
+				sim.queue(Attack(ids, foe.unit.id));
+				marker.setPosition(foe.x, foe.y, foe.z);
+				marker.setScale(1.6);
+				markerTime = 0;
+				marker.visible = true;
+				return;
+			}
+		}
 		var hit = groundAt(sx, sy);
 		if (hit == null) return;
 		// The ship sails there (or lands its crew there, if it's land).

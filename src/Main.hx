@@ -21,6 +21,8 @@ class Main extends hxd.App {
 	var islandView:IslandView;
 	var unitViews:Array<UnitView> = [];
 	var shipViews:Array<render.ShipView> = [];
+	var arrowsView:Null<render.ArrowsView>;
+	var battle:Null<ui.BattleOverlay>;
 	var rtsCam:RtsCamera;
 	var selection:SelectionController;
 	var hud:h2d.Text;
@@ -94,6 +96,7 @@ class Main extends hxd.App {
 		unitViews = [];
 		for (v in shipViews) v.remove();
 		shipViews = [];
+		if (arrowsView != null) arrowsView.remove();
 		if (selection != null) selection.dispose();
 
 		island = new Island(seed, shape);
@@ -102,12 +105,15 @@ class Main extends hxd.App {
 		applyStyle();
 		for (u in sim.units) unitViews.push(new UnitView(u, island.heightAt, s3d));
 		for (s in sim.ships) shipViews.push(new render.ShipView(s, s3d));
+		arrowsView = new render.ArrowsView(sim, s3d);
 		// A dock at each side's home beach (where its ship lies off at the start).
 		var docks = islandView.addLandings(sim.homeBeach);
 		selection = new SelectionController(sim, unitViews, s3d, s2d, rtsCam);
 		selection.ships = shipViews;
 		// Debug (?autoland=1): land the blue crew at its home beach straight away.
 		if (autoLand) sim.queue(ShipTo(sim.ships[0].id, sim.homeBeach[0].x, sim.homeBeach[0].y));
+		// Debug (?blueai=1): a computer commander for blue too, to watch AI vs AI.
+		if (blueAI) sim.teamAIs.push(new game.TeamAI(sim, 0));
 		if (controls == null) {
 			drafting = new ui.DraftingOverlay(s3d.camera, rtsCam);
 			s2d.addChildAt(drafting, 0);
@@ -116,6 +122,8 @@ class Main extends hxd.App {
 			controls.setScale(uiScale);
 			minimap = new ui.Minimap(rtsCam, s2d);
 			minimap.setScale(uiScale);
+			battle = new ui.BattleOverlay(s2d);
+			battle.ui = uiScale;
 		}
 		minimap.setIsland(island, sim.units, sim.ships);
 		drafting.setIsland(island, [
@@ -202,6 +210,7 @@ class Main extends hxd.App {
 	var startAt:Null<{x:Float, y:Float}> = null;
 	var galleryWanted = false;
 	var autoLand = false;
+	var blueAI = false;
 	var lastStamp = -1.0;
 
 	/**
@@ -229,6 +238,7 @@ class Main extends hxd.App {
 		if (q.get("figures") == "rigged") UnitView.rigged = true;
 		galleryWanted = q.has("gallery");
 		autoLand = q.has("autoland");
+		blueAI = q.has("blueai");
 		if (q.has("catchup")) Sim.maxCatchUp = Std.parseFloat(q.get("catchup"));
 		if (q.has("blades")) GrassField.defaultBlades = Std.parseInt(q.get("blades"));
 		if (q.has("depth")) GrassField.defaultDepth = Std.parseFloat(q.get("depth"));
@@ -343,13 +353,17 @@ class Main extends hxd.App {
 		sim.update(simDt);
 		#if js
 		// For automation (scripts/snapshot.mjs): where the ships are and what they're doing.
-		js.Syntax.code("window.atollSim = {0}", 'tick=${sim.tick} ' + [for (sh in sim.ships) 'ship${sh.team}:${sh.state}@${Math.round(sh.x)},${Math.round(sh.y)} crew=${sh.crew.length}'].join(" "));
+		js.Syntax.code("window.atollSim = {0}", 'tick=${sim.tick} winner=${sim.winner} ' + [for (sh in sim.ships) 'ship${sh.team}:${sh.state}@${Math.round(sh.x)},${Math.round(sh.y)} crew=${sh.crew.length}'].join(" ")
+			+ ' red:' + [for (u in sim.units) if (u.team == 1 && u.alive) '${Math.round(u.x)},${Math.round(u.y)}${u.ordered ? "o" : ""}${u.targetId >= 0 ? "t" : ""}'].join(" "));
 		#end
 		islandView.update(dt);
 		islandView.setGrassFocus(s3d.camera.target.x, s3d.camera.target.y, rtsCam.distance);
 		islandView.updateTrample(dt, [for (v in unitViews) if (v.unit.alive && v.unit.aboard < 0) {x: v.x, y: v.y}]);
+		UnitView.simTick = sim.tick;
 		for (v in unitViews) v.syncFromSim(dt);
 		for (v in shipViews) v.syncFromSim(dt);
+		arrowsView.syncFromSim();
+		battle.update(sim, unitViews, s3d.camera, s2d.width, s2d.height);
 		selection.update(dt);
 		controls.update(dt, s2d.width, s2d.height);
 		minimap.update(s2d.width, s2d.height);

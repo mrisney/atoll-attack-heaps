@@ -51,6 +51,8 @@ class UnitView extends h3d.scene.Object {
 		the character is the generated stand-in.
 	**/
 	public static var rigged = false;
+	/** The sim's current tick (Main sets it every frame), to time strike animations. **/
+	public static var simTick = 0;
 
 	var model:Null<CharacterModel> = null;
 
@@ -156,7 +158,17 @@ class UnitView extends h3d.scene.Object {
 	}
 
 	function pose() {
+		var since = (simTick - unit.lastAttackTick) * game.Sim.TICK;
 		if (model != null) {
+			// A strike: the kind's attack take, then back to walking or standing.
+			if (since < 0.6) {
+				model.play(switch unit.kind {
+					case Archer: "Shoot";
+					case Piker: "Thrust";
+					default: "Slash";
+				}, 1.6, false);
+				return;
+			}
 			// Walk while moving (playback matched to the stride), else idle.
 			if (swing > SWING * 0.3) {
 				model.play("Walk");
@@ -170,6 +182,19 @@ class UnitView extends h3d.scene.Object {
 		legR.setRotation(0, -s, 0);
 		armL.setRotation(ARM_SPREAD, -s * armLSwing, 0);
 		armR.setRotation(-ARM_SPREAD, s * armRSwing, 0);
+		// A strike: one restrained swing (or a bow raised and drawn), then back.
+		if (since < 0.4) {
+			var k = Math.sin(since / 0.4 * Math.PI);
+			switch unit.kind {
+				case Archer:
+					armL.setRotation(ARM_SPREAD, -1.45 * k, 0);
+					armR.setRotation(-ARM_SPREAD, -1.2 * k, 0);
+				case Piker:
+					armR.setRotation(-ARM_SPREAD, -0.9 * k, 0);
+				default:
+					armR.setRotation(-ARM_SPREAD, -1.5 * k, 0);
+			}
+		}
 		body.z = Math.abs(Math.sin(walkTime)) * 0.03 * (swing / SWING);
 	}
 

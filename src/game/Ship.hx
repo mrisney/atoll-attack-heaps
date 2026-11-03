@@ -50,6 +50,8 @@ class Ship {
 	/** Put the crew ashore on arrival (a landing order, not a plain sail order). **/
 	public var landOnArrival = false;
 	public var disembarkTimer = 0.0;
+	/** Ticks under way without making headway (shallows ahead): see Sim.sail. **/
+	public var stuckTicks = 0;
 
 	public function new(id:Int, team:Int, x:Float, y:Float, heading:Float) {
 		this.id = id;
