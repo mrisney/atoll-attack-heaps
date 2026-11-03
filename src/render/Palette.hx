@@ -35,11 +35,12 @@ class Palette {
 	// the owner liked), not lime.
 	// Owner's windswept-meadow reference: deep green blades, yellow-green tips, straw
 	// seed heads, over a brown thatch.
-	public static inline var GRASS_BLADE_BASE = 0x2E3A13;
-	public static inline var GRASS_BLADE_TIP = 0x7E993A;
-	public static inline var GRASS_BLADE_DRY = 0xAFA05E;
+	// Lifted for a sunny day (owner: "a bit dark, it's supposed to be a sunny day").
+	public static inline var GRASS_BLADE_BASE = 0x46581F;
+	public static inline var GRASS_BLADE_TIP = 0xA4BA50;
+	public static inline var GRASS_BLADE_DRY = 0xCBB874;
 	/** Ground under a grass field: the brown thatch you'd glimpse between blades. **/
-	public static inline var FIELD_GROUND = 0x535A29;
+	public static inline var FIELD_GROUND = 0x6F7B36;
 	/** Multiplies the dirt/sand blend on worn tracks: pale, dusty khaki. **/
 	/** Rigged characters (CharacterModel): weapon wood and iron. **/
 	public static inline var CHAR_WOOD = 0x8A6A4C;

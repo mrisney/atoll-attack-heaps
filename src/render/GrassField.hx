@@ -338,7 +338,7 @@ class GrassShader extends hxsl.Shader {
 			var diffuse = abs(dot(n, sunDir));
 			var light = 0.66 + 0.4 * diffuse;
 			var low = 1.0 - h;
-			light -= low * low * 0.42;
+			light -= low * low * 0.3;
 			var view = normalize(camera.position - p);
 			var sheen = pow(max(dot(normalize(sunDir + view), n) * sign(dot(n, view)), 0.0), 6.0) * 0.16 * h;
 			var col = mix(baseColor, tipColor, h * 0.85 + 0.15 * tone);

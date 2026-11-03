@@ -211,7 +211,8 @@ URL params on the web build make runs reproducible:
   spots still read as grass. **Windswept** (owner's reference screenshot: "windswept,
   finer, closer together"): fine blades (1.3–2.5 cm wide, 30–70 cm long, 4
   segments), all laid over downwind by a constant `sweep` plus gusts, deep
-  green with yellow-green tips, about one in five with a straw seed head,
+  green with yellow-green tips (lifted for a sunny day: owner found it "a bit
+  dark"), about one in five with a straw seed head,
   over a brownish-olive thatch (`FIELD_GROUND`). Each blade **wraps** on a fixed world grid to the copy nearest
   the camera's look-at (`IslandView.setGrassFocus`, every frame), so blades
   never slide when panning. The vertex shader sets blades on the ground
