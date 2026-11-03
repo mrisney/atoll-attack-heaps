@@ -56,6 +56,11 @@ URL params on the web build make runs reproducible:
 
 ## Art direction (decided — keep consistent)
 
+**Signed off (Nov 2026):** the owner called the scenes (terrain, grass, water,
+trees, rocks, weather, all three styles) "acceptable... they look really
+good". Treat the current look as the baseline: change it only when asked,
+and check new work against it.
+
 - Three visual styles, cycled with **T** (Painted → Ink map → Sketch).
   **Painted is the default**: the owner judged it "the best looking one,
   most natural" once it had the FFT ocean, froth, palms and 3D rocks. Sketch
