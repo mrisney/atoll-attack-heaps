@@ -134,25 +134,37 @@ URL params on the web build make runs reproducible:
   leaf texture painted in code and alpha-cut (leafy silhouettes and
   shadows). There's no palm art in WildCurrent; if the owner supplies some,
   it could replace the frond texture.
-- **Grass fields** (`render/GrassField.hx`): the owner pointed at
-  github.com/spacejack/terra ("looks much better on the demo"). Terra is
-  **CC BY-NC** (non-commercial) except a few MIT files, so **don't copy its
-  code**: GrassField is our own version of the same idea. **One shared dense
-  patch** (10 m, about 68 fine blades/m², 2.5–4.5 cm wide; owner wanted it "finer and closer together") is drawn on every 10 m tile that has
-  field. The vertex shader puts blades on the ground from an R32F height
-  grid (bilinear by hand, matching `Island.heightAt`) and scales them by a
-  field map (R field, G clump, B dryness), so the repeating patch never
-  shows. Blades are olive, lit as translucent, bent by rolling gusts, drawn
-  in the alpha pass, and receive but don't cast shadows. `TerrainStyle`
-  tints the ground under fields to the blade colour (`fieldMask`), so gaps
-  read as grass. Visible blades are about 200k at normal zoom on desktop;
-  that's the first thing to cut for phones (`DENSITY`).
+- **Grass fields** (`render/GrassField.hx`): modelled on github.com/spacejack/terra,
+  which the owner liked. Terra is **CC BY-NC** (non-commercial) except a few
+  MIT files, so **don't copy its code**. The owner asked for terra's settings:
+  **blades 85k–100k, depth 85, antialiasing on**. So grass is a **fixed
+  budget around the view centre**, not grass everywhere: `blades` (default
+  100000, `?blades=`) and `depth` in metres (default 85, `?depth=`). It's
+  split into two layers: NEAR, 80% of the blades in a dense patch of radius
+  `depth*0.24` (~50 blades/m²), and FAR, the rest out to `depth`, wider and
+  sparser. Each blade **wraps** on a fixed world grid to the copy nearest
+  the camera's look-at (`IslandView.setGrassFocus`, every frame), so blades
+  never slide when panning. The vertex shader sets blades on the ground
+  from an R32F height grid (bilinear by hand, matching `Island.heightAt`)
+  and scales them by a field map (R field, G clump, B dryness). Blades are
+  olive, translucent-lit, bent by gusts, drawn in the alpha pass, and
+  receive but don't cast shadows. `TerrainStyle` tints the ground under
+  fields olive (`fieldMask`), which carries the look beyond `depth`.
+  **Heaps doesn't frustum-cull meshes without a `cullingCollider`**, which
+  is another reason the budget is fixed. For phones, lower `blades`.
+- **Antialiasing**: `h3d.Engine.ANTIALIASING = 4` (MSAA on the screen) in
+  `Main.main`. MSAA doesn't apply when the scene renders offscreen
+  (tilt-shift in Painted), so `InkRenderer` runs FXAA on that frame
+  (`fxaa`, `?aa=0` turns it off).
 - **The island is pastoral** (owner: "more uninterrupted fields, with some
   tree lines, more campus, pastoral like"): open lowland and upland are
   fields. Trees grow in winding **tree lines** (`Props.treeLineAt`, a noise
   isoline broken into runs), small **copses** (densest forest noise only),
   and rare lone parkland trees. Grass climbs high, and rock texture only
-  shows near the summit. **Rocks are rare** everywhere.
+  shows near the summit. **Rocks:** a rocky high point (outcrops and scree
+  on the summit band) and only a few scattered in the meadows. Owner: "meadows
+  of grass blades, windswept, where there are not trees, with some small
+  amount of rocks, rocky area at the high point".
 - **Boulders are sparse** (the owner asked for fewer random boulders), so keep
   the `rockCluster` rates in `Props` low.
 - **Ocean waves** (`render/OceanWaves.hx`): the owner pointed at

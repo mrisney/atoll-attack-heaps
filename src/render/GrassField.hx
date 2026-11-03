@@ -4,68 +4,86 @@ import h3d.col.Point;
 import h3d.prim.UV;
 
 /**
-	Fields of wind-blown grass, dense enough to read as a carpet.
+	Fields of wind-blown grass, terra-style: a fixed budget of blades drawn
+	around where the camera is looking.
 
-	The approach follows spacejack/terra (after "poaceae"), as our own code:
-	Terra is CC BY-NC as a whole, so nothing is copied from it.
+	Same model as spacejack/terra (whose BLADES / DEPTH settings the owner
+	asked for: 85k-100k blades, depth 85), as our own code. Terra is CC BY-NC
+	as a whole, so nothing is copied from it.
 
-	- **One shared patch** of TILE×TILE metres holds thousands of blades, each a
-	  tapered strip of BLADE_SEGS segments with its own heading, width, height,
-	  lean, curve and a random tone. The same geometry is drawn at every tile
-	  that has field in it (one Mesh per tile sharing one primitive), so density
-	  costs GPU time only where you're looking, and almost no memory.
-	- The vertex shader puts each blade on the ground by reading the island's
-	  height grid (R32F, bilinear done by hand so it matches `Island.heightAt`
-	  exactly). It reads a field map (R = how much field grows, G = clumpiness,
-	  B = dryness) and scales blades down to nothing at field edges and in
-	  forest. That way the repeating patch never shows: heights and colours
-	  come from the world, not the patch.
-	- Wind: rolling gusts sweep downwind and bend blades more toward the tips,
-	  plus a per-blade flutter.
-	- Lighting: translucent (lit from either side), darker toward the root,
-	  a soft sheen toward the sun, and lengthwise streaks across each blade.
-	  The ground under fields is tinted to the blade colour (TerrainStyle), so
-	  any gaps read as grass, not as bare painted ground.
+	- **A fixed budget** (`blades`, default 100k) instead of grass everywhere.
+	  Cost is the same wherever you look, and it's the one knob for phones.
+	- **Two layers** sharing the budget. NEAR: 80% of the blades in a dense
+	  square patch around the view centre (radius `depth * 0.24`, so ~20 m and
+	  ~50 blades/m² at the defaults). FAR: the rest, spread out to `depth`
+	  metres, wider and sparser, cross-fading in where NEAR fades out. Beyond
+	  that the olive ground under fields (TerrainStyle) carries the look, as in
+	  the demo.
+	- **Wrapping, not following:** each blade lives on a fixed world grid
+	  (its patch offset + k × patch size) and is placed on the copy nearest the
+	  view centre. Blades never slide when you pan; they appear and disappear
+	  at the far edge, where they're faded out.
+	- The vertex shader sets each blade on the ground from the island's height
+	  grid (R32F, bilinear by hand, matching `Island.heightAt`). A field map
+	  (R = field, G = clump, B = dryness) scales blades to nothing outside
+	  meadows. Heights and colours come from the world, not the patch.
+	- Wind: rolling gusts sweep downwind, bending blades more toward the tips,
+	  plus a per-blade flutter. Lighting: translucent (lit from either side),
+	  darker toward the root, a soft sheen, lengthwise streaks.
 	- Alpha pass (still opaque) keeps the ink pass from outlining blades. They
-	  receive shadows but don't cast them.
+	  receive shadows but don't cast them. Heaps doesn't frustum-cull meshes
+	  without a collider, so a fixed budget is also what keeps this bounded.
 **/
 class GrassField {
 	public static inline var BLADE_SEGS = 3;
-	public static inline var TILE = 10.0;
-	/** Blades per square metre at full field strength. **/
-	public static inline var DENSITY = 68.0; // owner: "finer and closer together"; 6.8k blades per tile (<65k verts)
 	public static inline var MASK_RES = 256;
+	/** Blades per mesh (8 vertices each, under the 16-bit index limit). **/
+	static inline var CHUNK = 8000;
 
-	public var bladesPerTile(default, null) = 0;
-	public var tileCount(default, null) = 0;
+	/** Total blades drawn (terra's BLADES). **/
+	public final blades:Int;
+	/** How far from the view centre grass is drawn, in metres (terra's DEPTH). **/
+	public final depth:Float;
 	/** Field weight map (R field, G clump, B dryness), linear, for the terrain tint too. **/
 	public var mask(default, null):h3d.mat.Texture;
+	/** One shader per layer; `setFocus` moves both. **/
+	public final layers:Array<GrassShader> = [];
 
 	final island:world.Island;
 
-	public function new(island:world.Island) {
+	/** Defaults for new islands; Main sets these from `?blades=` and `?depth=`. **/
+	public static var defaultBlades = 100000;
+	public static var defaultDepth = 85.0;
+
+	public function new(island:world.Island, ?blades:Int, ?depth:Float) {
+		if (blades == null) blades = defaultBlades;
+		if (depth == null) depth = defaultDepth;
 		this.island = island;
+		this.blades = blades;
+		this.depth = depth;
+	}
+
+	/** Centre the grass on this world point (the camera's look-at), every frame. **/
+	public function setFocus(x:Float, y:Float) {
+		for (l in layers) l.focus.set(x, y);
 	}
 
 	/**
 		Build the fields. `weight(x, y)` says how much field grows at a world
 		point (0..1). Called once per island.
 	**/
-	public function build(parent:h3d.scene.Object, weight:(Float, Float) -> Float):GrassShader {
+	public function build(parent:h3d.scene.Object, weight:(Float, Float) -> Float) {
 		var he = island.halfExtent;
 		var span = he * 2;
 
 		// --- field map ---------------------------------------------------------
 		var clumpN = new world.Noise(island.seed + 606), dryN = new world.Noise(island.seed + 707);
 		var px = hxd.Pixels.alloc(MASK_RES, MASK_RES, RGBA);
-		var wts = new Array<Float>();
-		wts.resize(MASK_RES * MASK_RES);
 		inline function c8(v:Float) return Std.int(Math.max(0, Math.min(1, v)) * 255 + 0.5);
 		for (j in 0...MASK_RES)
 			for (i in 0...MASK_RES) {
 				var x = (i + 0.5) / MASK_RES * span - he, y = (j + 0.5) / MASK_RES * span - he;
 				var w = weight(x, y);
-				wts[j * MASK_RES + i] = w;
 				var clump = clumpN.fbm(x * 0.45 + 3, y * 0.45 + 3, 2);
 				var dry = dryN.fbm(x * 0.09 + 5, y * 0.09 + 5, 3);
 				px.setPixel(i, j, 0xFF000000 | (c8(w) << 16) | (c8(clump) << 8) | c8(dry));
@@ -85,61 +103,57 @@ class GrassField {
 		heightTex.filter = Nearest;
 		heightTex.wrap = Clamp;
 
-		// --- the shared patch ----------------------------------------------------
-		var patch = buildPatch();
+		// --- the two layers --------------------------------------------------------
+		var nearR = depth * 0.24;
+		var nearCount = Std.int(blades * 0.8);
+		addLayer(parent, nearCount, nearR * 2, 1.0, -2, -1, nearR * 0.75, nearR, 101, heightTex, he, span);
+		addLayer(parent, blades - nearCount, depth * 2, 2.6, nearR * 0.7, nearR, depth * 0.8, depth, 202, heightTex, he, span);
+	}
 
+	function addLayer(parent:h3d.scene.Object, count:Int, size:Float, widthScale:Float, inA:Float, inB:Float, outA:Float, outB:Float,
+			seed:Int, heightTex:h3d.mat.Texture, he:Float, span:Float) {
 		var sh = new GrassShader();
 		sh.mask = mask;
 		sh.heights = heightTex;
 		sh.gridOrigin.set(-he, -he);
 		sh.cell = island.cell;
-		sh.gridSize = w;
+		sh.gridSize = island.size + 1;
 		sh.maskOrigin.set(-he, -he);
 		sh.maskSize = span;
-
-		// --- a mesh per tile that has any field in it ---------------------------
-		var tiles = Std.int(Math.ceil(span / TILE));
-		for (tj in 0...tiles)
-			for (ti in 0...tiles) {
-				var x0 = -he + ti * TILE, y0 = -he + tj * TILE;
-				// Any field in this tile? (check the map over its area, with a margin)
-				var any = false;
-				var i0 = Std.int((x0 + he) / span * MASK_RES) - 1, i1 = Std.int((x0 + TILE + he) / span * MASK_RES) + 1;
-				var j0 = Std.int((y0 + he) / span * MASK_RES) - 1, j1 = Std.int((y0 + TILE + he) / span * MASK_RES) + 1;
-				for (j in Std.int(Math.max(0, j0))...Std.int(Math.min(MASK_RES, j1)))
-					for (i in Std.int(Math.max(0, i0))...Std.int(Math.min(MASK_RES, i1)))
-						if (wts[j * MASK_RES + i] > 0.02) any = true;
-				if (!any) continue;
-				var m = new h3d.scene.Mesh(patch, parent);
-				m.x = x0;
-				m.y = y0;
-				var mat = m.material;
-				mat.mainPass.enableLights = false;
-				mat.mainPass.culling = None;
-				mat.mainPass.addShader(new render.ink.GeoOut());
-				mat.mainPass.addShader(sh);
-				// Alpha pass (opaque, depth-written) keeps the blades out of the ink outlines.
-				mat.blendMode = Alpha;
-				FlatMeshBuilder.shadows(mat, false, true);
-				tileCount++;
-			}
-		return sh;
+		sh.patchSize = size;
+		sh.widthScale = widthScale;
+		sh.fadeIn.set(inA, inB);
+		sh.fadeOut.set(outA, outB);
+		layers.push(sh);
+		var rnd = new world.Noise(4711 + seed);
+		var k = 0;
+		var left = count;
+		while (left > 0) {
+			var n = left < CHUNK ? left : CHUNK;
+			left -= n;
+			var m = new h3d.scene.Mesh(buildPatch(n, size, () -> rnd.rand(k++, 17)), parent);
+			var mat = m.material;
+			mat.mainPass.enableLights = false;
+			mat.mainPass.culling = None;
+			mat.mainPass.addShader(new render.ink.GeoOut());
+			mat.mainPass.addShader(sh);
+			// Alpha pass (opaque, depth-written) keeps the blades out of the ink outlines.
+			mat.blendMode = Alpha;
+			FlatMeshBuilder.shadows(mat, false, true);
+		}
 	}
 
 	/**
-		TILE×TILE metres of blades in tile-local coordinates. Per-blade data rides
-		in the standard channels: position = root (local), uv = (edge, height
-		fraction), normal = (heading, width, height), colour = (lean, curve, tone).
+		`n` blades scattered over a `size`-metre square (patch-local). Per-blade
+		data rides in the standard channels: position = offset in the patch,
+		uv = (edge, height fraction), normal = (heading, width, height),
+		colour = (lean, curve, tone).
 	**/
-	function buildPatch():h3d.prim.Polygon {
+	static function buildPatch(n:Int, size:Float, r:() -> Float):h3d.prim.Polygon {
 		var pts:Array<Point> = [], nrm:Array<Point> = [], col:Array<Point> = [], uvs:Array<UV> = [];
 		var idx = new hxd.IndexBuffer();
-		var n = Std.int(TILE * TILE * DENSITY);
-		var rnd = new world.Noise(4711);
-		var k = 0;
-		inline function r():Float return rnd.rand(k++, 17);
 		for (b in 0...n) {
-			var root = new Point(r() * TILE, r() * TILE, 0);
+			var root = new Point(r() * size, r() * size, 0);
 			var nm = new Point(r() * Math.PI * 2, 0.025 + r() * 0.02, 0.24 + r() * 0.26);
 			var cl = new Point((r() - 0.5) * 0.45, 0.2 + r() * 0.45, r());
 			var base = pts.length;
@@ -155,17 +169,6 @@ class GrassField {
 				for (q in [a, a + 1, a + 3, a, a + 3, a + 2]) idx.push(q);
 			}
 		}
-		// A zero-area triangle spanning heights -10..14 m, so the patch's bounds
-		// cover any ground height (the shader sets the real z) and culling stays correct.
-		var base = pts.length;
-		for (z in [-10.0, 14.0, 14.0]) {
-			pts.push(new Point(TILE * 0.5, TILE * 0.5, z));
-			nrm.push(new Point(0, 0, 0));
-			col.push(new Point(0, 0, 0));
-			uvs.push(new UV(0, 0));
-		}
-		for (q in [base, base + 1, base + 2]) idx.push(q);
-		bladesPerTile = n;
 		var p = new h3d.prim.Polygon(pts, idx);
 		p.normals = nrm;
 		p.colors = col;
@@ -197,6 +200,13 @@ class GrassShader extends hxsl.Shader {
 		@param var mask:Sampler2D;
 		@param var maskOrigin:Vec2;
 		@param var maskSize:Float;
+		/** View centre the grass wraps around, and this layer's patch size. **/
+		@param var focus:Vec2;
+		@param var patchSize:Float;
+		@param var widthScale:Float;
+		/** Distance from the focus where the layer fades in (x..y) and out (x..y). **/
+		@param var fadeIn:Vec2;
+		@param var fadeOut:Vec2;
 
 		/** Toward the sun. **/
 		@param var sunDir:Vec3;
@@ -231,7 +241,10 @@ class GrassShader extends hxsl.Shader {
 		}
 
 		function vertex() {
-			var root = (input.position * global.modelView.mat3x4()).xy;
+			// Wrap this blade onto the copy of the patch grid nearest the view centre.
+			var off = input.position.xy;
+			var root = off + floor((focus - off) / patchSize) * patchSize + patchSize * 0.5;
+			var dist = length(root - focus);
 			var edge = input.uv.x;
 			var h = input.uv.y;
 			var heading = input.normal.x;
@@ -244,9 +257,10 @@ class GrassShader extends hxsl.Shader {
 
 			// How much field grows here, clumpiness and dryness: from the world, not the patch.
 			var m = mask.getLod((root - maskOrigin) / maskSize, 0.0);
-			var grow = smoothstep(0.02, 0.5, m.r);
+			var grow = smoothstep(0.02, 0.5, m.r) * smoothstep(fadeIn.x, fadeIn.y, dist) * (1.0 - smoothstep(fadeOut.x, fadeOut.y, dist));
 			height *= grow * (0.55 + 0.9 * m.g);
-			width *= 0.4 + 0.6 * grow;
+			width *= (0.4 + 0.6 * grow) * widthScale;
+			height *= step(0.001, grow);
 			var dry = clamp(m.b * 1.6 - 0.55 + (tone - 0.5) * 0.5, 0.0, 1.0);
 
 			// Gusts: crossing waves rolling downwind, so the field ripples in bands.

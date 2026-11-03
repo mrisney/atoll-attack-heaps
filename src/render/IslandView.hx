@@ -208,6 +208,11 @@ class IslandView extends h3d.scene.Object {
 
 	public function update(dt:Float) {}
 
+	/** Keep the grass centred where the camera looks (call every frame). **/
+	public function setGrassFocus(x:Float, y:Float) {
+		if (props != null && props.grass != null) props.grass.setFocus(x, y);
+	}
+
 	/**
 		A wooden dock at each landing beach, pointing from the beach out to sea.
 		`points` are on land near the shore (the squads' spawn spots).

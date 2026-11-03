@@ -6,6 +6,7 @@ import render.IslandView.VisualStyle;
 import world.Island.IslandShape;
 import render.Palette;
 import render.UnitView;
+import render.GrassField;
 import world.Island;
 
 /**
@@ -190,6 +191,10 @@ class Main extends hxd.App {
 		if (q.get("props") == "sprites") spriteProps = true;
 		if (q.get("props") == "lowpoly") spriteProps = false;
 		if (q.has("dist")) startDistance = Std.parseFloat(q.get("dist"));
+		// Grass budget, like terra's BLADES / DEPTH settings.
+		if (q.has("blades")) GrassField.defaultBlades = Std.parseInt(q.get("blades"));
+		if (q.has("depth")) GrassField.defaultDepth = Std.parseFloat(q.get("depth"));
+		if (q.get("aa") == "0") inkRenderer.fxaa = false;
 		if (q.has("at")) {
 			var a = q.get("at").split(",");
 			if (a.length == 2) startAt = {x: Std.parseFloat(a[0]), y: Std.parseFloat(a[1])};
@@ -236,6 +241,7 @@ class Main extends hxd.App {
 		rtsCam.update(dt, selection.mouseX, selection.mouseY, s2d.width, s2d.height);
 		sim.update(dt);
 		islandView.update(dt);
+		islandView.setGrassFocus(s3d.camera.target.x, s3d.camera.target.y);
 		for (v in unitViews) v.syncFromSim(dt);
 		selection.update(dt);
 		controls.update(dt, s2d.width, s2d.height);
@@ -244,6 +250,9 @@ class Main extends hxd.App {
 	}
 
 	static function main() {
+		// 4x MSAA on the screen (applies when nothing renders offscreen; the
+		// renderer adds FXAA when tilt-shift does).
+		h3d.Engine.ANTIALIASING = 4;
 		new Main();
 	}
 }

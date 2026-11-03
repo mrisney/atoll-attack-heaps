@@ -34,6 +34,8 @@ typedef PropGroups = {
 	var sprites:h3d.scene.Object;
 	/** Grass field map (R field, G clump, B dryness) for tinting the ground under fields. **/
 	var fieldMask:Null<h3d.mat.Texture>;
+	/** The grass (call setFocus each frame with the camera's look-at). **/
+	var grass:Null<GrassField>;
 }
 
 class Props {
@@ -157,14 +159,17 @@ class Props {
 						// Open field: the blades come from GrassField. Now and then a lone tree,
 						// like parkland, and a few flowers.
 						if (roll < 0.004) broadleaf(x, y, z);
+						else if (roll < 0.006) stones(x, y, z, 1);
+						else if (roll < 0.0075) rockCluster(x, y, z, 1);
 						else if (roll < 0.06) flowers(x, y, z);
 					} else if (meadow > 0.48 && roll < 0.5) grassTuft(x, y, z);
 				} else {
 					// Peak
 					// Sparse: a few boulder groups and loose stones (the owner found them too many).
-					if (roll < 0.008) rockCluster(x, y, z, 1 + Std.int(r() * 2));
-					else if (roll < 0.02) stones(x, y, z, 2);
-					else if (roll < 0.04) snag(x, y, z);
+					// The rocky high point: outcrops and scree around the summit.
+					if (roll < 0.05) rockCluster(x, y, z, 1 + Std.int(r() * 3));
+					else if (roll < 0.14) stones(x, y, z, 2);
+					else if (roll < 0.16) snag(x, y, z);
 				}
 			}
 
@@ -184,10 +189,10 @@ class Props {
 		fields = new GrassField(island);
 		fields.build(parent, fieldAt);
 		#if js
-		js.Syntax.code("window.grassBlades = {0}", fields.tileCount * fields.bladesPerTile);
+		js.Syntax.code("window.grassBlades = {0}", fields.blades);
 		#end
 		palms.build(parent);
-		return {lowPoly: lowPoly, sprites: sprites, fieldMask: fields.mask};
+		return {lowPoly: lowPoly, sprites: sprites, fieldMask: fields.mask, grass: fields};
 	}
 
 	inline function pickName(list:Array<String>):String

@@ -21,6 +21,13 @@ class InkRenderer extends h3d.scene.fwd.Renderer {
 	public var paperFade = 0.0;
 	/** Ink line strength (the Sketch style draws lighter, finer lines). **/
 	public var inkStrength = 0.85;
+	/**
+		FXAA on the offscreen frame. The browser's MSAA only applies to the
+		screen, so when tilt-shift renders the scene to a texture first, thin
+		things (grass blades) would alias without this.
+	**/
+	public var fxaa = true;
+	final fxaaPass = new h3d.pass.FXAA();
 
 	var geoPass:h3d.pass.Output;
 	var inkFx:h3d.pass.ScreenFx<InkEdge>;
@@ -82,6 +89,13 @@ class InkRenderer extends h3d.scene.fwd.Renderer {
 
 		if (frame != null) {
 			ctx.engine.popTarget();
+			if (fxaa) {
+				var aa = allocTarget("aa", false);
+				ctx.engine.pushTarget(aa);
+				fxaaPass.apply(frame);
+				ctx.engine.popTarget();
+				frame = aa;
+			}
 			tiltFx.shader.frame = frame;
 			tiltFx.shader.texel.set(1 / frame.width, 1 / frame.height);
 			tiltFx.render();
