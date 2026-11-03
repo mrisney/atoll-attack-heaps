@@ -53,8 +53,21 @@ class TeamAI {
 		var holding = 0, enemyNear = false;
 		for (u in soldiers)
 			if (near(u.x, u.y, ax, ay, 10)) holding++;
+		// Clear out to arrow range: captains sent up while archers lurked at 15-18 m
+		// were shot every time.
+		var clear = Rules.stats(Archer).reach + 3;
 		for (u in sim.units)
-			if (u.team != team && u.alive && u.aboard < 0 && near(u.x, u.y, ax, ay, 10)) enemyNear = true;
+			if (u.team != team && u.alive && u.aboard < 0 && near(u.x, u.y, ax, ay, u.kind == Archer ? clear : 10)) enemyNear = true;
+		// Sent up but under fire and hurt: call him back behind the band.
+		if (captainSent && captain.hp < captain.maxHp * 0.6) {
+			var shot = false;
+			for (u in sim.units)
+				if (u.alive && u.team != team && u.targetId == captain.id) shot = true;
+			if (shot) {
+				captainSent = false;
+				sim.queue(Stop([captain.id]));
+			}
+		}
 		if (!captainSent && ((holding >= 3 && !enemyNear) || soldiers.length == 0)) {
 			captainSent = true;
 			sim.queue(Move([captain.id], ax, ay));

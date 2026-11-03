@@ -75,13 +75,16 @@ class Sim {
 		d = Math.min(d + 4, limit - r0);
 		var ship = new Ship(nextId++, team, beach.x + dx * d, beach.y + dy * d, angle + Math.PI);
 		ships.push(ship);
+		var captainId = -1;
 		for (kind in CREW) {
 			var u = new Unit(nextId++, team, kind, ship.x, ship.y);
 			u.aboard = ship.id;
 			u.z = 0;
 			units.push(u);
-			ship.crew.push(u.id);
+			if (kind == Captain && Directives.current.captainLandsLast) captainId = u.id else ship.crew.push(u.id);
 		}
+		// The captain comes ashore last, once his band holds the beach.
+		if (captainId >= 0) ship.crew.push(captainId);
 	}
 
 	public function getShip(id:Int):Null<Ship> {
@@ -313,7 +316,14 @@ class Sim {
 			u.guardY = u.y;
 		}
 		var s = Rules.stats(u.kind);
+		if (u.kind == Captain && evade(u)) return;
 		var t = u.targetId >= 0 ? getUnit(u.targetId) : null;
+		// First duty: protect the captain. An enemy near him outranks whatever else this
+		// unit was doing (only a player's attack order comes first).
+		if (u.kind != Captain && !u.forcedTarget) {
+			var threat = captainThreat(u);
+			if (threat != null) t = threat;
+		}
 		if (t != null && (!t.alive || t.aboard >= 0 || (!u.forcedTarget && dist(u, t) > Rules.LEASH))) {
 			t = null;
 			u.forcedTarget = false;
@@ -374,6 +384,7 @@ class Sim {
 	function hurt(t:Unit, amount:Float, from:Unit) {
 		if (!t.alive) return;
 		t.hp -= amount;
+		t.lastHitBy = from.id;
 		if (t.hp <= 0) {
 			kill(t, from.x, from.y);
 			return;
@@ -420,6 +431,88 @@ class Sim {
 			}
 		}
 		return best;
+	}
+
+	/** Each team's captain, alive and ashore (cached per tick). **/
+	var captainCache:Array<Null<Unit>> = [null, null];
+	var captainCacheTick = -1;
+
+	function captainOf(team:Int):Null<Unit> {
+		if (captainCacheTick != tick) {
+			captainCacheTick = tick;
+			captainCache = [null, null];
+			for (c in units)
+				if (c.kind == Captain && c.alive && c.aboard < 0) captainCache[c.team] = c;
+		}
+		return captainCache[team];
+	}
+
+	/**
+		Bodyguard duty: the enemy closest to this unit's captain, if one is within
+		the threat radius and this unit is close enough to answer the call
+		(directives.json, "bodyguard").
+	**/
+	function captainThreat(u:Unit):Null<Unit> {
+		var cap = captainOf(u.team);
+		if (cap == null) return null;
+		var d = Directives.current;
+		if (dist(u, cap) > d.guardCallRange) return null;
+		var best:Null<Unit> = null;
+		var bd = 1e9;
+		for (e in units) {
+			if (!e.alive || e.aboard >= 0 || e.team == u.team) continue;
+			var de = dist(e, cap);
+			// Close to him, or aiming at him from range (archers sniped captains every
+			// time when only nearby enemies counted).
+			var aiming = e.targetId == cap.id && de < d.guardCallRange;
+			if ((de < d.guardThreatRadius || aiming) && de < bd) {
+				bd = de;
+				best = e;
+			}
+		}
+		return best;
+	}
+
+	/**
+		The captain steps back toward his own band when an enemy fighter gets
+		close, unless the player (or the commander) sent him somewhere. Returns
+		true if he's stepping away this tick.
+	**/
+	function evade(u:Unit):Bool {
+		var threat = nearestEnemy(u, Directives.current.captainEvade, false);
+		// Under fire: an archer aiming at him. Pull back behind the band, out of range.
+		if (threat == null && Directives.current.captainTakesCover)
+			for (e in units)
+				if (e.alive && e.aboard < 0 && e.team != u.team && e.targetId == u.id && e.kind == Archer) {
+					threat = e;
+					break;
+				}
+		if (threat == null) return false;
+		// Toward the middle of his own band, away from the threat.
+		var cx = 0.0, cy = 0.0, n = 0;
+		for (f in units)
+			if (f.team == u.team && f.alive && f.aboard < 0 && f != u) {
+				cx += f.x;
+				cy += f.y;
+				n++;
+			}
+		var ax = u.x - threat.x, ay = u.y - threat.y;
+		var al = Math.max(Math.sqrt(ax * ax + ay * ay), 0.01);
+		var mx = ax / al, my = ay / al;
+		if (n > 0) {
+			var bx = cx / n - u.x, by = cy / n - u.y;
+			var bl = Math.max(Math.sqrt(bx * bx + by * by), 0.01);
+			mx += bx / bl;
+			my += by / bl;
+		}
+		var ml = Math.max(Math.sqrt(mx * mx + my * my), 0.01);
+		var ex = u.x + mx / ml * 3, ey = u.y + my / ml * 3;
+		if (!island.isWalkable(ex, ey)) return false;
+		u.tx = ex;
+		u.ty = ey;
+		u.hasTarget = true;
+		u.targetId = -1;
+		return true;
 	}
 
 	/** Captain at the apex, standing still: the flag goes up, unless an enemy is near. **/
@@ -689,6 +782,14 @@ class Sim {
 		var g = formationOffset(k, 1.25);
 		u.tx = s.inlandX + g.x;
 		u.ty = s.inlandY + g.y;
+		if (u.kind == Captain) {
+			// At the back of the band: between its rally point and the shore.
+			var bx = s.shoreX - s.inlandX, by = s.shoreY - s.inlandY;
+			var bl = Math.max(Math.sqrt(bx * bx + by * by), 0.01);
+			var back = Math.min(Directives.current.captainStandBack, bl * 0.8);
+			u.tx = s.inlandX + bx / bl * back;
+			u.ty = s.inlandY + by / bl * back;
+		}
 		u.hasTarget = true;
 		// Their rally point is where they gather inland.
 		u.guardX = u.tx;

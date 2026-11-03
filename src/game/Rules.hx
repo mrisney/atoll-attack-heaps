@@ -5,6 +5,7 @@ import game.Unit.UnitKind;
 /**
 	Unit stats and combat numbers, in one place so balance is easy to tune.
 
+	The numbers themselves live in res/data/directives.json (game/Directives).
 	Ported from the Flutter game's rules (lib/rules/combat_rules.dart,
 	lib/models/unit_model.dart, lib/constants/game_config.dart) and rescaled
 	from its pixels to metres (about 0.3 m per pixel): archers reach ~18 m,
@@ -29,46 +30,28 @@ typedef UnitStats = {
 }
 
 class Rules {
-	public static inline var ARCHER_RANGE = 18.0;
-	/** Archers step back when melee enemies come this close (m). **/
-	public static inline var ARCHER_KITE = 4.5;
-	/** Arrow speed (m/s): arrows are projectiles, so a fast target can outrun one. **/
-	public static inline var ARROW_SPEED = 24.0;
-	/** Captains raise the flag standing within this distance of the apex (m)... **/
-	public static inline var FLAG_RANGE = 2.5;
-	/** ...for this long (s)... **/
-	public static inline var FLAG_TIME = 5.0;
-	/** ...unless an enemy is this close to the apex (it pauses). **/
-	public static inline var FLAG_CONTEST = 6.0;
-	/** A unit gives up a chase when its target gets this far away (m). **/
-	public static inline var LEASH = 16.0;
+	// All numbers come from res/data/directives.json (game/Directives.hx).
+	public static var ARCHER_KITE(get, never):Float;
+	public static var ARROW_SPEED(get, never):Float;
+	public static var FLAG_RANGE(get, never):Float;
+	public static var FLAG_TIME(get, never):Float;
+	public static var FLAG_CONTEST(get, never):Float;
+	public static var LEASH(get, never):Float;
 
-	public static function stats(kind:UnitKind):UnitStats {
-		return switch kind {
-			// Health is 1.5x the Flutter game's: at its numbers a skirmish was over in seconds,
-			// too fast to manoeuvre a small band.
-			// The captain is sturdier: losing him loses the game, and in early tests archers
-			// sniped him within half a minute every time.
-			case Captain: {hp: 220, damage: 12, cooldown: 0.8, reach: 1.3, defense: 20, aggro: 2.5};
-			case Swordsman: {hp: 180, damage: 20, cooldown: 0.8, reach: 1.4, defense: 15, aggro: 8};
-			case Piker: {hp: 165, damage: 17, cooldown: 1.0, reach: 2.4, defense: 10, aggro: 8};
-			case Archer: {hp: 150, damage: 15, cooldown: 1.0, reach: ARCHER_RANGE, defense: 5, aggro: ARCHER_RANGE};
-		}
-	}
+	static inline function get_ARCHER_KITE() return Directives.current.archerKite;
+	static inline function get_ARROW_SPEED() return Directives.current.arrowSpeed;
+	static inline function get_FLAG_RANGE() return Directives.current.flagRange;
+	static inline function get_FLAG_TIME() return Directives.current.flagTime;
+	static inline function get_FLAG_CONTEST() return Directives.current.flagContest;
+	static inline function get_LEASH() return Directives.current.leash;
 
-	/** Type advantage: attacker vs defender. **/
+	public static inline function stats(kind:UnitKind):UnitStats
+		return Directives.current.stats.get(Directives.key(kind));
+
+	/** Type advantage: attacker vs defender (1.0 unless the directives say otherwise). **/
 	public static function advantage(a:UnitKind, d:UnitKind):Float {
-		return switch [a, d] {
-			case [Swordsman, Archer]: 1.3;
-			case [Swordsman, Captain]: 0.9;
-			case [Swordsman, Piker]: 0.85;
-			case [Piker, Swordsman]: 1.25;
-			case [Archer, Captain]: 1.2;
-			case [Archer, Piker]: 1.15;
-			case [Archer, Swordsman]: 0.8; // shields
-			case [Captain, Swordsman]: 1.1;
-			default: 1.0;
-		}
+		var v = Directives.current.advantage.get(Directives.key(a) + ">" + Directives.key(d));
+		return v == null ? 1.0 : v;
 	}
 
 	public static function damage(a:Unit, d:Unit, melee:Bool):Float {

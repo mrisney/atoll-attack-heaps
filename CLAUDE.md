@@ -90,6 +90,24 @@ to the flag); player orders always override it.
   the flag. Wins: flag, enemy captain dead, or enemy crew gone. Units think
   in alternating order each tick (blue spawned first and always struck first).
   **Right-click an enemy** to attack it.
+- **Directives file** (`res/data/directives.json`, read by `game/Directives`):
+  every unit stat, type advantage, range and duty lives there with a note on
+  why; `Rules` reads it. Change balance there, not in code. Main loads it from
+  resources, SimTest from disk; multiplayer peers must share the same file.
+  The owner asked for directives "in a prompt file, like a yaml"; it's JSON
+  (native in Haxe) and drives deterministic code, **not an LLM**: the owner
+  offered an external classifier API ("Jev") and was advised against it for
+  unit control (lockstep needs determinism, Steam must work offline, latency
+  at 30 Hz). Never commit API keys.
+- **Protect the captain** (owner: "the primary task of the others is to protect
+  their captain"; losing him early ended matches): he lands last and gathers
+  at the back (`standBack`); bodyguard duty (`Sim.captainThreat`) makes any
+  unit within `callRange` of him, without a player attack order, go for an
+  enemy near him **or aiming at him from range**; he steps back from close
+  enemies and takes cover from archers aiming at him (`Sim.evade`, not while
+  ordered). The commander sends him to the apex only when it's clear out to
+  arrow range, and calls him back if he's hurt under fire. Archers had been
+  sniping captains in every test; now the captain is the last to fall.
 - **Computer commander** (`game/TeamAI.hx`, red): lands, attack-moves its band
   on the apex, keeps the captain ~9 m behind, sends him up once three hold the
   apex and no enemy is near. It only issues commands, like a player would.

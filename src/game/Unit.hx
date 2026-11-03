@@ -55,6 +55,8 @@ class Unit {
 	public var pathGoalX = 1e9;
 	public var pathGoalY = 1e9;
 	public var pathTick = -1000;
+	/** Who last hurt this unit (unit id, -1 = no one): for testing and future UI. **/
+	public var lastHitBy = -1;
 	/** Captain only: seconds spent raising the flag at the apex. **/
 	public var flagProgress = 0.0;
 

@@ -44,6 +44,7 @@ The goal of this spike is to answer one question: does Heaps give the Northgard-
 - **Tilt-shift** (B to toggle; on by default in Painted).
 - **Ships and landings**: each side's crew (14 characters) starts aboard its ship. Click your ship, then click a stretch of coast: it sails round through deep water, anchors, and the crew wades ashore. Click open water to just sail.
 - **Combat**: swordsmen, pikers and the captain fight hand to hand; archers shoot arrows from range and back away from blades. Every character has a little mind of its own: it holds where you left it, takes on enemies that come near, chases them a little way and hits back when hit. Your orders come first: right-click ground to move (ignoring enemies on the way), right-click an enemy to attack it. Fallen characters drop as rag dolls.
+- **The captain is protected**: he lands last and stays at the back. Every soldier's first duty is to guard him, so they go for any enemy that comes near him or aims at him, and he pulls back from danger unless you order him forward. What every character does, and all the game's numbers, are in `res/data/directives.json`.
 - **Capture the flag**: a captain who stands at the summit for five seconds, with no enemy close, plants the flag and wins. Losing your captain, or your whole crew, loses. The red side is a computer commander that lands, advances on the summit and sends its captain up once it holds it.
 - **Weather**: sunny, fog, or rain/storm (rain streaks, rougher sea, darker sky, drifting fog). Each style starts in one; **C** cycles, `?weather=sunny|fog|rain`.
 - **Antialiasing**: 4x MSAA, plus FXAA when tilt-shift renders offscreen (`?aa=0` turns FXAA off).
@@ -88,7 +89,8 @@ res/                        art from WildCurrent (embedded into the build; see r
   render/UnitView.hx        unit figures, selection rings, interpolation, rag doll hookup
   render/ShipView.hx        the ships: timber hull, team sail, bobbing on the swell
   game/Ship.hx              ships: deep-water sailing, anchoring, crew landing (sim side)
-  game/Rules.hx             unit stats, damage and type advantages, flag and range constants
+  game/Rules.hx             damage, type advantages, target choice (numbers from res/data/directives.json)
+  game/Directives.hx        loads res/data/directives.json: every stat, range and duty
   game/TeamAI.hx            the computer commander (red)
   game/Arrow.hx             arrows in flight (sim side); render/ArrowsView.hx draws them
   world/NavGrid.hx          A* walking paths round water

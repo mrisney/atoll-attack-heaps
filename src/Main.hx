@@ -100,6 +100,8 @@ class Main extends hxd.App {
 		if (selection != null) selection.dispose();
 
 		island = new Island(seed, shape);
+		// The characters' directives and numbers (res/data/directives.json).
+		game.Directives.load(hxd.Res.load("data/directives.json").toText());
 		sim = new Sim(island);
 		islandView = new IslandView(island, s3d);
 		applyStyle();

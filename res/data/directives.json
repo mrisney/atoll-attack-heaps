@@ -1,0 +1,57 @@
+{
+	"_about": "What each character does and how strong it is. Read once at startup (game/Directives.hx). Change numbers here, not in code. Every client in a multiplayer match must use the same file. Keys starting with _ are notes and are ignored.",
+
+	"captain": {
+		"_role": "Leader and the only one who can plant the flag. Losing him loses the game, so he lands last, stays at the back of the band, and steps away from enemies unless ordered forward.",
+		"hp": 220, "damage": 12, "cooldown": 0.8, "reach": 1.3, "defense": 20, "aggro": 2.5,
+		"landsLast": true,
+		"_landsLast": "Comes ashore after everyone else, once the beach is held.",
+		"standBack": 4.0,
+		"_standBack": "Metres behind the band's rally point when it gathers.",
+		"evadeRadius": 5.0,
+		"_evadeRadius": "Steps back toward his own band when an enemy fighter comes this close, unless he's been ordered somewhere.",
+		"takesCover": true,
+		"_takesCover": "When an archer aims at him, he pulls back behind his band, out of arrow range (unless ordered somewhere)."
+	},
+
+	"bodyguard": {
+		"_role": "Every soldier's first duty: protect the captain. When an enemy comes near him, or aims at him from range, soldiers within callRange drop what they're doing (unless the player ordered them) and go for that enemy.",
+		"threatRadius": 9.0,
+		"_threatRadius": "An enemy this close to the captain is a threat.",
+		"callRange": 24.0,
+		"_callRange": "Soldiers this close to the captain answer the call."
+	},
+
+	"swordsman": {
+		"_role": "Shield and blade. Closes in fast; strong against archers, weaker against pikes.",
+		"hp": 180, "damage": 20, "cooldown": 0.8, "reach": 1.4, "defense": 15, "aggro": 8
+	},
+	"piker": {
+		"_role": "Long reach. Holds a line; strong against swordsmen.",
+		"hp": 165, "damage": 17, "cooldown": 1.0, "reach": 2.4, "defense": 10, "aggro": 8
+	},
+	"archer": {
+		"_role": "Shoots from range and backs away from blades and pikes. Strong against pikers and the captain, weak against shields.",
+		"hp": 150, "damage": 15, "cooldown": 1.0, "reach": 18, "defense": 5, "aggro": 18,
+		"kiteRadius": 4.5,
+		"_kiteRadius": "Steps back when a melee enemy comes this close."
+	},
+
+	"combat": {
+		"_advantage": "Damage multiplier, attacker vs defender. Unlisted pairs are 1.0.",
+		"advantage": {
+			"swordsman>archer": 1.3, "swordsman>captain": 0.9, "swordsman>piker": 0.85,
+			"piker>swordsman": 1.25,
+			"archer>captain": 1.2, "archer>piker": 1.15, "archer>swordsman": 0.8,
+			"captain>swordsman": 1.1
+		},
+		"arrowSpeed": 24.0,
+		"leash": 16.0,
+		"_leash": "A unit gives up a chase (unless ordered) when its target gets this far away."
+	},
+
+	"flag": {
+		"_rule": "A captain standing within range of the summit for raiseTime seconds, with no enemy within contest, plants the flag and wins.",
+		"range": 2.5, "raiseTime": 5.0, "contest": 6.0
+	}
+}

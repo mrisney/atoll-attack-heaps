@@ -11,6 +11,7 @@
 class SimTest {
 	static function main() {
 		var seed = Std.parseInt(haxe.macro.Compiler.getDefine("seed") ?? "5095");
+		game.Directives.load(sys.io.File.getContent("res/data/directives.json"));
 		var island = new world.Island(seed, Single);
 		var sim = new game.Sim(island);
 		sim.teamAIs.push(new game.TeamAI(sim, 0));
@@ -34,7 +35,15 @@ class SimTest {
 				Sys.println(line);
 			}
 			if (sim.winner >= 0) {
-				Sys.println('WINNER: ${sim.winner == 0 ? "blue" : "red"} (${sim.winReason}) at ${sec}s');
+				var how = "";
+				for (u in sim.units)
+					if (u.kind == Captain && !u.alive) {
+						var k = sim.getUnit(u.lastHitBy);
+						var near = [for (e in sim.units) if (e.alive && e.team != u.team && Math.sqrt((e.x - u.x) * (e.x - u.x) + (e.y - u.y) * (e.y - u.y)) < 10) e].length;
+						var guards = [for (e in sim.units) if (e.alive && e.team == u.team && e.aboard < 0) e].length;
+						how += ' [${u.team == 0 ? "blue" : "red"} captain killed by ${k == null ? "?" : Std.string(k.kind)}, ${near} enemies within 10 m, ${guards} of his own alive]';
+					}
+				Sys.println('WINNER: ${sim.winner == 0 ? "blue" : "red"} (${sim.winReason}) at ${sec}s$how');
 				break;
 			}
 			for (_ in 0...30) sim.update(game.Sim.TICK);
