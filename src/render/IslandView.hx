@@ -315,9 +315,14 @@ class IslandView extends h3d.scene.Object {
 		grass, light clouds. Rain: rougher sea, more whitecaps and surf, dull
 		glint, gustier grass, heavy fast clouds. Fog: no cloud shadows, calm sea.
 	**/
-	public function setWeather(w:Weather) {
+	public function setWeather(w:Null<Weather>) {
 		var grass = props != null ? props.grass : null;
 		switch w {
+			case null:
+				// No weather (Sketch): leave the style exactly as setStyle made it.
+				if (grass != null) grass.setWeather(1.0, 0.55);
+				TerrainStyle.setColor(terrainStyle.fieldGround, Palette.FIELD_GROUND);
+				clouds.drift.set(1.1, 0.8);
 			case Sunny:
 				if (grass != null) grass.setWeather(1.14, 0.55);
 				TerrainStyle.setColor(terrainStyle.fieldGround, Palette.shade(Palette.FIELD_GROUND, 1.12));

@@ -23,7 +23,7 @@ class InkRenderer extends h3d.scene.fwd.Renderer {
 	public var storm = 0.0;
 	public var fog = 0.0;
 
-	public function setWeather(w:render.Weather) {
+	public function setWeather(w:Null<render.Weather>) {
 		rain = w == Rain ? 1 : 0;
 		storm = w == Rain ? 1 : 0;
 		fog = w == Fog ? 1 : 0;

@@ -297,9 +297,11 @@ URL params on the web build make runs reproducible:
   starts in one: **Ink map sunny** (brighter grass, light clouds), **Painted
   rain** (owner: "add rain and make the waves a bit rougher": rougher sea,
   more whitecaps and surf, dull glint, gustier grass, heavy fast clouds,
-  plus rain streaks and a darker, cooler storm grade), **Sketch fog** (calm
-  sea, no cloud shadows, drifting haze thicker toward the far side). **C**
-  cycles, `?weather=sunny|fog|rain`. Island side: `IslandView.setWeather`
+  plus rain streaks and a darker, cooler storm grade); **Sketch has no
+  weather** (the owner had it on fog briefly, then: "the architectural
+  drawing scene was OK, please revert that one"). Fog (calm sea, no cloud
+  shadows, drifting haze thicker toward the far side) is reachable with **C**,
+  which cycles, `?weather=sunny|fog|rain`. Island side: `IslandView.setWeather`
   (after `setStyle`); screen side: `InkRenderer.setWeather` → the final
   `TiltShift` pass (rain layers, storm grade, fog). W is taken by WASD.
 - All colours live in `render/Palette.hx` and the style shaders. Don't

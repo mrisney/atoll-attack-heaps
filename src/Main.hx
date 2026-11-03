@@ -30,14 +30,17 @@ class Main extends hxd.App {
 	/** Size of on-screen UI relative to its design size (2 on Retina screens). **/
 	var uiScale = 1.0;
 	var style:VisualStyle = Painted;
-	/** null = the style's own weather (Ink map sunny, Painted rain, Sketch fog); C cycles. **/
+	/**
+		null = the style's own weather (Ink map sunny, Painted rain; Sketch has
+		none: the owner wanted the drawing left as it was); C cycles.
+	**/
 	var weather:Null<render.Weather> = null;
 
-	function currentWeather():render.Weather
+	function currentWeather():Null<render.Weather>
 		return weather != null ? weather : switch style {
 			case InkMap: Sunny;
 			case Painted: Rain;
-			case Sketch: Fog;
+			case Sketch: null;
 		};
 	var shape:IslandShape = Single;
 	/** Tree look: null = the style's default (3D, or low-poly in Ink map); 0 = 3D, 1 = sprites, 2 = low-poly. **/
@@ -181,7 +184,7 @@ class Main extends hxd.App {
 		return treeMode != null ? treeMode : 0;
 
 	function updateHud() {
-		hud.text = 'ATOLL ATTACK  ·  seed $seed  ·  ${shape} island  ·  ${style} style  ·  ${currentWeather()}\n'
+		hud.text = 'ATOLL ATTACK  ·  seed $seed  ·  ${shape} island  ·  ${style} style  ${currentWeather() == null ? "" : "  ·  " + currentWeather()}\n'
 			+ 'Drag: select   Click/RMB: move   Shift: add   Minimap: click to fly, right-click to send units\n'
 			+ 'Pan: right/middle-drag, trackpad swipe, WASD (Shift = fast), edges   Zoom: wheel/pinch/+ -   Q/E: rotate   Space: recentre\n'
 			+ 'R: new island   G: island shape   T: visual style   I: ink lines   B: tilt-shift   P: trees (3D / sprite / low-poly)   C: weather   X: blast at cursor (test)';
@@ -304,6 +307,7 @@ class Main extends hxd.App {
 		}
 		if (hxd.Key.isPressed(hxd.Key.C)) {
 			weather = switch currentWeather() {
+				case null: Sunny;
 				case Sunny: Fog;
 				case Fog: Rain;
 				case Rain: Sunny;
