@@ -107,7 +107,8 @@ URL params on the web build make runs reproducible:
   couple of seconds. Not slapstick.
 - **Props** (`render/Props.hx`) follow the elevation bands: palms, driftwood
   and stones on beaches; broadleaf groves, bushes and grass in the lowlands;
-  pine forest and outcrops in the uplands; boulders and dead snags on peaks.
+  pine forest and outcrops in the uplands; boulders on the gravel summit. Dead
+  snags (bare trunks) were **removed at the owner's request**.
   Variety comes from species, per-instance colour and size, and noise
   clustering. Autumn trees are rare (about 6%) and muted.
 - **3D procedural trees are the default** (`render/TreeGen.hx` + `ProcTrees.hx`):
@@ -151,7 +152,8 @@ URL params on the web build make runs reproducible:
   **Coastal outcrops** (`Props.outcropSpot`/`outcrop`): occasional groups of 2–4
   larger rocks at the waterline running into the shallows, on a raised base
   so they break the surface. The owner asked for them "sparingly", so keep
-  the noise threshold high.
+  the noise threshold high, and **dark** (wet, weathered: shade ~0.42 in the
+  water, 0.55 on the shore).
 - **Palms are procedural** (`render/Palms.hx`), not low-poly. The owner found the
   old ones "very angular and not very realistic". Each has a smooth, curved
   trunk tube with ring scars, plus arched, folded fronds that use a pinnate

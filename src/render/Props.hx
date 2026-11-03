@@ -15,7 +15,7 @@ import world.Noise;
 	- Beach: palms leaning toward the sea, driftwood, small stones
 	- Lowland: broadleaf groves with a few pines, bushes, grass meadows
 	- Upland: pine forest, bushes, rock outcrops on steep ground
-	- Peak: boulder clusters, loose stones, the odd dead snag
+	- Peak: loose gravel, boulder clusters, a few stones
 
 	Everything is merged into a few large meshes (FlatMeshBuilder), so a few
 	thousand props cost only a handful of draw calls. Trees, bushes and rocks
@@ -58,7 +58,7 @@ class Props {
 	];
 
 	final island:Island;
-	/** Shared by both looks: palms, driftwood, stones, snags. **/
+	/** Shared by both looks: palms, driftwood, stones. **/
 	final solid = new FlatMeshBuilder();
 	/** Shared: grass, flowers, shells (alpha pass, not inked). **/
 	final grass = new FlatMeshBuilder();
@@ -183,10 +183,9 @@ class Props {
 					// Sparse: a few boulder groups and loose stones (the owner found them too many).
 					// The rocky high point: outcrops and scree around the summit.
 					// The high point: loose gravel (terrain texture) strewn with stones, a few
-					// boulders, the odd dead snag.
+					// boulders.
 					if (boulderSpot(x, y, h, roll)) rockCluster(x, y, z, 1 + Std.int(r() * 3));
 					else if (roll < 0.1) stones(x, y, z, 2);
-					else if (roll < 0.105) snag(x, y, z);
 				}
 			}
 
@@ -410,7 +409,9 @@ class Props {
 			var rx = x + Math.cos(a) * d, ry = y + Math.sin(a) * d;
 			var gh = island.heightAt(rx, ry);
 			var size = (k == 0 ? 1.5 : 0.8) + r() * 0.9;
-			rocks.add(rx, ry, Math.max(gh, -0.3), size, salt * 31 + 500 + k, tint(Palette.shade(c, 0.85), 0.14));
+			// Sea rocks are dark: wet, weathered, darker still where they sit in the water.
+			var dark = gh < 0.1 ? 0.42 : 0.55;
+			rocks.add(rx, ry, Math.max(gh, -0.3), size, salt * 31 + 500 + k, tint(Palette.shade(c, dark), 0.12));
 		}
 	}
 
@@ -455,16 +456,4 @@ class Props {
 		spr.add(SPRITES + "floating-log.png", x, y, z + 0.05, len * 1.25, 0.06, a + Math.PI / 2, 1.0);
 	}
 
-	/** A bare dead tree on the heights. **/
-	function snag(x:Float, y:Float, z:Float) {
-		var s = 0.7 + r() * 0.5;
-		var c = Palette.shade(pick(Palette.BARK), 1.1);
-		solid.prism(x, y, z, 0.07 * s, 1.5 * s, 5, c, r() * 3);
-		for (k in 0...2) {
-			var a = r() * Math.PI * 2;
-			solid.place(0, 0.7 + r() * 0.3, a, x, y, z + (0.8 + k * 0.4) * s);
-			solid.prism(0, 0, 0, 0.035 * s, 0.6 * s, 4, c);
-			solid.unplace();
-		}
-	}
 }
