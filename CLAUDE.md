@@ -229,6 +229,18 @@ URL params on the web build make runs reproducible:
   (shoaling), so the swell breaks into froth that rolls in along the depth
   contours (`WaterShader.shoreCycle`) and then runs up the sand as swash
   (`TerrainStyle.swash`, same cycle formula, so keep the two in sync).
+- **Stronghold reference** (owner shared Stronghold screenshots: "I am trying to
+  match that" for terrain and grass). Painted moved toward it:
+  olive/khaki blades and field ground (`Palette.GRASS_BLADE_*`, `FIELD_GROUND`),
+  drier mottled patches; **worn tracks** (`render/Tracks.hx`) from four beaches
+  (incl. both landings) up to the apex plus scuffed patches, stored as wear in
+  the grass mask's **alpha**: blades thin out with ragged edges, `TerrainStyle`
+  paints pale dusty earth, `Props` keeps trees off and drops pebbles; low dark
+  **ground cover** clumps (`Props.groundCover`); drifting **cloud shadows**
+  (`render/CloudShadow`, on every island material but the water, Painted only);
+  a **lower sun** (~40°, `TerrainStyle.SUN`, shared by light, terrain, grass,
+  water) for long shadows; and a **colour grade + vignette** in the final
+  `TiltShift` pass (`InkRenderer.grade`, Painted; still applies with B off).
 - All colours live in `render/Palette.hx` and the style shaders. Don't
   hard-code colours elsewhere.
 

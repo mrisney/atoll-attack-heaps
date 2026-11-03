@@ -80,6 +80,8 @@ class Props {
 	var forestN:Noise;
 	var tSand = 0.0;
 	var tUp = 0.0;
+	/** Worn tracks and scuffed patches (no trees there; pebbles; thin grass). **/
+	var tracks:Tracks;
 	/** Small loose stones, shared by both looks. **/
 	final pebbles = new Rocks();
 	/** Sprite trunks (mostly hidden under the canopy, they ground the tree). **/
@@ -121,6 +123,7 @@ class Props {
 		tSand = Island.classicHeight(0.39);
 		var tLow = Island.classicHeight(0.54);
 		tUp = Island.classicHeight(0.70);
+		tracks = new Tracks(island, tSand, tUp);
 
 		var step = 1.1;
 		var n = Std.int(island.size * island.cell / step);
@@ -163,8 +166,14 @@ class Props {
 					// tree lines (hedgerows), with a few small copses and lone trees.
 					var line = treeLineAt(x, y);
 					var copse = forest > 0.7;
+					var wear = tracks.at(x, y);
+					// Low dark ground cover (brambles, nettles) gathers in clumps in the fields.
+					var cover = meadowN.fbm(x * 0.16 + 31, y * 0.16 + 31, 2);
 					if (boulderSpot(x, y, h, roll)) rockCluster(x, y, z, 1 + Std.int(r() * 3));
-					else if (line > 0.5) {
+					else if (wear > 0.5) {
+						// Worn ground: bare and dusty, a few stones kicked about.
+						if (roll < 0.05) stones(x, y, z, 1);
+					} else if (line > 0.5) {
 						if (roll < 0.8) {
 							if (h > tLow && r() < 0.5) pine(x, y, z) else broadleaf(x, y, z);
 						} else bush(x, y, z);
@@ -175,7 +184,8 @@ class Props {
 						// Open field: the blades come from GrassField. Now and then a lone tree,
 						// like parkland, and a few flowers.
 						if (roll < 0.004) broadleaf(x, y, z);
-						else if (roll < 0.004) stones(x, y, z, 1);
+						else if (roll < 0.01) stones(x, y, z, 1);
+						else if ((cover > 0.6 || wear > 0.2) && roll < 0.045) groundCover(x, y, z);
 						else if (roll < 0.06) flowers(x, y, z);
 					} else if (meadow > 0.48 && roll < 0.5) grassTuft(x, y, z);
 				} else {
@@ -210,7 +220,7 @@ class Props {
 		rocks.build(sprites);
 		pebbles.build(parent);
 		fields = new GrassField(island);
-		fields.build(parent, fieldAt);
+		fields.build(parent, fieldAt, tracks.at);
 		#if js
 		js.Syntax.code("window.grassBlades = {0}", fields.blades);
 		#end
@@ -292,6 +302,23 @@ class Props {
 		a += (r() - 0.5) * 0.9;
 		var lx = Math.cos(a), ly = Math.sin(a);
 		palms.add(x, y, z, lx, ly, s, tint(pick(Palette.PALM_BARK)), tint(pick(Palette.PALM), 0.1), r);
+	}
+
+	/**
+		Low, dark ground cover (brambles, nettles) in clumps across the fields and
+		along the edges of worn tracks: the dark green patches in the Stronghold
+		screenshots. A flattened, darkened bush sprite.
+	**/
+	function groundCover(x:Float, y:Float, z:Float) {
+		// A loose patch of a few low clumps, so it reads as leafy growth, not a blot.
+		for (k in 0...3 + Std.int(r() * 3)) {
+			var a = r() * Math.PI * 2, d = r() * 1.1;
+			var cx = x + Math.cos(a) * d, cy = y + Math.sin(a) * d;
+			var cz = island.heightAt(cx, cy) - 0.06;
+			var s = 0.5 + r() * 0.5;
+			low.ball(cx, cy, cz + 0.06, 0.3 * s, Palette.shade(Palette.GROUND_COVER, 0.9 + r() * 0.2), 6, 3, 0.4, r() * 3);
+			spr.add(SPRITES + pickName(BUSHES) + ".png", cx, cy, cz, (0.8 + r() * 0.5) * s, 0.15 * s, r() * Math.PI * 2, 0.62 + r() * 0.14);
+		}
 	}
 
 	function bush(x:Float, y:Float, z:Float) {

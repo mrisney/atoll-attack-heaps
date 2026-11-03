@@ -44,7 +44,7 @@ class GrassField {
 	public final blades:Int;
 	/** How far from the view centre grass is drawn, in metres (terra's DEPTH). **/
 	public final depth:Float;
-	/** Field weight map (R field, G clump, B dryness), linear, for the terrain tint too. **/
+	/** Field weight map (R field, G clump, B dryness, A wear: see Tracks), linear, for the terrain too. **/
 	public var mask(default, null):h3d.mat.Texture;
 	/** One shader per layer; `setFocus` moves both. **/
 	public final layers:Array<GrassShader> = [];
@@ -81,7 +81,7 @@ class GrassField {
 		Build the fields. `weight(x, y)` says how much field grows at a world
 		point (0..1). Called once per island.
 	**/
-	public function build(parent:h3d.scene.Object, weight:(Float, Float) -> Float) {
+	public function build(parent:h3d.scene.Object, weight:(Float, Float) -> Float, ?wear:(Float, Float) -> Float) {
 		var he = island.halfExtent;
 		var span = he * 2;
 
@@ -95,7 +95,8 @@ class GrassField {
 				var w = weight(x, y);
 				var clump = clumpN.fbm(x * 0.45 + 3, y * 0.45 + 3, 2);
 				var dry = dryN.fbm(x * 0.09 + 5, y * 0.09 + 5, 3);
-				px.setPixel(i, j, 0xFF000000 | (c8(w) << 16) | (c8(clump) << 8) | c8(dry));
+				var worn = wear == null ? 0.0 : wear(x, y);
+				px.setPixel(i, j, (c8(worn) << 24) | (c8(w) << 16) | (c8(clump) << 8) | c8(dry));
 			}
 		mask = h3d.mat.Texture.fromPixels(px);
 		mask.filter = Linear;
@@ -271,10 +272,15 @@ class GrassShader extends hxsl.Shader {
 			// How much field grows here, clumpiness and dryness: from the world, not the patch.
 			var m = mask.getLod((root - maskOrigin) / maskSize, 0.0);
 			var grow = smoothstep(0.02, 0.5, m.r) * smoothstep(fadeIn.x, fadeIn.y, dist) * (1.0 - smoothstep(fadeOut.x, fadeOut.y, dist));
+			// Worn ground (tracks): fewer, shorter, drier blades. Each blade survives up to
+			// its own threshold, so the edge frays into straggling tufts, not a clean line.
+			var wear = m.a;
+			var keep = step(wear * 1.05 - 0.15, fract(tone * 31.0));
+			grow *= keep * (1.0 - wear * 0.55);
 			height *= grow * (0.55 + 0.9 * m.g);
 			width *= (0.4 + 0.6 * grow) * widthScale;
 			height *= step(0.001, grow);
-			var dry = clamp(m.b * 1.6 - 0.55 + (tone - 0.5) * 0.5, 0.0, 1.0);
+			var dry = clamp(m.b * 1.8 - 0.6 + (tone - 0.5) * 0.5 + wear * 0.6, 0.0, 1.0);
 
 			// Gusts: crossing waves rolling downwind, so the field ripples in bands.
 			var along = dot(root, windDir);
@@ -334,7 +340,7 @@ class GrassShader extends hxsl.Shader {
 
 	public function new() {
 		super();
-		sunDir.set(0.55, 0.35, 0.76);
+		sunDir.set(TerrainStyle.SUN.x, TerrainStyle.SUN.y, TerrainStyle.SUN.z);
 		sunDir.normalize();
 		TerrainStyle.setColor(baseColor, Palette.GRASS_BLADE_BASE);
 		TerrainStyle.setColor(tipColor, Palette.GRASS_BLADE_TIP);

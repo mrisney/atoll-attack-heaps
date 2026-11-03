@@ -31,12 +31,19 @@ class Palette {
 	public static final PINE = [0x3F6E45, 0x4A7A4C, 0x557F48, 0x5F8A52];
 	public static final PALM = [0x6FA04A, 0x7EAE52, 0x8BB85A];
 	// Wind-blown grass fields (GrassField): darker at the root, sunlit tips, some dry blades.
-	// Olive, like a real meadow (and the terra demo the owner liked), not lime.
-	public static inline var GRASS_BLADE_BASE = 0x3F5A1D;
-	public static inline var GRASS_BLADE_TIP = 0x93A944;
-	public static inline var GRASS_BLADE_DRY = 0xB4A55C;
+	// Olive and khaki, like a real meadow (the Stronghold screenshots and the terra demo
+	// the owner liked), not lime.
+	public static inline var GRASS_BLADE_BASE = 0x38461C;
+	public static inline var GRASS_BLADE_TIP = 0x929B4A;
+	public static inline var GRASS_BLADE_DRY = 0xB3A264;
 	/** Ground under a grass field: the colour you'd glimpse between blades. **/
-	public static inline var FIELD_GROUND = 0x56702A;
+	public static inline var FIELD_GROUND = 0x58622D;
+	/** Multiplies the dirt/sand blend on worn tracks: pale, dusty khaki. **/
+	public static inline var TRACK_DUST = 0xE2D6BC;
+	/** Low dark ground cover in the fields (low-poly look). **/
+	public static inline var GROUND_COVER = 0x3E4A26;
+	/** Multiplier under a passing cloud's shadow (CloudShadow): darker, a little cool. **/
+	public static inline var CLOUD_SHADE = 0x8A9098;
 	public static final GRASS_TUFT = [0x8FBF4E, 0x9DC757, 0xA9C25E, 0xB7C96A];
 	public static final BARK = [0x7A5B42, 0x8C6A4E, 0x6B5040];
 	public static final PALM_BARK = [0xA08560, 0x92785A];

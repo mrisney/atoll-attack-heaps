@@ -36,10 +36,16 @@ class IslandView extends h3d.scene.Object {
 		// Things added later (docks, the flag pole) are timber and keep their colour.
 		// The water is left out: in Sketch it keeps its own (darker, muted) colours.
 		for (m in getMaterials())
-			if (m != waterMat) m.mainPass.addShader(m == terrainMat ? sketchTone : sketchProps);
+			if (m != waterMat) {
+				m.mainPass.addShader(m == terrainMat ? sketchTone : sketchProps);
+				m.mainPass.addShader(clouds);
+			}
 		decals = new Decals(island, this, sketchTone);
 		buildFlagPole();
 	}
+
+	/** Drifting cloud shadows over the land (Painted only). **/
+	public final clouds = new CloudShadow();
 
 	/** Greys everything for the Sketch style (amount 0 in the others). **/
 	public final sketchTone = new SketchTone(1.05, 0.95, 0.3);
@@ -114,6 +120,7 @@ class IslandView extends h3d.scene.Object {
 		terrainStyle.light = style == Sketch ? 1 : 0;
 		sketchTone.amount = style == Sketch ? 1 : 0;
 		sketchProps.amount = sketchTone.amount;
+		clouds.strength = style == Painted ? 1 : 0;
 		waterShader.softness = 0;
 		// Wind waves: (lighting strength, sun glint, whitecaps) per style.
 		var w = switch style {

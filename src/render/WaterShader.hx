@@ -174,7 +174,7 @@ class WaterShader extends hxsl.Shader {
 		glint = 0.6;
 		whitecap = 0.3;
 		breakers = 1.0;
-		sunDir.set(0.55, 0.35, 0.76);
+		sunDir.set(TerrainStyle.SUN.x, TerrainStyle.SUN.y, TerrainStyle.SUN.z);
 		sunDir.normalize();
 		setPaintedColors();
 		// Same elevation thresholds as the original shader (0.25 and 0.18).

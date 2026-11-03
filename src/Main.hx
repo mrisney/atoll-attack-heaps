@@ -7,6 +7,7 @@ import world.Island.IslandShape;
 import render.Palette;
 import render.UnitView;
 import render.GrassField;
+import render.TerrainStyle;
 import world.Island;
 
 /**
@@ -70,7 +71,7 @@ class Main extends hxd.App {
 		// Warm low sun + cool ambient: the soft "storybook" lighting.
 		var ls = Std.downcast(s3d.lightSystem, h3d.scene.fwd.LightSystem);
 		if (ls != null) ls.ambientLight.set(0.52, 0.56, 0.64);
-		var sun = new h3d.scene.fwd.DirLight(new h3d.Vector(-0.55, -0.35, -0.75), s3d);
+		var sun = new h3d.scene.fwd.DirLight(new h3d.Vector(-TerrainStyle.SUN.x, -TerrainStyle.SUN.y, -TerrainStyle.SUN.z), s3d);
 		sun.color.set(0.78, 0.72, 0.6);
 	}
 
@@ -139,6 +140,7 @@ class Main extends hxd.App {
 		islandView.setTreeMode(currentTreeMode());
 		inkRenderer.inkEnabled = style == InkMap || style == Sketch;
 		inkRenderer.tiltShift = style == Painted;
+		inkRenderer.grade = style == Painted;
 		inkRenderer.paperFade = style == Sketch ? 1 : 0;
 		inkRenderer.setShadowTint(style == Sketch ? Palette.SKETCH_SHADOW : Palette.SHADOW);
 		inkRenderer.inkStrength = style == Sketch ? 0.62 : 0.85;

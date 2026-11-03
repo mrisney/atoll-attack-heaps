@@ -14,6 +14,12 @@ package render;
 	retired; the owner found them unnatural.)
 **/
 class TerrainStyle extends hxsl.Shader {
+	/**
+		Toward the sun, shared by the light, terrain, grass and water. Fairly low
+		(about 40°) so things cast long shadows, as in the Stronghold screenshots.
+	**/
+	public static final SUN = {x: 0.62, y: 0.4, z: 0.62};
+
 	static var SRC = {
 		var transformedPosition:Vec3;
 		var transformedNormal:Vec3;
@@ -55,6 +61,8 @@ class TerrainStyle extends hxsl.Shader {
 		/** GrassField's map (R = field), to tint the ground under fields like the blades. **/
 		@param var fieldMask:Sampler2D;
 		@param var fieldGround:Vec3;
+		/** Tint of the dusty earth on worn tracks. **/
+		@param var dustTint:Vec3;
 		@param var mapSize:Float;
 
 		/** Sample a ground texture at two scales so the tiling never shows. **/
@@ -115,7 +123,24 @@ class TerrainStyle extends hxsl.Shader {
 
 				// Under grass fields, the ground takes the blades' colour so gaps read as grass.
 				var fm = fieldMask.get((transformedPosition.xy - mapOrigin) / mapSize);
-				c = mix(c, fieldGround * (0.85 + 0.3 * fm.g), smoothstep(0.05, 0.6, fm.r) * 0.85);
+				// Mottled like a real meadow: drier, yellower patches among the greener ones.
+				var fg = fieldGround * (0.85 + 0.3 * fm.g);
+				fg = mix(fg, fg * vec3(1.32, 1.22, 0.9), smoothstep(0.35, 0.8, fm.b));
+				c = mix(c, fg, smoothstep(0.05, 0.6, fm.r) * 0.85 * (1.0 - sandW));
+
+				// Worn ground (Tracks, in the mask's alpha): pale dusty earth, the edge frayed
+				// by noise so it breaks up into the grass.
+				var speck = grassTex.get(p / 1.3).a;
+				var tuft = dirtTex.get(p / 0.45).a;
+				var wt = smoothstep(0.25, 0.85, fm.a + (patch - 0.5) * 0.7 + (speck - 0.5) * 0.6 + (tuft - 0.5) * 0.45);
+				// Even the middle of a track keeps the odd thin, trodden patch of grass.
+				wt *= 0.8 + 0.2 * smoothstep(0.35, 0.6, speck);
+				var dust = mix(twoScale(dirtTex, p), twoScale(sandTex, p), 0.5);
+				// Dusty and pale, not orange: mostly grey earth with a little warmth left.
+				dust = mix(vec3(dot(dust, vec3(0.3, 0.55, 0.15))), dust, 0.65) * dustTint;
+				dust *= 0.88 + 0.26 * speck;
+				wt *= (1.0 - gravelW) * smoothstep(sandEdge + 0.1, sandEdge + 0.4, h);
+				c = mix(c, dust, wt);
 				col = c * form;
 			}
 			var exposed = exposureMap.get(clamp((transformedPosition.xy - mapOrigin) / mapSize, vec2(0.0), vec2(1.0))).g;
@@ -157,10 +182,11 @@ class TerrainStyle extends hxsl.Shader {
 		sandTex = gt.sand;
 		rockTex = gt.rock;
 		gravelTex = gt.gravel;
-		sunDir.set(0.55, 0.35, 0.76);
+		sunDir.set(SUN.x, SUN.y, SUN.z);
 		sunDir.normalize();
 		setColor(seabed, 0x8FD3C6);
 		setColor(fieldGround, Palette.FIELD_GROUND);
+		setColor(dustTint, Palette.TRACK_DUST);
 		fieldMask = h3d.mat.Texture.fromColor(0);
 		tSand = world.Island.classicHeight(0.39);
 		tLowland = world.Island.classicHeight(0.54);

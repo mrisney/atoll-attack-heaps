@@ -14,6 +14,8 @@ class TiltShift extends h3d.shader.ScreenShader {
 		@param var focusWidth:Float;
 		@param var falloff:Float;
 		@param var maxRadius:Float;
+		/** Colour grade (0 = off): a little desaturated and warm, gentle contrast, vignette. **/
+		@param var grade:Float;
 
 		function fragment() {
 			var uv = calculatedUV;
@@ -34,7 +36,18 @@ class TiltShift extends h3d.shader.ScreenShader {
 			c += frame.get(uv + o * vec2(-0.866, -0.5)).rgb;
 			c += frame.get(uv + o * vec2(0.0, -1.0)).rgb;
 			c += frame.get(uv + o * vec2(0.866, -0.5)).rgb;
-			pixelColor = vec4(c / 14.0, 1.0);
+			c /= 14.0;
+			if (grade > 0.0) {
+				// Film-like grade, as in the Stronghold screenshots the owner pointed at:
+				// muted greens, warm light, a soft S-curve and darkened corners.
+				var l = dot(c, vec3(0.3, 0.59, 0.11));
+				var g = mix(vec3(l), c, 0.8) * vec3(1.04, 1.0, 0.93);
+				g = mix(g, g * g * (3.0 - 2.0 * g), 0.35);
+				var v = uv - 0.5;
+				g *= 1.0 - dot(v, v) * 0.75;
+				c = mix(c, g, grade);
+			}
+			pixelColor = vec4(c, 1.0);
 		}
 	};
 
@@ -44,5 +57,6 @@ class TiltShift extends h3d.shader.ScreenShader {
 		focusWidth = 0.16;
 		falloff = 0.4;
 		maxRadius = 3.2;
+		grade = 0;
 	}
 }
