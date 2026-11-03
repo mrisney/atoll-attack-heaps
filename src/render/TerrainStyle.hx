@@ -101,7 +101,7 @@ class TerrainStyle extends hxsl.Shader {
 				var streak = dirtTex.get(vec2(across / 2.2, along / 16.0)).a;
 				var fine = grassTex.get(vec2(across / 0.9, along / 6.0)).a;
 				gravel *= 0.8 + 0.38 * streak + 0.1 * (fine - 0.5);
-				gravel *= 0.9 + broad * 0.2;
+				gravel *= (0.9 + broad * 0.2) * 1.1; // a touch lighter (owner)
 				c = mix(c, gravel, gravelW);
 				c = mix(c, twoScale(rockTex, p), smoothstep(0.55, 0.75, steep) * 0.7);
 

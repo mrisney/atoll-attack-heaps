@@ -75,6 +75,8 @@ class Props {
 	/** Wind-blown grass fields (real blades, bent in the shader). **/
 	var fields:GrassField;
 	var fieldN:Noise;
+	/** Where boulders gather (clusters around the gravel high ground). **/
+	var boulderN:Noise;
 	var forestN:Noise;
 	var tSand = 0.0;
 	var tUp = 0.0;
@@ -113,6 +115,7 @@ class Props {
 		forestN = new Noise(island.seed + 202);
 		var meadowN = new Noise(island.seed + 404);
 		fieldN = new Noise(island.seed + 505);
+		boulderN = new Noise(island.seed + 909);
 
 		var he = island.halfExtent;
 		tSand = Island.classicHeight(0.39);
@@ -155,7 +158,7 @@ class Props {
 					// tree lines (hedgerows), with a few small copses and lone trees.
 					var line = treeLineAt(x, y);
 					var copse = forest > 0.7;
-					if (steep && roll < 0.025) rockCluster(x, y, z, 1);
+					if (boulderSpot(x, y, h, roll)) rockCluster(x, y, z, 1 + Std.int(r() * 3));
 					else if (line > 0.5) {
 						if (roll < 0.8) {
 							if (h > tLow && r() < 0.5) pine(x, y, z) else broadleaf(x, y, z);
@@ -167,8 +170,7 @@ class Props {
 						// Open field: the blades come from GrassField. Now and then a lone tree,
 						// like parkland, and a few flowers.
 						if (roll < 0.004) broadleaf(x, y, z);
-						else if (roll < 0.006) stones(x, y, z, 1);
-						else if (roll < 0.0075) rockCluster(x, y, z, 1);
+						else if (roll < 0.004) stones(x, y, z, 1);
 						else if (roll < 0.06) flowers(x, y, z);
 					} else if (meadow > 0.48 && roll < 0.5) grassTuft(x, y, z);
 				} else {
@@ -177,7 +179,7 @@ class Props {
 					// The rocky high point: outcrops and scree around the summit.
 					// The high point: loose gravel (terrain texture) strewn with stones, a few
 					// boulders, the odd dead snag.
-					if (roll < 0.02) rockCluster(x, y, z, 1 + Std.int(r() * 2));
+					if (boulderSpot(x, y, h, roll)) rockCluster(x, y, z, 1 + Std.int(r() * 3));
 					else if (roll < 0.1) stones(x, y, z, 2);
 					else if (roll < 0.105) snag(x, y, z);
 				}
@@ -383,6 +385,18 @@ class Props {
 			var sx = x + Math.cos(a) * d, sy = y + Math.sin(a) * d;
 			grass.ball(sx, sy, island.heightAt(sx, sy) + 0.01, 0.04 + r() * 0.03, pick(Palette.SHELLS), 5, 2, 0.5, r() * 3);
 		}
+	}
+
+	/**
+		Boulders gather around the gravel high ground: on it and in a band just
+		below its rim, in irregular clusters (noise patches), with almost none
+		out in the meadows.
+	**/
+	function boulderSpot(x:Float, y:Float, h:Float, roll:Float):Bool {
+		var near = smoothstep(tUp + 0.1, tUp + 0.9, h); // 0 down in the meadows, 1 on the gravel
+		if (near <= 0) return false;
+		var clump = smoothstep(0.5, 0.68, boulderN.fbm(x * 0.11 + 13, y * 0.11 + 13, 3));
+		return roll < near * (0.004 + 0.07 * clump);
 	}
 
 	function rockCluster(x:Float, y:Float, z:Float, count:Int) {

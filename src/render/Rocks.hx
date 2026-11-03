@@ -51,30 +51,47 @@ class Rocks {
 		var rz = size * 0.5 * (0.5 + rnd(3) * 0.3);
 		var yaw = rnd(4) * Math.PI * 2;
 		var cs = Math.cos(yaw), sn = Math.sin(yaw);
-		var cuts = [];
-		for (c in 0...2 + Std.int(rnd(5) * 2)) {
-			var a = rnd(10 + c) * Math.PI * 2, e = (rnd(20 + c) - 0.3) * 1.2;
-			var nx = Math.cos(a) * Math.cos(e), ny = Math.sin(a) * Math.cos(e), nz = Math.sin(e);
-			cuts.push({n: new Point(nx, ny, nz), d: 0.62 + rnd(30 + c) * 0.25});
-		}
 		var off = rnd(6) * 100;
+
+		// gl-rock's scraping (Erkaman/gl-rock, MIT): pick spots on the sphere at least
+		// `minDist` apart, and flatten the vertices around each onto a plane pushed
+		// `strength` into the rock, only within `radius` of the spot (flood fill over
+		// the mesh). Several local flats give chipped facets between rounded parts,
+		// which reads much more like a real boulder than whole-rock slices.
+		var sphere = [for (v in t.verts) new Point(v.x, v.y, v.z)];
+		var normals = [for (v in t.verts) new Point(v.x, v.y, v.z)];
+		var adj = neighbours(t);
+		var scrapes = (size > 0.7 ? 6 : 4) + Std.int(rnd(5) * 3);
+		var minDist = 0.65 + rnd(8) * 0.3;
+		var spots:Array<Int> = [];
+		var salt = 40;
+		for (s in 0...scrapes) {
+			var idx = 0;
+			for (attempt in 0...100) {
+				idx = Std.int(rnd(salt++) * sphere.length) % sphere.length;
+				var ok = true;
+				for (o in spots) if (sphere[o].distance(sphere[idx]) < minDist) ok = false;
+				if (ok) break;
+			}
+			spots.push(idx);
+		}
+		for (s in 0...spots.length) {
+			var strength = 0.12 + rnd(salt++) * 0.16;
+			var radius = 0.4 + rnd(salt++) * 0.25;
+			scrape(spots[s], sphere, normals, adj, strength, radius);
+		}
 
 		var base = pts.length;
 		var local:Array<Point> = [];
 		var occ:Array<Float> = [];
-		for (v in t.verts) {
-			// Lumpy radius from 3D noise (two octaves).
-			var n1 = noise3(v.x * 1.7 + off, v.y * 1.7 + off, v.z * 1.7);
-			var n2 = noise3(v.x * 4.1 + off, v.y * 4.1, v.z * 4.1 + off);
-			var r = 1 + (n1 - 0.5) * 0.55 + (n2 - 0.5) * 0.18;
-			var p = new Point(v.x * r, v.y * r, v.z * r);
-			// Fracture planes: clamp the point to each cut.
-			for (c in cuts) {
-				var d = p.dot(c.n);
-				if (d > c.d) p = p.sub(c.n.scaled(d - c.d));
-			}
-			local.push(p);
-			occ.push(r);
+		for (k in 0...sphere.length) {
+			var v = sphere[k];
+			// Then a gentle noise over everything, so flats aren't perfectly flat.
+			var n1 = noise3(v.x * 2.0 + off, v.y * 2.0 + off, v.z * 2.0);
+			var n2 = noise3(v.x * 4.6 + off, v.y * 4.6, v.z * 4.6 + off);
+			var r = 1 + (n1 - 0.5) * 0.22 + (n2 - 0.5) * 0.08;
+			local.push(new Point(v.x * r, v.y * r, v.z * r));
+			occ.push(v.length() * r);
 		}
 		// Smooth normals in the rock's own (unstretched) space, then transformed.
 		var vn = [for (_ in local) new Point(0, 0, 0)];
@@ -105,6 +122,52 @@ class Rocks {
 		}
 		for (k in t.tris) idx.push(base + k);
 		count++;
+	}
+
+	/** Flatten the vertices around `at` onto a plane (gl-rock's `scrape`). **/
+	static function scrape(at:Int, pos:Array<Point>, nrm:Array<Point>, adj:Array<Array<Int>>, strength:Float, radius:Float) {
+		var n = nrm[at].clone();
+		n.normalize();
+		var r0 = pos[at].sub(n.scaled(strength));
+		var seen = new Map<Int, Bool>();
+		var stack = [at];
+		while (stack.length > 0) {
+			var i = stack.pop();
+			if (seen.exists(i)) continue;
+			seen.set(i, true);
+			var p = pos[i];
+			var t = n.dot(r0.sub(p));
+			var q = p.add(n.scaled(t));
+			if (q.distance(r0) >= radius) continue;
+			// Only ever cut into the rock, never push it out.
+			if (t < 0) {
+				pos[i] = q;
+				nrm[i] = n.clone();
+			}
+			for (j in adj[i]) stack.push(j);
+		}
+	}
+
+	static var adjCache:Map<Int, Array<Array<Int>>> = new Map();
+
+	static function neighbours(t:{verts:Array<Point>, tris:Array<Int>}):Array<Array<Int>> {
+		var c = adjCache.get(t.verts.length);
+		if (c != null) return c;
+		var sets = [for (_ in t.verts) new Map<Int, Bool>()];
+		var i = 0;
+		while (i < t.tris.length) {
+			var a = t.tris[i], b = t.tris[i + 1], d = t.tris[i + 2];
+			sets[a].set(b, true);
+			sets[a].set(d, true);
+			sets[b].set(a, true);
+			sets[b].set(d, true);
+			sets[d].set(a, true);
+			sets[d].set(b, true);
+			i += 3;
+		}
+		c = [for (s in sets) [for (k in s.keys()) k]];
+		adjCache.set(t.verts.length, c);
+		return c;
 	}
 
 	public function build(parent:h3d.scene.Object) {

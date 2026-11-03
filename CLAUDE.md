@@ -139,8 +139,15 @@ URL params on the web build make runs reproducible:
 - **Rocks are 3D, not sprites** (`render/Rocks.hx`). The owner found the sprite
   boulders "very artificial": their painted-in light disagreed with our sun
   and the dome silhouette read as a sticker. Rocks are noise-deformed
-  icospheres with fracture planes, sunk into the ground, with vertex AO and a
-  triplanar painted texture. Use them for any new stone, never `ball()` gems.
+  icospheres shaped by **gl-rock's scraping** (Erkaman/gl-rock, MIT, notice in
+  THIRD_PARTY.md): local planar flats around random spots, limited to a
+  radius by flood fill over the mesh, which gives chipped facets between
+  rounded parts. Then gentle noise, sunk into the ground, with vertex AO and
+  a triplanar painted texture. Use them for any new stone, never `ball()` gems.
+  **Boulders cluster around the gravel high ground** (`Props.boulderSpot`: on
+  it and a band below its rim, in irregular noise clumps). There are almost
+  none in the meadows. The owner expects the summit to be the main area of
+  conflict, and found the boulders "too scattered".
 - **Palms are procedural** (`render/Palms.hx`), not low-poly. The owner found the
   old ones "very angular and not very realistic". Each has a smooth, curved
   trunk tube with ring scars, plus arched, folded fronds that use a pinnate
@@ -197,8 +204,9 @@ URL params on the web build make runs reproducible:
   only a few scattered in the meadows. Owner: "meadows
   of grass blades, windswept, where there are not trees, with some small
   amount of rocks, rocky area at the high point".
-- **Boulders are sparse** (the owner asked for fewer random boulders), so keep
-  the `rockCluster` rates in `Props` low.
+- **Boulders are sparse** (the owner asked for fewer random boulders) and live
+  near the summit; keep `boulderSpot` rates low. The gravel is a touch lighter
+  (owner: "slightly lighter... but not too much").
 - **Ocean waves** (`render/OceanWaves.hx`): the owner pointed at
   github.com/codeagent/webgl-ocean. That repo has **no licence**, so don't
   copy its code. We reimplemented the same technique (a Tessendorf FFT with
