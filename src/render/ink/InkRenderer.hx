@@ -18,6 +18,16 @@ class InkRenderer extends h3d.scene.fwd.Renderer {
 	public var tiltShift = false;
 	/** Colour grade + vignette (Painted), applied in the same final pass. **/
 	public var grade = false;
+	/** Weather in the final pass (see render.Weather): rain streaks, storm grade, fog. **/
+	public var rain = 0.0;
+	public var storm = 0.0;
+	public var fog = 0.0;
+
+	public function setWeather(w:render.Weather) {
+		rain = w == Rain ? 1 : 0;
+		storm = w == Rain ? 1 : 0;
+		fog = w == Fog ? 1 : 0;
+	}
 	var tiltFx:h3d.pass.ScreenFx<TiltShift>;
 	/** Sketch style: fade the far part of the frame and the margins to paper (0 = off). **/
 	public var paperFade = 0.0;
@@ -62,7 +72,7 @@ class InkRenderer extends h3d.scene.fwd.Renderer {
 
 		// With tilt-shift on, render the whole 3D frame off-screen, then blur it onto the screen.
 		var frame:h3d.mat.Texture = null;
-		if (tiltShift || grade) {
+		if (tiltShift || grade || rain > 0 || storm > 0 || fog > 0) {
 			frame = allocTarget("frame", true);
 			ctx.engine.pushTarget(frame);
 			var bg = ctx.engine.backgroundColor;
@@ -102,6 +112,11 @@ class InkRenderer extends h3d.scene.fwd.Renderer {
 			tiltFx.shader.texel.set(1 / frame.width, 1 / frame.height);
 			tiltFx.shader.maxRadius = tiltShift ? 3.2 : 0;
 			tiltFx.shader.grade = grade ? 1 : 0;
+			tiltFx.shader.rain = rain;
+			tiltFx.shader.storm = storm;
+			tiltFx.shader.fog = fog;
+			tiltFx.shader.time = ctx.time;
+			tiltFx.shader.aspect = frame.width / frame.height;
 			tiltFx.render();
 		}
 	}

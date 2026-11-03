@@ -309,6 +309,40 @@ class IslandView extends h3d.scene.Object {
 		props.canopies.visible = mode == 1;
 	}
 
+	/**
+		Weather on the island itself (call after setStyle; the screen-space part,
+		rain streaks, storm grade and fog, is in InkRenderer). Sunny: brighter
+		grass, light clouds. Rain: rougher sea, more whitecaps and surf, dull
+		glint, gustier grass, heavy fast clouds. Fog: no cloud shadows, calm sea.
+	**/
+	public function setWeather(w:Weather) {
+		var grass = props != null ? props.grass : null;
+		switch w {
+			case Sunny:
+				if (grass != null) grass.setWeather(1.14, 0.55);
+				TerrainStyle.setColor(terrainStyle.fieldGround, Palette.shade(Palette.FIELD_GROUND, 1.12));
+				clouds.strength *= 0.6;
+				clouds.drift.set(1.1, 0.8);
+			case Rain:
+				// Rougher sea (owner: "make the waves a bit rougher").
+				waterShader.waves = 1.4;
+				waterShader.glint = 0.15;
+				waterShader.whitecap = 0.6;
+				waterShader.breakers = 1.4;
+				if (grass != null) grass.setWeather(0.95, 1.0);
+				TerrainStyle.setColor(terrainStyle.fieldGround, Palette.FIELD_GROUND);
+				clouds.strength = 1.2;
+				clouds.drift.set(3.2, 2.2);
+			case Fog:
+				waterShader.waves = Math.min(waterShader.waves, 0.7);
+				waterShader.glint = 0.1;
+				waterShader.whitecap = 0;
+				if (grass != null) grass.setWeather(1.0, 0.3);
+				TerrainStyle.setColor(terrainStyle.fieldGround, Palette.FIELD_GROUND);
+				clouds.strength = 0;
+		}
+	}
+
 	/** The flag pole is timber: built after the Sketch tone is applied, so it keeps its colour. **/
 	function buildFlagPole() {
 		var b = new FlatMeshBuilder();

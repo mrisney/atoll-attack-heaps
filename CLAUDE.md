@@ -292,6 +292,16 @@ URL params on the web build make runs reproducible:
   a **lower sun** (~40°, `TerrainStyle.SUN`, shared by light, terrain, grass,
   water) for long shadows; and a **colour grade + vignette** in the final
   `TiltShift` pass (`InkRenderer.grade`, Painted; still applies with B off).
+- **Weather** (`render/Weather.hx`): the owner wants three patterns, "fog,
+  sunny and rain/stormy". Visual only (the sim doesn't know). Each style
+  starts in one: **Ink map sunny** (brighter grass, light clouds), **Painted
+  rain** (owner: "add rain and make the waves a bit rougher": rougher sea,
+  more whitecaps and surf, dull glint, gustier grass, heavy fast clouds,
+  plus rain streaks and a darker, cooler storm grade), **Sketch fog** (calm
+  sea, no cloud shadows, drifting haze thicker toward the far side). **C**
+  cycles, `?weather=sunny|fog|rain`. Island side: `IslandView.setWeather`
+  (after `setStyle`); screen side: `InkRenderer.setWeather` → the final
+  `TiltShift` pass (rain layers, storm grade, fog). W is taken by WASD.
 - All colours live in `render/Palette.hx` and the style shaders. Don't
   hard-code colours elsewhere.
 

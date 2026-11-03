@@ -45,6 +45,8 @@ class Palette {
 	/** Rigged characters (CharacterModel): weapon wood and iron. **/
 	public static inline var CHAR_WOOD = 0x8A6A4C;
 	public static inline var CHAR_METAL = 0xB8BEC4;
+	/** Fog haze (Weather.Fog). **/
+	public static inline var FOG = 0xCDD2D0;
 	public static inline var TRACK_DUST = 0xE2D6BC;
 	/** Low dark ground cover in the fields (low-poly look). **/
 	public static inline var GROUND_COVER = 0x3E4A26;

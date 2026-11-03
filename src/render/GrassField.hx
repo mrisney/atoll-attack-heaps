@@ -49,6 +49,14 @@ class GrassField {
 	/** One shader per layer; `setFocus` moves both. **/
 	public final layers:Array<GrassShader> = [];
 
+	/** Weather: blade brightness and how hard the wind gusts. **/
+	public function setWeather(bright:Float, wind:Float) {
+		for (l in layers) {
+			l.bright = bright;
+			l.windStrength = wind;
+		}
+	}
+
 	/** Connect the trample map, so blades part around units. **/
 	public function setTrample(t:Trample) {
 		for (l in layers) {
@@ -240,6 +248,8 @@ class GrassShader extends hxsl.Shader {
 
 		/** Toward the sun. **/
 		@param var sunDir:Vec3;
+		/** Overall brightness (weather: brighter in sun, a little darker when wet). **/
+		@param var bright:Float;
 		@param var baseColor:Vec3;
 		@param var tipColor:Vec3;
 		@param var dryColor:Vec3;
@@ -347,7 +357,7 @@ class GrassShader extends hxsl.Shader {
 			col = mix(col, dryColor * 1.08, smoothstep(0.72, 1.0, h) * step(0.8, fract(tone * 17.0)) * 0.85);
 			// Per-blade variation, so the carpet isn't one flat colour.
 			col *= vec3(0.9 + 0.2 * tone, 0.94 + 0.12 * fract(tone * 7.0), 0.9 + 0.1 * fract(tone * 13.0));
-			bladeColor = col * light + vec3(sheen, sheen, sheen * 0.4);
+			bladeColor = (col * light + vec3(sheen, sheen, sheen * 0.4)) * bright;
 			bladeEdge = edge;
 		}
 
@@ -368,6 +378,7 @@ class GrassShader extends hxsl.Shader {
 		TerrainStyle.setColor(dryColor, Palette.GRASS_BLADE_DRY);
 		windDir.set(0.8, 0.6);
 		windStrength = 0.55;
+		bright = 1;
 		scale = 1;
 		sweep = 0.85;
 		trample = h3d.mat.Texture.fromColor(0x808000);

@@ -30,6 +30,15 @@ class Main extends hxd.App {
 	/** Size of on-screen UI relative to its design size (2 on Retina screens). **/
 	var uiScale = 1.0;
 	var style:VisualStyle = Painted;
+	/** null = the style's own weather (Ink map sunny, Painted rain, Sketch fog); C cycles. **/
+	var weather:Null<render.Weather> = null;
+
+	function currentWeather():render.Weather
+		return weather != null ? weather : switch style {
+			case InkMap: Sunny;
+			case Painted: Rain;
+			case Sketch: Fog;
+		};
 	var shape:IslandShape = Single;
 	/** Tree look: null = the style's default (3D, or low-poly in Ink map); 0 = 3D, 1 = sprites, 2 = low-poly. **/
 	var treeMode:Null<Int> = null;
@@ -138,6 +147,8 @@ class Main extends hxd.App {
 	function applyStyle() {
 		islandView.setStyle(style);
 		islandView.setTreeMode(currentTreeMode());
+		islandView.setWeather(currentWeather());
+		inkRenderer.setWeather(currentWeather());
 		inkRenderer.inkEnabled = style == InkMap || style == Sketch;
 		inkRenderer.tiltShift = style == Painted;
 		inkRenderer.grade = style == Painted;
@@ -170,10 +181,10 @@ class Main extends hxd.App {
 		return treeMode != null ? treeMode : 0;
 
 	function updateHud() {
-		hud.text = 'ATOLL ATTACK  ·  seed $seed  ·  ${shape} island  ·  ${style} style\n'
+		hud.text = 'ATOLL ATTACK  ·  seed $seed  ·  ${shape} island  ·  ${style} style  ·  ${currentWeather()}\n'
 			+ 'Drag: select   Click/RMB: move   Shift: add   Minimap: click to fly, right-click to send units\n'
 			+ 'Pan: right/middle-drag, trackpad swipe, WASD (Shift = fast), edges   Zoom: wheel/pinch/+ -   Q/E: rotate   Space: recentre\n'
-			+ 'R: new island   G: island shape   T: visual style   I: ink lines   B: tilt-shift   P: trees (3D / sprite / low-poly)   X: blast at cursor (test)';
+			+ 'R: new island   G: island shape   T: visual style   I: ink lines   B: tilt-shift   P: trees (3D / sprite / low-poly)   C: weather   X: blast at cursor (test)';
 	}
 
 	var frames = 0;
@@ -194,6 +205,9 @@ class Main extends hxd.App {
 		if (q.get("style") == "classic") style = Painted; // retired; old links still open
 		if (q.get("style") == "painted") style = Painted;
 		if (q.get("style") == "sketch") style = Sketch;
+		if (q.get("weather") == "sunny") weather = Sunny;
+		if (q.get("weather") == "fog") weather = Fog;
+		if (q.get("weather") == "rain") weather = Rain;
 		if (q.get("shape") == "atoll") shape = Atoll;
 		if (q.get("shape") == "single") shape = Single;
 		if (q.get("props") == "proc" || q.get("trees") == "proc") treeMode = 0;
@@ -285,6 +299,14 @@ class Main extends hxd.App {
 				case Painted: InkMap;
 				case InkMap: Sketch;
 				case Sketch: Painted;
+			};
+			applyStyle();
+		}
+		if (hxd.Key.isPressed(hxd.Key.C)) {
+			weather = switch currentWeather() {
+				case Sunny: Fog;
+				case Fog: Rain;
+				case Rain: Sunny;
 			};
 			applyStyle();
 		}

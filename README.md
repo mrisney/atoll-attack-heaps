@@ -42,6 +42,7 @@ The goal of this spike is to answer one question: does Heaps give the Northgard-
 - **Grass parts as units walk through it**: a trample map stamped by every unit bends blades outward from their feet, leaving trails that spring back over a few seconds. Tree canopies open up over figures walking beneath them.
 - **Micro-scatter**: wildflowers in the meadows, shells on the beaches, loose pebbles in the uplands.
 - **Tilt-shift** (B to toggle; on by default in Painted).
+- **Weather**: sunny, fog, or rain/storm (rain streaks, rougher sea, darker sky, drifting fog). Each style starts in one; **C** cycles, `?weather=sunny|fog|rain`.
 - **Antialiasing**: 4x MSAA, plus FXAA when tilt-shift renders offscreen (`?aa=0` turns FXAA off).
 - **Prop variety**: palms leaning toward the sea, mixed broadleaf and pine woods with the odd turning tree, bushes, grass meadows, rock outcrops, driftwood, loose stones and dead snags on the heights. Placed by elevation band and clustered by noise, with a colour and size per instance, merged into a handful of draw calls.
 - **Rag dolls**: when a unit dies it's flung away from the hit and tumbles into a Verlet rag doll that collides with the terrain, floats at the water surface, and settles. Press **X** to blast units near the cursor (a test key until combat exists).
