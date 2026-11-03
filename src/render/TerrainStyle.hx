@@ -132,7 +132,7 @@ class TerrainStyle extends hxsl.Shader {
 				var wc = dot(p, vec2(-0.6, 0.8));
 				var s1 = grassTex.get(vec2(wc / 0.37, wa / 1.9)).a;
 				var s2 = dirtTex.get(vec2(wc / 0.61 + 0.3, wa / 3.3 + 0.7)).a;
-				fg *= 0.78 + 0.32 * s1 + 0.18 * (s2 - 0.5);
+				fg *= 0.88 + 0.16 * s1 + 0.1 * (s2 - 0.5);
 				c = mix(c, fg, smoothstep(0.05, 0.6, fm.r) * 0.85 * (1.0 - sandW));
 
 				// Worn ground (Tracks, in the mask's alpha): pale dusty earth, the edge frayed

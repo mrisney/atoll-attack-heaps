@@ -324,8 +324,9 @@ class IslandView extends h3d.scene.Object {
 				TerrainStyle.setColor(terrainStyle.fieldGround, Palette.FIELD_GROUND);
 				clouds.drift.set(1.1, 0.8);
 			case Sunny:
-				if (grass != null) grass.setWeather(1.14, 0.55);
-				TerrainStyle.setColor(terrainStyle.fieldGround, Palette.shade(Palette.FIELD_GROUND, 1.12));
+				// Lighter again (owner: "the grass can be lighter"), and calmer gusts.
+				if (grass != null) grass.setWeather(1.28, 0.42);
+				TerrainStyle.setColor(terrainStyle.fieldGround, Palette.shade(Palette.FIELD_GROUND, 1.3));
 				clouds.strength *= 0.6;
 				clouds.drift.set(1.1, 0.8);
 			case Rain:

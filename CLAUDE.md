@@ -185,8 +185,9 @@ URL params on the web build make runs reproducible:
   conflict, and found the boulders "too scattered".
   **Coastal outcrops** (`Props.outcropSpot`/`outcrop`): occasional groups of 2–4
   larger rocks at the waterline running into the shallows, on a raised base
-  so they break the surface. The owner asked for them "sparingly", so keep
-  the noise threshold high, and **dark** (wet, weathered: shade ~0.42 in the
+  so they break the surface. The owner asked for them "sparingly" and later
+  to "reduce the number of rocks on the beach" (loose beach stones cut to a
+  third too), so keep the noise threshold high, and **dark** (wet, weathered: shade ~0.42 in the
   water, 0.55 on the shore).
 - **Palms are procedural** (`render/Palms.hx`), not low-poly. The owner found the
   old ones "very angular and not very realistic". Each has a smooth, curved
@@ -212,7 +213,7 @@ URL params on the web build make runs reproducible:
   finer, closer together"): fine blades (1.3–2.5 cm wide, 30–70 cm long, 4
   segments), all laid over downwind by a constant `sweep` plus gusts, deep
   green with yellow-green tips (lifted for a sunny day: owner found it "a bit
-  dark"), about one in five with a straw seed head,
+  dark"; sunny weather lifts it further, 1.28×), about one in five with a straw seed head,
   over a brownish-olive thatch (`FIELD_GROUND`). Each blade **wraps** on a fixed world grid to the copy nearest
   the camera's look-at (`IslandView.setGrassFocus`, every frame), so blades
   never slide when panning. The vertex shader sets blades on the ground

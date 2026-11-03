@@ -157,7 +157,7 @@ class Props {
 				if (h < tSand) {
 					// Beach
 					if (roll < 0.03 && h > 0.35) palm(x, y, z, -gx, -gy);
-					else if (roll < 0.033) stones(x, y, z, 1);
+					else if (roll < 0.031) stones(x, y, z, 1);
 					else if (roll < 0.066 && h < 0.6) driftwood(x, y, z);
 					else if (roll < 0.12) shells(x, y, z);
 					else if (roll < 0.2 && h > 0.35) beachGrass(x, y, z);
@@ -421,7 +421,8 @@ class Props {
 	/** A few stretches of coast get outcrops (noise clumps, sparse). **/
 	function outcropSpot(x:Float, y:Float):Bool {
 		var n = boulderN.fbm(x * 0.07 + 51, y * 0.07 + 51, 3);
-		return n > 0.7 && r() < 0.06;
+		// Fewer again (owner: "reduce the number of rocks on the beach").
+		return n > 0.76 && r() < 0.035;
 	}
 
 	/**

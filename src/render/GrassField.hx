@@ -314,8 +314,11 @@ class GrassShader extends hxsl.Shader {
 			// Gusts: crossing waves rolling downwind, so the field ripples in bands.
 			var along = dot(root, windDir);
 			var across = dot(root, vec2(-windDir.y, windDir.x));
-			var gust = 0.5 + 0.5 * sin(along * 0.33 - t * 1.7 + sin(across * 0.13 + t * 0.4) * 1.5);
-			gust = gust * gust * (0.75 + 0.25 * sin(along * 0.07 - t * 0.5));
+			// The field's own clump/dryness noise scrambles the phase and strength, so gusts
+			// arrive as irregular patches instead of evenly spaced parallel bands (the owner
+			// found the regular version "banded... patterned").
+			var gust = 0.5 + 0.5 * sin(along * 0.33 - t * 1.7 + sin(across * 0.13 + t * 0.4) * 1.5 + (m.g - 0.5) * 7.0 + (m.b - 0.5) * 5.0);
+			gust = gust * gust * (0.5 + 0.5 * m.g) * (0.75 + 0.25 * sin(along * 0.07 - t * 0.5));
 			var flutter = 0.1 * sin(t * 3.7 + root.x * 1.9 + root.y * 1.3 + heading * 3.0);
 
 			// The blade's own shape: lean at the base, curving more toward the tip.
