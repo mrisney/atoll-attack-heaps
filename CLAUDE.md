@@ -120,7 +120,9 @@ URL params on the web build make runs reproducible:
   split normals before export); bone "hand.L" becomes "hand_L"; Heaps'
   `SmoothTransition` breaks on quick idle/walk switches (cut for now);
   `Skin.getObjectByName` returns a detached Joint that breaks name lookups if
-  added to the scene graph.
+  added to the scene graph. Heaps renamed `JointData.currentRelPos`/`currentAbsPos`
+  to `currentRelPose`/`currentAbsPose` in newer versions (the owner's Mac has
+  the newer one), so go through `CharacterModel.JointPose`, never the fields.
 - **Rag dolls on death** (owner asked for them). Keep them grounded: modest
   impulse, rigid limbs (no knees or elbows), friction, and settling within a
   couple of seconds. Not slapstick.

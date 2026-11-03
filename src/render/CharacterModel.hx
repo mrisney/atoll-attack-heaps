@@ -216,7 +216,7 @@ class CharacterModel extends h3d.scene.Object {
 			inv.inverse3x4(pAbs);
 			var rel = new h3d.Matrix();
 			rel.multiply3x4(a, inv);
-			skin.jointsData[j.index].currentRelPos = rel;
+			JointPose.setRel(skin.jointsData[j.index], rel);
 		}
 		skin.jointsUpdated = true;
 	}
@@ -295,7 +295,35 @@ class JointFollower extends h3d.scene.Object {
 
 	override function calcAbsPos() {
 		sk.syncJoints();
-		absPos.load(sk.jointsData[index].currentAbsPos);
+		absPos.load(JointPose.abs(sk.jointsData[index]));
 		if (invPos != null) invPos._44 = 0;
+	}
+}
+
+/**
+	Heaps renamed JointData's pose fields between versions (currentRelPos /
+	currentAbsPos in 2.1.0, currentRelPose / currentAbsPose in newer ones),
+	so read and write them by whichever name this build has.
+**/
+class JointPose {
+	static var relName:Null<String> = null;
+	static var absName:Null<String> = null;
+
+	static function names(jd:Dynamic) {
+		if (relName != null) return;
+		var fields = Type.getInstanceFields(Type.getClass(jd));
+		var newer = fields.indexOf("currentRelPose") >= 0;
+		relName = newer ? "currentRelPose" : "currentRelPos";
+		absName = newer ? "currentAbsPose" : "currentAbsPos";
+	}
+
+	public static function setRel(jd:Dynamic, m:h3d.Matrix) {
+		names(jd);
+		Reflect.setProperty(jd, relName, m);
+	}
+
+	public static function abs(jd:Dynamic):h3d.Matrix {
+		names(jd);
+		return Reflect.getProperty(jd, absName);
 	}
 }
