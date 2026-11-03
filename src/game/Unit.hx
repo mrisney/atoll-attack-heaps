@@ -4,6 +4,8 @@ enum UnitKind {
 	Captain;
 	Archer;
 	Swordsman;
+	/** Long pike. Not spawned yet (comes with the gameplay port); the views support it. **/
+	Piker;
 }
 
 /**
@@ -44,6 +46,7 @@ class Unit {
 			case Captain: 3.2;
 			case Archer: 3.6;
 			case Swordsman: 3.0;
+			case Piker: 2.9;
 		}
 	}
 }

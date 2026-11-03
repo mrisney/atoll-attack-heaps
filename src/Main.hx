@@ -178,6 +178,7 @@ class Main extends hxd.App {
 	var startDistance = 0.0;
 	/** `?at=x,y`: start the camera looking at this world point (for reproducible shots). **/
 	var startAt:Null<{x:Float, y:Float}> = null;
+	var galleryWanted = false;
 
 	/**
 		Web build only: `index.html?seed=123&style=inkmap&shape=atoll&dist=80`
@@ -198,6 +199,8 @@ class Main extends hxd.App {
 		if (q.get("props") == "lowpoly" || q.get("trees") == "lowpoly") treeMode = 2;
 		if (q.has("dist")) startDistance = Std.parseFloat(q.get("dist"));
 		// Grass budget, like terra's BLADES / DEPTH settings.
+		if (q.get("figures") == "rigged") UnitView.rigged = true;
+		galleryWanted = q.has("gallery");
 		if (q.has("blades")) GrassField.defaultBlades = Std.parseInt(q.get("blades"));
 		if (q.has("depth")) GrassField.defaultDepth = Std.parseFloat(q.get("depth"));
 		if (q.get("aa") == "0") inkRenderer.fxaa = false;
@@ -208,7 +211,56 @@ class Main extends hxd.App {
 		#end
 	}
 
+	/**
+		Debug: `?gallery=1` lines up one rigged figure per kind and take at the
+		`at` point (or the view centre), facing the camera, every take looping.
+		For checking the character pipeline; not part of the game.
+	**/
+	var gallery:Null<Array<render.CharacterModel>> = null;
+
+	function buildGallery() {
+		gallery = [];
+		var cx = startAt != null ? startAt.x : s3d.camera.target.x, cy = startAt != null ? startAt.y : s3d.camera.target.y;
+		var dx = s3d.camera.pos.x - cx, dy = s3d.camera.pos.y - cy;
+		var face = Math.atan2(dy, dx);
+		// Line up across the view (perpendicular to the camera direction).
+		var ax = -Math.sin(face), ay = Math.cos(face);
+		var shows:Array<{kind:game.Unit.UnitKind, take:String}> = [
+			{kind: Archer, take: "Idle"}, {kind: Archer, take: "Shoot"}, {kind: Swordsman, take: "Walk"},
+			{kind: Swordsman, take: "Slash"}, {kind: Piker, take: "Thrust"}, {kind: Captain, take: "Plant"},
+		];
+		for (k in 0...shows.length) {
+			var o = (k - (shows.length - 1) / 2) * 1.6;
+			var m = new render.CharacterModel(k % 2, shows[k].kind, s3d);
+			var x = cx + ax * o, y = cy + ay * o;
+			m.setPosition(x, y, island.heightAt(x, y));
+			m.setRotation(0, 0, face);
+			m.play(shows[k].take, 1.0, 0, true);
+			gallery.push(m);
+		}
+		// Two more in front of the line that fall as rag dolls, to check the skeleton mapping.
+		for (k in 0...2) {
+			var o = (k - 0.5) * 3.0;
+			var x = cx + ax * o + Math.cos(face) * 2.5, y = cy + ay * o + Math.sin(face) * 2.5;
+			var m = new render.CharacterModel(k, k == 0 ? Swordsman : Archer, s3d);
+			var z = island.heightAt(x, y);
+			m.setPosition(x, y, z);
+			m.startRagdoll();
+			var ground = (lx:Float, ly:Float) -> Math.max(island.heightAt(x + lx, y + ly), -0.25) - z;
+			var rd = new render.Ragdoll(face + k * 1.3, 1.95, 0, ground);
+			rd.kick(Math.cos(face + 2.0), Math.sin(face + 2.0), 3.0, 2.0);
+			galleryRagdolls.push({m: m, r: rd, x: x, y: y, z: z});
+		}
+	}
+
+	var galleryRagdolls:Array<{m:render.CharacterModel, r:render.Ragdoll, x:Float, y:Float, z:Float}> = [];
+
 	override function update(dt:Float) {
+		if (galleryWanted && gallery == null && frames > 2) buildGallery();
+		for (g in galleryRagdolls) {
+			g.r.update(Math.min(dt, 0.1));
+			g.m.applyRagdoll(g.r, g.x, g.y, g.z);
+		}
 		frames++;
 		#if js
 		// Lets automation know the game is up and rendering.
@@ -247,7 +299,7 @@ class Main extends hxd.App {
 		rtsCam.update(dt, selection.mouseX, selection.mouseY, s2d.width, s2d.height);
 		sim.update(dt);
 		islandView.update(dt);
-		islandView.setGrassFocus(s3d.camera.target.x, s3d.camera.target.y);
+		islandView.setGrassFocus(s3d.camera.target.x, s3d.camera.target.y, rtsCam.distance);
 		islandView.updateTrample(dt, [for (v in unitViews) if (v.unit.alive) {x: v.x, y: v.y}]);
 		for (v in unitViews) v.syncFromSim(dt);
 		selection.update(dt);

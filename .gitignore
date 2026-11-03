@@ -8,3 +8,4 @@ dump/
 out/
 node_modules/
 snapshots/
+res/.tmp/

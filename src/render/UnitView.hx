@@ -45,6 +45,15 @@ class UnitView extends h3d.scene.Object {
 
 	public var selected(default, set) = false;
 
+	/**
+		Draw units as the rigged, animated FBX character (CharacterModel)
+		instead of the line-art shapes. `?figures=rigged`; off by default while
+		the character is the generated stand-in.
+	**/
+	public static var rigged = false;
+
+	var model:Null<CharacterModel> = null;
+
 	public function new(unit:Unit, groundAt:(Float, Float) -> Float, ?parent:h3d.scene.Object) {
 		super(parent);
 		this.unit = unit;
@@ -53,6 +62,11 @@ class UnitView extends h3d.scene.Object {
 		shadow();
 
 		body = new h3d.scene.Object(this);
+		if (rigged) {
+			model = new CharacterModel(unit.team, unit.kind, body);
+			finish();
+			return;
+		}
 		body.setScale(SCALE);
 		var paper = Palette.PAPER;
 		var cloth = unit.team == 0 ? Palette.CLOTH_BLUE : Palette.CLOTH_RED;
@@ -84,6 +98,10 @@ class UnitView extends h3d.scene.Object {
 				shield.setPosition(0.02, 0.07, -0.17);
 				shield.scaleY = 0.22;
 				armLSwing = 0.2;
+			case Piker:
+				// A long pike held upright.
+				InkShape.rod(armR, 0.04, 0, -0.5, 0.04, 0, 1.55, 0.016, paper);
+				armRSwing = 0.15;
 			case Archer:
 				// A simple bow arc in the left hand.
 				var n = 7;
@@ -97,6 +115,10 @@ class UnitView extends h3d.scene.Object {
 				armLSwing = 0.15;
 		}
 
+		finish();
+	}
+
+	function finish() {
 		ring = new h3d.scene.Object(this);
 		var rb = new FlatMeshBuilder();
 		rb.ring(0, 0, 0.06, 0.62, 0.76, 28, Palette.SELECT);
@@ -134,6 +156,15 @@ class UnitView extends h3d.scene.Object {
 	}
 
 	function pose() {
+		if (model != null) {
+			// Walk while moving (playback matched to the stride), else idle.
+			if (swing > SWING * 0.3) {
+				model.play("Walk");
+				model.setSpeed(unit.baseSpeed / 3.0 * (swing / SWING));
+			} else
+				model.play("Idle");
+			return;
+		}
 		var s = Math.sin(walkTime) * swing;
 		legL.setRotation(0, s, 0);
 		legR.setRotation(0, -s, 0);
@@ -187,7 +218,8 @@ class UnitView extends h3d.scene.Object {
 		// Ground in this view's local space (its origin stays where the unit fell).
 		var ox = x, oy = y, oz = z;
 		var ground = (lx:Float, ly:Float) -> Math.max(groundAt(ox + lx, oy + ly), -0.25) - oz;
-		ragdoll = new Ragdoll(heading, SCALE, body.z, ground);
+		// The rigged figure is taller than the line-art one (pelvis ~0.93 m vs 0.45 × SCALE).
+		ragdoll = new Ragdoll(heading, model != null ? 1.95 : SCALE, body.z, ground);
 
 		// Fling away from the hit, with a little per-unit variety so a group doesn't fall in lockstep.
 		var v = ((unit.id * 7919 + 13) % 101) / 100;
@@ -196,6 +228,13 @@ class UnitView extends h3d.scene.Object {
 		var falloff = Math.max(0.35, 1 - d / 6);
 		ragdoll.kick(dx + (v - 0.5) * 0.6 * d, dy, 3.2 * falloff + v * 0.8, 2.2 * falloff + v * 0.6);
 
+		if (model != null) {
+			// The rag doll's particles already include the heading.
+			body.setRotation(0, 0, 0);
+			model.startRagdoll();
+			applyRagdoll();
+			return;
+		}
 		// Detach the parts from the walking skeleton; from now on they follow the joints.
 		for (o in [torso, head, legL, legR, armL, armR]) {
 			o.remove();
@@ -209,6 +248,10 @@ class UnitView extends h3d.scene.Object {
 
 	function applyRagdoll() {
 		var r = ragdoll;
+		if (model != null) {
+			model.applyRagdoll(r, x, y, z);
+			return;
+		}
 		inline function px(i:Int) return new h3d.Vector(r.x[i], r.y[i], r.z[i]);
 
 		// Torso frame: up along the spine, left across the shoulders.

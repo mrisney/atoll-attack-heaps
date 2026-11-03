@@ -13,6 +13,8 @@
 //   --walk              also box-select blue squad, order a move, and take a second shot mid-walk
 //   --fly=0.4,0.2       click the minimap at (u,v) fractions to fly there; ';' for several
 //   --at=-38,0          start the camera looking at this world point (x,y)
+//   --figures=rigged    draw units as the rigged FBX character
+//   --gallery           line up one rigged figure per kind and take at the view centre
 //   --no-build          skip `haxe build-js.hxml`
 //   --size=1280x760     viewport
 //
@@ -60,6 +62,8 @@ mkdirSync(outDir, { recursive: true });
 const params = new URLSearchParams({ seed, style, shape });
 if (args.dist) params.set("dist", args.dist);
 if (args.at) params.set("at", args.at);
+if (args.figures) params.set("figures", args.figures);
+if (args.gallery) params.set("gallery", "1");
 const url = `file://${join(root, "bin", "index.html")}?${params}`;
 
 // Software GL fallback keeps this working on CI/headless boxes without a GPU.
@@ -69,7 +73,7 @@ const browser = await chromium.launch({
 const page = await browser.newPage({ viewport: { width, height } });
 
 const problems = [];
-page.on("pageerror", (e) => problems.push(`pageerror: ${e.message}`));
+page.on("pageerror", (e) => problems.push(`pageerror: ${problems.length ? e.message : e.stack}`));
 page.on("console", (m) => {
   if (m.type() === "error" && !/passive event listener/.test(m.text())) problems.push(`console: ${m.text()}`);
 });

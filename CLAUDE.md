@@ -102,6 +102,25 @@ URL params on the web build make runs reproducible:
   tint and the captain's pennant. **Animation is restrained:** a gentle limb
   swing while walking, still when idle. The owner explicitly does not want
   cartoony or over-animated characters.
+- **Rigged characters (in progress)**: the owner shared a pencil line-art
+  archer (fine lines, light hatching, realistic proportions, tunic, trousers,
+  soft boots) and wants four types: archer, swordsman, piker, flag-planting
+  chief. Pipeline: Blender → FBX → `render/CharacterModel` (skinned body,
+  rigid props hung on joints via `JointFollower`, takes Idle/Walk/Shoot/
+  Slash/Thrust/Plant) drawn by `render/CharacterInk` (paper tone, screen-space
+  pencil hatching from N·L, inverted-hull graphite outline as a second pass of
+  the skinned material) and the rag doll mapped onto the skeleton
+  (`CharacterModel.applyRagdoll`). `tools/character/standin.py` generates the
+  stand-in (and documents the asset contract). Opt-in: `?figures=rigged`;
+  `?gallery=1` lines up every kind and take. The reference has a face; the
+  line-art rule says faceless: **unresolved, ask the owner**.
+  Gotchas: Heaps merges all skinned meshes of one armature into one geometry
+  but keeps only the first one's normals (so props must be rigid, not
+  skinned); Blender ≥4 writes per-vertex normals Heaps mishandles (set custom
+  split normals before export); bone "hand.L" becomes "hand_L"; Heaps'
+  `SmoothTransition` breaks on quick idle/walk switches (cut for now);
+  `Skin.getObjectByName` returns a detached Joint that breaks name lookups if
+  added to the scene graph.
 - **Rag dolls on death** (owner asked for them). Keep them grounded: modest
   impulse, rigid limbs (no knees or elbows), friction, and settling within a
   couple of seconds. Not slapstick.
@@ -167,8 +186,14 @@ URL params on the web build make runs reproducible:
   budget around the view centre**, not grass everywhere: `blades` (default
   100000, `?blades=`) and `depth` in metres (default 85, `?depth=`). It's
   split into two layers: NEAR, 80% of the blades in a dense patch of radius
-  `depth*0.24` (~50 blades/m²), and FAR, the rest out to `depth`, wider and
-  sparser. Each blade **wraps** on a fixed world grid to the copy nearest
+  `depth*0.2`, and FAR, the rest out to `depth`, wider and sparser. The
+  patch **shrinks as the camera zooms in** (`GrassShader.scale`, from the
+  view distance in `setGrassFocus`), so the same budget packs denser where
+  blades can be seen. **Windswept** (owner's reference screenshot: "windswept,
+  finer, closer together"): fine blades (1.3–2.5 cm wide, 30–70 cm long, 4
+  segments), all laid over downwind by a constant `sweep` plus gusts, deep
+  green with yellow-green tips, about one in five with a straw seed head,
+  over a brownish-olive thatch (`FIELD_GROUND`). Each blade **wraps** on a fixed world grid to the copy nearest
   the camera's look-at (`IslandView.setGrassFocus`, every frame), so blades
   never slide when panning. The vertex shader sets blades on the ground
   from an R32F height grid (bilinear by hand, matching `Island.heightAt`)
@@ -204,8 +229,9 @@ URL params on the web build make runs reproducible:
   gravel textures and an aerial photo of a gravel pile): `GroundTextures.gravel`
   is painted in code (two Voronoi stone layers, mostly greys, over a sandy
   matrix; the reference textures' licences weren't usable). `TerrainStyle`
-  uses it for the summit band, with **slump streaks running downhill** (noise
-  stretched along the slope direction) and damp and dusty patches. Bare
+  uses it for the summit band, with damp and dusty patches. (Slump streaks
+  bent along the downhill direction were **removed**: they wrapped the hill
+  in fingerprint-like rings the owner found computer-made.) Bare
   rock shows only on the steepest faces. Few 3D stones and boulders, and
   only a few scattered in the meadows. Owner: "meadows
   of grass blades, windswept, where there are not trees, with some small
@@ -232,8 +258,13 @@ URL params on the web build make runs reproducible:
 - **Stronghold reference** (owner shared Stronghold screenshots: "I am trying to
   match that" for terrain and grass). Painted moved toward it:
   olive/khaki blades and field ground (`Palette.GRASS_BLADE_*`, `FIELD_GROUND`),
-  drier mottled patches; **worn tracks** (`render/Tracks.hx`) from four beaches
-  (incl. both landings) up to the apex plus scuffed patches, stored as wear in
+  drier mottled patches; **worn tracks** (`render/Tracks.hx`) from the two
+  landing beaches up to the apex, plus faint scuffed patches. The owner found
+  the first version "very computer generated" (four spoke-like tracks of even
+  width and fill, plus a plaid from small tiling noise), so they now meander
+  in long bends, vary in width and wear along their length, have noise-ragged
+  edges, and the shader breaks them up with noise at odd scales on rotated
+  axes (never small repeating texture scales). They're stored as wear in
   the grass mask's **alpha**: blades thin out with ragged edges, `TerrainStyle`
   paints pale dusty earth, `Props` keeps trees off and drops pebbles; low dark
   **ground cover** clumps (`Props.groundCover`); drifting **cloud shadows**

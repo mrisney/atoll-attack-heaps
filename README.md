@@ -83,6 +83,10 @@ res/                        art from WildCurrent (embedded into the build; see r
   render/ink/GeoOut.hx      per-material normal/depth output
   render/ink/TiltShift.hx   miniature-style blur toward the top and bottom of the frame
   render/UnitView.hx        unit figures, selection rings, interpolation, rag doll hookup
+  render/CharacterModel.hx  rigged FBX character (opt-in ?figures=rigged): props on joints, takes, rag doll on the skeleton
+  render/CharacterInk.hx    pencil hatching + inverted-hull outline for the rigged characters
+  render/Tracks.hx          worn tracks and scuffed ground (thins grass, dusty earth)
+  render/CloudShadow.hx     drifting cloud shadows (Painted)
   render/Ragdoll.hx         Verlet rag doll (11 particles, terrain collision, sleeps when settled)
   input/RtsCamera.hx        orbit/pan/zoom camera
   input/SelectionController.hx  pointer/touch → selection + Commands
