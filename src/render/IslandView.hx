@@ -116,16 +116,22 @@ class IslandView extends h3d.scene.Object {
 
 	public function setStyle(style:VisualStyle) {
 		// Sketch keeps the painted ground for its detail; the tone mutes it to earth colours.
-		terrainStyle.painted = style == Painted || style == Sketch ? 1 : 0;
+		// Every style uses the painted ground now: Ink map moved onto it too (owner: "more
+		// consistent with the other scenes"), with its own brighter, ungraded look.
+		terrainStyle.painted = 1;
 		terrainStyle.light = style == Sketch ? 1 : 0;
 		sketchTone.amount = style == Sketch ? 1 : 0;
 		sketchProps.amount = sketchTone.amount;
-		clouds.strength = style == Painted ? 1 : 0;
+		clouds.strength = switch style {
+			case Painted: 1;
+			case InkMap: 0.6;
+			case Sketch: 0;
+		};
 		waterShader.softness = 0;
 		// Wind waves: (lighting strength, sun glint, whitecaps) per style.
 		var w = switch style {
 			case Painted: [1.0, 0.6, 0.25];
-			case InkMap: [0.45, 0.3, 0.0];
+			case InkMap: [1.0, 0.6, 0.25];
 			case Sketch: [0.9, 0.45, 0.22];
 		};
 		waterShader.waves = w[0];
@@ -135,13 +141,13 @@ class IslandView extends h3d.scene.Object {
 		// Waves crash on the beaches (owner asked for "a little more" after the slight version).
 		waterShader.breakers = switch style {
 			case Painted: 1.0;
-			case InkMap: 0.5;
+			case InkMap: 1.0;
 			case Sketch: 0.8;
 		};
-		terrainStyle.swash = style == InkMap ? 0.5 : 1.0;
+		terrainStyle.swash = 1.0;
 		TerrainStyle.setColor(terrainStyle.swashColor, switch style {
 			case Painted: 0x8FD3C6;
-			case InkMap: 0xC9E3E2;
+			case InkMap: 0x8FD3C6;
 			case Sketch: 0x7FA39B;
 		});
 		switch style {
@@ -154,12 +160,15 @@ class IslandView extends h3d.scene.Object {
 				terrainInk.coastWidth = 0;
 				terrainInk.coastLevel = -999;
 			case InkMap:
-				waterShader.setChartColors();
-				terrainInk.minorAlpha = 0.28;
-				terrainInk.majorAlpha = 0.55;
-				terrainInk.hatchAlpha = 0.3;
-				terrainInk.coastWidth = 2.2;
-				terrainInk.coastLevel = 0.1;
+				// Same water as Painted; no contours, slope hatching or inked coastline
+				// (owner asked to remove them). What's left of "ink" is the outline pass.
+				waterShader.setPaintedColors();
+				waterShader.softness = 0.45;
+				terrainInk.minorAlpha = 0;
+				terrainInk.majorAlpha = 0;
+				terrainInk.hatchAlpha = 0;
+				terrainInk.coastWidth = 0;
+				terrainInk.coastLevel = -999;
 			case Sketch:
 				// No contours or slope hatching: relief comes from real sun shading.
 				waterShader.setSketchColors();

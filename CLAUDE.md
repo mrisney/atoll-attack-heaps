@@ -69,8 +69,14 @@ URL params on the web build make runs reproducible:
     "richer ground" direction: stylized and hand-painted, **not**
     photoreal. The owner looked at Defilade's photo-scanned terrain and chose
     this instead, because it fits the art direction and must run on phones.
-  - **Ink map** uses soft colours, topo contours, coastline, slope hatching,
-    and a screen-space ink pass.
+  - **Ink map** is now Painted's world (painted ground, gravel, tracks, 3D
+    trees and rocks, FFT water and froth, lighter cloud shadows) **without**
+    Painted's grade, vignette and tilt-shift, so it's the brighter scene,
+    plus a soft screen-space ink outline (strength 0.4: full strength around
+    every leaf card was scribbly). The owner asked to **remove its contour
+    lines** and give it "the same treatment" as the others "to look more
+    consistent": no contours, slope hatching or inked coastline any more, and
+    no chart-colour water or low-poly trees by default.
   - **Sketch** comes from architectural presentation drawings the owner
     shared (paper, one warm timber material, drafting lines). The owner then
     asked for **no topographic lines** (no contours or slope hatching).
@@ -155,7 +161,8 @@ URL params on the web build make runs reproducible:
   The owner found the low-poly trees "blocky, artificial". The sprites come
   from his WildCurrent repo (`assets/art/bank`). `SpriteProps` puts each on an
   alpha-tested smooth dome, trims the art's 1 px pale outline, and bleeds edge
-  colour so mipmaps don't halo. Ink map keeps low-poly by default.
+  colour so mipmaps don't halo. (Ink map used low-poly by default; now every
+  style starts on 3D trees.)
 - **WildCurrent art in use** (see `res/SOURCE.md`): canopies (plain and
   vine), bushes, vine mats, waterline/tall grass, reeds, the floating
   log and the dock (landing beaches). The swell-sheet surf sprites

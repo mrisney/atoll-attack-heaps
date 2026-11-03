@@ -88,7 +88,7 @@ try {
 const shots = [];
 const shot = async (suffix) => {
   const file = join(outDir, `${name}${suffix}.png`);
-  await page.screenshot({ path: file, timeout: 180000 });
+  await page.screenshot({ path: file, timeout: 480000 });
   shots.push(file);
 };
 

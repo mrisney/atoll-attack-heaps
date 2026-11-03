@@ -143,7 +143,9 @@ class Main extends hxd.App {
 		inkRenderer.grade = style == Painted;
 		inkRenderer.paperFade = style == Sketch ? 1 : 0;
 		inkRenderer.setShadowTint(style == Sketch ? Palette.SKETCH_SHADOW : Palette.SHADOW);
-		inkRenderer.inkStrength = style == Sketch ? 0.62 : 0.85;
+		// Ink map's outlines are softer since it moved onto 3D trees: full-strength ink around
+		// every leaf card made the canopies scribbly and dark.
+		inkRenderer.inkStrength = style == Sketch ? 0.62 : 0.4;
 		if (drafting != null) drafting.visible = style == Sketch;
 		if (minimap != null) {
 			// The minimap is muted to match the island's earth tones.
@@ -158,14 +160,14 @@ class Main extends hxd.App {
 		hud.alpha = style == Sketch ? 0.75 : 1;
 		engine.backgroundColor = switch style {
 			case Sketch: 0xFF000000 | Palette.SKETCH_BG;
-			case InkMap: 0xFF6E9FB5;
+			case InkMap: 0xFF235F86;
 			case Painted: 0xFF235F86;
 		};
 		updateHud();
 	}
 
 	function currentTreeMode():Int
-		return treeMode != null ? treeMode : (style == InkMap ? 2 : 0);
+		return treeMode != null ? treeMode : 0;
 
 	function updateHud() {
 		hud.text = 'ATOLL ATTACK  ·  seed $seed  ·  ${shape} island  ·  ${style} style\n'
