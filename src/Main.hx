@@ -30,8 +30,8 @@ class Main extends hxd.App {
 	var uiScale = 1.0;
 	var style:VisualStyle = Painted;
 	var shape:IslandShape = Single;
-	/** null = follow the style's default (sprites except in Ink map). **/
-	var spriteProps:Null<Bool> = null;
+	/** Tree look: null = the style's default (3D, or low-poly in Ink map); 0 = 3D, 1 = sprites, 2 = low-poly. **/
+	var treeMode:Null<Int> = null;
 
 	override function init() {
 		// Bakes res/ into the build, so the web version needs no file server for assets.
@@ -136,7 +136,7 @@ class Main extends hxd.App {
 
 	function applyStyle() {
 		islandView.setStyle(style);
-		islandView.setSpriteProps(spriteProps != null ? spriteProps : style != InkMap);
+		islandView.setTreeMode(currentTreeMode());
 		inkRenderer.inkEnabled = style == InkMap || style == Sketch;
 		inkRenderer.tiltShift = style == Painted;
 		inkRenderer.paperFade = style == Sketch ? 1 : 0;
@@ -162,11 +162,14 @@ class Main extends hxd.App {
 		updateHud();
 	}
 
+	function currentTreeMode():Int
+		return treeMode != null ? treeMode : (style == InkMap ? 2 : 0);
+
 	function updateHud() {
 		hud.text = 'ATOLL ATTACK  ·  seed $seed  ·  ${shape} island  ·  ${style} style\n'
 			+ 'Drag: select   Click/RMB: move   Shift: add   Minimap: click to fly, right-click to send units\n'
 			+ 'Pan: right/middle-drag, trackpad swipe, WASD (Shift = fast), edges   Zoom: wheel/pinch/+ -   Q/E: rotate   Space: recentre\n'
-			+ 'R: new island   G: island shape   T: visual style   I: ink lines   B: tilt-shift   P: sprite/low-poly trees   X: blast at cursor (test)';
+			+ 'R: new island   G: island shape   T: visual style   I: ink lines   B: tilt-shift   P: trees (3D / sprite / low-poly)   X: blast at cursor (test)';
 	}
 
 	var frames = 0;
@@ -188,8 +191,9 @@ class Main extends hxd.App {
 		if (q.get("style") == "sketch") style = Sketch;
 		if (q.get("shape") == "atoll") shape = Atoll;
 		if (q.get("shape") == "single") shape = Single;
-		if (q.get("props") == "sprites") spriteProps = true;
-		if (q.get("props") == "lowpoly") spriteProps = false;
+		if (q.get("props") == "proc" || q.get("trees") == "proc") treeMode = 0;
+		if (q.get("props") == "sprites" || q.get("trees") == "sprites") treeMode = 1;
+		if (q.get("props") == "lowpoly" || q.get("trees") == "lowpoly") treeMode = 2;
 		if (q.has("dist")) startDistance = Std.parseFloat(q.get("dist"));
 		// Grass budget, like terra's BLADES / DEPTH settings.
 		if (q.has("blades")) GrassField.defaultBlades = Std.parseInt(q.get("blades"));
@@ -229,8 +233,8 @@ class Main extends hxd.App {
 			applyStyle();
 		}
 		if (hxd.Key.isPressed(hxd.Key.P)) {
-			spriteProps = !(spriteProps != null ? spriteProps : style != InkMap);
-			islandView.setSpriteProps(spriteProps);
+			treeMode = (currentTreeMode() + 1) % 3;
+			islandView.setTreeMode(treeMode);
 		}
 		if (hxd.Key.isPressed(hxd.Key.B))
 			inkRenderer.tiltShift = !inkRenderer.tiltShift;

@@ -110,7 +110,20 @@ URL params on the web build make runs reproducible:
   pine forest and outcrops in the uplands; boulders and dead snags on peaks.
   Variety comes from species, per-instance colour and size, and noise
   clustering. Autumn trees are rare (about 6%) and muted.
-- **Sprite trees are the default** in Painted and Sketch (P toggles low-poly).
+- **3D procedural trees are the default** (`render/TreeGen.hx` + `ProcTrees.hx`):
+  a port of **EZ-Tree** (dgreenheck/ez-tree, **MIT**, notice in
+  `THIRD_PARTY.md`), which the owner found via the Codrops "Fractals to
+  Forests" write-up. It grows recursive branches with taper, gnarliness,
+  twist and a growth force, plus crossed leaf cards. We use its
+  oak/ash/aspen/pine presets with fewer, larger leaf cards (about 3k tris
+  per tree, ~360 trees on an island). There are 4 templates per species,
+  instanced with yaw, scale and tint into merged meshes. Leaf and bark
+  textures are painted in code (EZ-Tree's aren't used). Leaves have rounded
+  normals around the crown, inner shading, sway, alpha-cut shadows. **P**
+  cycles 3D → sprite → low-poly (`?trees=proc|sprites|lowpoly`). Sprite
+  mode keeps the WildCurrent canopies. Bushes, vines and reeds stay sprites
+  in every mode. Phones will want a lower-detail template set.
+- **Sprite trees** (P, or `?trees=sprites`).
   The owner found the low-poly trees "blocky, artificial". The sprites come
   from his WildCurrent repo (`assets/art/bank`). `SpriteProps` puts each on an
   alpha-tested smooth dome, trims the art's 1 px pale outline, and bleeds edge

@@ -32,6 +32,10 @@ typedef PropGroups = {
 	var lowPoly:h3d.scene.Object;
 	/** The same trees, bushes and rocks as painted sprites, plus waterline reeds. **/
 	var sprites:h3d.scene.Object;
+	/** The same trees as 3D procedural trees (EZ-Tree's generator; the default look). **/
+	var proc:h3d.scene.Object;
+	/** Sprite tree canopies and their trunks (inside `sprites`; hidden when 3D trees show). **/
+	var canopies:h3d.scene.Object;
 	/** Grass field map (R field, G clump, B dryness) for tinting the ground under fields. **/
 	var fieldMask:Null<h3d.mat.Texture>;
 	/** The grass (call setFocus each frame with the camera's look-at). **/
@@ -61,9 +65,12 @@ class Props {
 	final low = new FlatMeshBuilder();
 	/** Sprite trees, bushes, boulders, reeds. **/
 	final spr = new SpriteProps();
+	/** Sprite tree canopies only, so they can hide while bushes and reeds stay. **/
+	final canopySpr = new SpriteProps();
 	/** Real 3D boulders for the sprite look (sprites read as stickers for rocks). **/
 	final rocks = new Rocks();
 	final palms = new Palms();
+	final procTrees = new ProcTrees();
 	/** Wind-blown grass fields (real blades, bent in the shader). **/
 	var fields:GrassField;
 	var fieldN:Noise;
@@ -181,8 +188,15 @@ class Props {
 		}
 		var lowPoly = new h3d.scene.Object(parent);
 		low.build(lowPoly, true, true, true);
+		var proc = new h3d.scene.Object(parent);
+		procTrees.build(proc);
+		#if js
+		js.Syntax.code("window.procTrees = {0}", procTrees.count);
+		#end
 		var sprites = new h3d.scene.Object(parent);
-		trunks.build(sprites, true, true, true);
+		var canopies = new h3d.scene.Object(sprites);
+		trunks.build(canopies, true, true, true);
+		canopySpr.build(canopies);
 		spr.build(sprites);
 		rocks.build(sprites);
 		pebbles.build(parent);
@@ -192,7 +206,7 @@ class Props {
 		js.Syntax.code("window.grassBlades = {0}", fields.blades);
 		#end
 		palms.build(parent);
-		return {lowPoly: lowPoly, sprites: sprites, fieldMask: fields.mask, grass: fields};
+		return {lowPoly: lowPoly, sprites: sprites, proc: proc, canopies: canopies, fieldMask: fields.mask, grass: fields};
 	}
 
 	inline function pickName(list:Array<String>):String
@@ -206,7 +220,7 @@ class Props {
 		// Weeping vine trees like the low ground near water; elsewhere they're occasional.
 		var vineChance = z < Island.classicHeight(0.47) ? 0.45 : 0.15;
 		var name = r() < vineChance ? pickName(VINE_CANOPIES) : pickName(CANOPIES);
-		spr.add(SPRITES + name + ".png", x, y, z + trunkH, size, size * 0.28, r() * Math.PI * 2, 0.92 + r() * 0.16);
+		canopySpr.add(SPRITES + name + ".png", x, y, z + trunkH, size, size * 0.28, r() * Math.PI * 2, 0.92 + r() * 0.16);
 	}
 
 	/** Creepers spilling out of the forest edge onto the open ground. **/
@@ -238,6 +252,7 @@ class Props {
 		low.cone(x, y, z + 0.85 * s, 0.52 * s, 0.85 * s, 7, c2, 0, rot + 0.4);
 		if (s > 1.1) low.cone(x, y, z + 1.35 * s, 0.34 * s, 0.7 * s, 6, c1, 0, rot + 0.8);
 		spriteTree(x, y, z, 0.75 + s * 0.3);
+		procTrees.add(Pine, x, y, z, 0.75 + s * 0.3, r() * Math.PI * 2, Std.int(r() * 4), tint(pick(Palette.PINE), 0.2), tint(pick(Palette.BARK)));
 	}
 
 	function broadleaf(x:Float, y:Float, z:Float) {
@@ -255,6 +270,9 @@ class Props {
 			low.ball(x + Math.cos(a) * d, y + Math.sin(a) * d, top + (r() - 0.3) * 0.35 * s, br, tint(leaf), 7, 4, 0.85, r() * 3);
 		}
 		spriteTree(x, y, z, 0.8 + s * 0.35);
+		var roll = r();
+		var species:ProcTrees.TreeSpecies = roll < 0.5 ? Oak : roll < 0.85 ? Ash : Aspen;
+		procTrees.add(species, x, y, z, 0.75 + s * 0.3, r() * Math.PI * 2, Std.int(r() * 4), tint(leaf, 0.2), tint(pick(Palette.BARK)));
 	}
 
 	/** Coconut palm (see Palms): smooth curved trunk, arched leafy fronds, a few coconuts. **/

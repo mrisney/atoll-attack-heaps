@@ -269,10 +269,16 @@ class IslandView extends h3d.scene.Object {
 		if (props.fieldMask != null) terrainStyle.fieldMask = props.fieldMask;
 	}
 
-	/** Painted sprite trees/bushes/boulders, or the low-poly versions. **/
-	public function setSpriteProps(on:Bool) {
-		props.sprites.visible = on;
-		props.lowPoly.visible = !on;
+	/**
+		Which trees to show: 0 = 3D procedural (default), 1 = painted sprites,
+		2 = low-poly. Bushes, vines and reeds come with the sprite set, so they
+		stay on with the 3D trees too.
+	**/
+	public function setTreeMode(mode:Int) {
+		props.proc.visible = mode == 0;
+		props.sprites.visible = mode != 2;
+		props.lowPoly.visible = mode == 2;
+		props.canopies.visible = mode == 1;
 	}
 
 	/** The flag pole is timber: built after the Sketch tone is applied, so it keeps its colour. **/

@@ -31,7 +31,8 @@ The goal of this spike is to answer one question: does Heaps give the Northgard-
 - **Ink rendering**: a screen-space edge pass that inks every silhouette at a constant line weight, plus topo-map contour lines, a bold coastline and slope hatching painted on the terrain. Press I to toggle the ink pass.
 - **Line-art units**: rounded, faceless figures with a paper-white fill and a restrained walk cycle.
 - **Sun shadows**: soft, cool-tinted directional shadows from trees, rocks, units and hills onto terrain and water.
-- **Sprite trees** (P toggles sprite/low-poly; sprites are the default in Painted and Sketch): painted top-down canopies and bushes from the WildCurrent asset bank, mapped onto shallow domes with alpha-cut silhouettes that cast leaf-shaped shadows. Reeds and cattails stand in the shallows.
+- **3D procedural trees** (default): oak, ash, aspen and pine grown by a Haxe port of [EZ-Tree](https://github.com/dgreenheck/ez-tree) (MIT; see THIRD_PARTY.md): recursive branches with taper, gnarl and twist, crossed leaf cards with a sprig texture painted in code, rounded crown shading, sway and leafy shadows. P cycles 3D / sprite / low-poly trees.
+- **Sprite trees** (P): painted top-down canopies and bushes from the WildCurrent asset bank, mapped onto shallow domes with alpha-cut silhouettes that cast leaf-shaped shadows. Reeds and cattails stand in the shallows.
 - **Coast** (from WildCurrent's art): a wooden dock with pilings at each landing beach, and floating-log driftwood.
 - **More foliage**: weeping vine-draped canopies (commoner near water), creeping vine mats along forest edges, tall dune grass on the beaches. All foliage sways subtly in the breeze, shadows included.
 - **3D rocks**: boulders and loose stones are procedural meshes (a noise-deformed icosphere with fracture planes, sunk into the ground, darkened at the base, with the painted rock texture projected from three sides) lit by the scene's sun, so they agree with the light and cast real shadows.
@@ -59,6 +60,8 @@ src/
   render/IslandView.hx      terrain, water, apex flag; shadow setup per mesh
   render/Props.hx           vegetation and rocks: species, biome placement, clustering
   render/GrassField.hx      wind-blown grass fields: blade strips bent and lit in a vertex shader
+  render/TreeGen.hx         procedural tree skeleton + mesh (port of EZ-Tree, MIT)
+  render/ProcTrees.hx       tree species presets, templates, instancing, leaf/bark textures
   render/Palms.hx           coconut palms: curved smooth trunks, arched leafy fronds (texture painted in code)
   render/SpriteProps.hx     painted sprites on alpha-tested domes (one draw call per sprite)
   render/Rocks.hx           procedural 3D boulders and stones (triplanar painted texture)
