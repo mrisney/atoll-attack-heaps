@@ -31,7 +31,7 @@ class SimTest {
 						}
 					line += '  [${team == 0 ? "blue" : "red"} alive=$alive ashore=$ashore hp=${Math.round(hp)}$cap]';
 				}
-				line += ' arrows=${sim.arrows.length} apex=(${r(island.apexX)},${r(island.apexY)})';
+				line += ' arrows=${sim.arrows.length} flag=${sim.flagTeam < 0 ? "none" : (sim.flagTeam == 0 ? "blue" : "red")}${sim.flagTeam >= 0 ? " " + Math.round(sim.flagHeld) + "s" : ""}';
 				Sys.println(line);
 			}
 			if (sim.winner >= 0) {

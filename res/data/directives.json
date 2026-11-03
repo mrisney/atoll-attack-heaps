@@ -51,7 +51,12 @@
 	},
 
 	"flag": {
-		"_rule": "A captain standing within range of the summit for raiseTime seconds, with no enemy within contest, plants the flag and wins.",
-		"range": 2.5, "raiseTime": 5.0, "contest": 6.0
+		"_rule": "A captain standing within range of the summit for raiseTime seconds, with no enemy within contest, plants his flag. It must then stand for holdTime seconds to win. Meanwhile the enemy captain can reach the summit and lower it (lowerTime seconds, same range and contest rules), which resets the clock; then either side can raise theirs.",
+		"range": 2.5,
+		"raiseTime": 5.0,
+		"lowerTime": 5.0,
+		"holdTime": 60.0,
+		"contest": 6.0,
+		"_contest": "Raising or lowering pauses while an enemy is this close to the summit."
 	}
 }

@@ -327,12 +327,8 @@ class IslandView extends h3d.scene.Object {
 	function buildApexFlag() {
 		var b = new FlatMeshBuilder();
 		var x = island.apexX, y = island.apexY, z = island.apexH - 0.05;
-		// Stone cairn + pole + neutral banner, waiting to be claimed.
+		// Stone cairn (the pole is buildFlagPole; the flag itself is FlagView, animated).
 		b.cone(x, y, z, 0.7, 0.45, 6, Palette.STONE, 0.45);
-		var top = z + 2.9;
-		var f0 = new Point(x, y, top), f1 = new Point(x + 1.1, y + 0.15, top - 0.35), f2 = new Point(x, y, top - 0.7);
-		b.tri(f0, f1, f2, 0xEFE8D8);
-		b.tri(f0, f2, f1, 0xEFE8D8); // two-sided cloth
 		b.build(this, true, true, true);
 	}
 }

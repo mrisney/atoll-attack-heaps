@@ -37,6 +37,8 @@ class Rules {
 	public static var FLAG_TIME(get, never):Float;
 	public static var FLAG_CONTEST(get, never):Float;
 	public static var LEASH(get, never):Float;
+	public static var FLAG_LOWER_TIME(get, never):Float;
+	public static var FLAG_HOLD_TIME(get, never):Float;
 
 	static inline function get_ARCHER_KITE() return Directives.current.archerKite;
 	static inline function get_ARROW_SPEED() return Directives.current.arrowSpeed;
@@ -44,6 +46,8 @@ class Rules {
 	static inline function get_FLAG_TIME() return Directives.current.flagTime;
 	static inline function get_FLAG_CONTEST() return Directives.current.flagContest;
 	static inline function get_LEASH() return Directives.current.leash;
+	static inline function get_FLAG_LOWER_TIME() return Directives.current.flagLowerTime;
+	static inline function get_FLAG_HOLD_TIME() return Directives.current.flagHoldTime;
 
 	public static inline function stats(kind:UnitKind):UnitStats
 		return Directives.current.stats.get(Directives.key(kind));

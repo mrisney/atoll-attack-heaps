@@ -18,6 +18,7 @@ class TeamAI {
 	final sim:Sim;
 	final team:Int;
 	var captainSent = false;
+	var landingTries = 0;
 
 	public function new(sim:Sim, team:Int) {
 		this.sim = sim;
@@ -28,8 +29,18 @@ class TeamAI {
 		var ship = null;
 		for (s in sim.ships)
 			if (s.team == team) ship = s;
-		// Wait until everyone is ashore.
-		if (ship != null && ship.crew.length > 0) return;
+		// Wait until everyone is ashore. If the ship gave up on the way (shallows,
+		// a dead end), try the coast a little further round each time.
+		if (ship != null && ship.crew.length > 0) {
+			if (ship.state == Idle) {
+				landingTries++;
+				var b = sim.homeBeach[team];
+				var a = Math.atan2(b.y, b.x) + (landingTries % 2 == 0 ? 1 : -1) * Std.int((landingTries + 1) / 2) * 0.35;
+				var r = Math.sqrt(b.x * b.x + b.y * b.y);
+				sim.queue(ShipTo(ship.id, Math.cos(a) * r, Math.sin(a) * r));
+			}
+			return;
+		}
 
 		var ax = sim.island.apexX, ay = sim.island.apexY;
 		var soldiers = [], captain:Null<Unit> = null;
@@ -59,7 +70,8 @@ class TeamAI {
 		for (u in sim.units)
 			if (u.team != team && u.alive && u.aboard < 0 && near(u.x, u.y, ax, ay, u.kind == Archer ? clear : 10)) enemyNear = true;
 		// Sent up but under fire and hurt: call him back behind the band.
-		if (captainSent && captain.hp < captain.maxHp * 0.6) {
+		// (Alone, there's no one to hide behind: then he fights it out.)
+		if (captainSent && soldiers.length > 0 && captain.hp < captain.maxHp * 0.6) {
 			var shot = false;
 			for (u in sim.units)
 				if (u.alive && u.team != team && u.targetId == captain.id) shot = true;
@@ -68,7 +80,13 @@ class TeamAI {
 				sim.queue(Stop([captain.id]));
 			}
 		}
-		if (!captainSent && ((holding >= 3 && !enemyNear) || soldiers.length == 0)) {
+		// The flag: nothing to do while ours stands (the band holds the summit and he
+		// waits behind it). If theirs stands, he has to lower it, and when time is short
+		// he goes whatever the danger.
+		var ownFlag = sim.flagTeam == team;
+		var urgent = sim.flagTeam >= 0 && !ownFlag && Rules.FLAG_HOLD_TIME - sim.flagHeld < 20;
+		if (ownFlag && captainSent && captain.flagProgress == 0 && !captain.ordered) captainSent = false;
+		if (!captainSent && !ownFlag && ((holding >= 3 && !enemyNear) || soldiers.length == 0 || urgent)) {
 			captainSent = true;
 			sim.queue(Move([captain.id], ax, ay));
 		} else if (!captainSent && soldiers.length > 0) {

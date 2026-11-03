@@ -23,6 +23,14 @@ class Sim {
 	public final arrows:Array<Arrow> = [];
 	/** -1 while the battle is on; then the winning team. **/
 	public var winner(default, null) = -1;
+	/** Whose flag stands on the summit (-1 = none, the neutral banner). **/
+	public var flagTeam(default, null) = -1;
+	/** How long it has stood (s); it wins at Rules.FLAG_HOLD_TIME. **/
+	public var flagHeld(default, null) = 0.0;
+	/** The tick the first flag was planted (-1 = not yet): for determinism checks. **/
+	public var firstFlagTick(default, null) = -1;
+	/** The tick the match was decided (for replays and determinism checks). **/
+	public var winTick(default, null) = -1;
 	/** "flag", "captain" or "eliminated". **/
 	public var winReason(default, null) = "";
 	/** Computer commanders (red by default; add one for blue to watch AI vs AI). **/
@@ -104,9 +112,14 @@ class Sim {
 	}
 
 	/** Advance by real time; runs as many fixed ticks as needed. **/
-	public function update(dt:Float) {
+	public function update(dt:Float, stopAtTick = -1) {
 		accumulator += Math.min(dt, maxCatchUp);
 		while (accumulator >= TICK) {
+			// Hold at an exact tick (automation: a snapshot of that moment).
+			if (stopAtTick >= 0 && tick >= stopAtTick) {
+				accumulator = 0;
+				break;
+			}
 			step();
 			accumulator -= TICK;
 		}
@@ -171,7 +184,13 @@ class Sim {
 		separate();
 		for (u in units)
 			if (u.alive && u.aboard < 0) u.z = island.heightAt(u.x, u.y);
-		if (winner < 0) checkVictory();
+		if (winner < 0) {
+			if (flagTeam >= 0) {
+				flagHeld += TICK;
+				if (flagHeld >= Rules.FLAG_HOLD_TIME) win(flagTeam, "flag");
+			}
+			checkVictory();
+		}
 		tick++;
 	}
 
@@ -187,7 +206,11 @@ class Sim {
 				if (d2 >= minDist * minDist || d2 < 1e-6) continue;
 				var d = Math.sqrt(d2);
 				var push = (minDist - d) * 0.5;
-				var px = dx / d * push, py = dy / d * push;
+				// Twisted ~35° so two units walking into each other slide past instead of
+				// freezing face to face (a straight push exactly cancels their steps; a
+				// captain and two pikers stayed gridlocked for a minute in a test).
+				var nx = dx / d, ny = dy / d;
+				var px = (nx * 0.82 - ny * 0.57) * push, py = (nx * 0.57 + ny * 0.82) * push;
 				if (island.isWalkable(a.x - px, a.y - py)) {
 					a.x -= px;
 					a.y -= py;
@@ -307,7 +330,7 @@ class Sim {
 	**/
 	function think(u:Unit) {
 		if (u.cooldown > 0) u.cooldown--;
-		if (u.kind == Captain) raiseFlag(u);
+		if (u.kind == Captain) workFlag(u);
 		if (u.ordered) {
 			if (u.hasTarget) return;
 			// Arrived: hold here.
@@ -332,6 +355,12 @@ class Sim {
 		if (!u.forcedTarget && (t == null || (tick + u.id) % 10 == 0)) {
 			var n = acquire(u, s.aggro);
 			if (n != null) t = n;
+		}
+		// Captains duel: one near the other blocks his flag work, and captains otherwise
+		// avoid fights, so two lone captains at the summit stood off forever.
+		if (u.kind == Captain && t == null) {
+			var rival = captainOf(1 - u.team);
+			if (rival != null && dist(u, rival) < Rules.FLAG_CONTEST + 2) t = rival;
 		}
 		u.targetId = t == null ? -1 : t.id;
 		if (t == null) {
@@ -480,6 +509,8 @@ class Sim {
 	**/
 	function evade(u:Unit):Bool {
 		var threat = nearestEnemy(u, Directives.current.captainEvade, false);
+		// He doesn't run from the other captain (they duel, see think()).
+		if (threat != null && threat.kind == Captain) threat = null;
 		// Under fire: an archer aiming at him. Pull back behind the band, out of range.
 		if (threat == null && Directives.current.captainTakesCover)
 			for (e in units)
@@ -515,8 +546,13 @@ class Sim {
 		return true;
 	}
 
-	/** Captain at the apex, standing still: the flag goes up, unless an enemy is near. **/
-	function raiseFlag(u:Unit) {
+	/**
+		Captain at the summit, standing still: he raises his flag if none stands,
+		or lowers the enemy's if theirs does (which resets its clock). Paused
+		while an enemy is close (contested). `flagProgress` is the seconds of work
+		done; the view shows it as the flag going up or down the pole.
+	**/
+	function workFlag(u:Unit) {
 		var dx = island.apexX - u.x, dy = island.apexY - u.y;
 		if (dx * dx + dy * dy > Rules.FLAG_RANGE * Rules.FLAG_RANGE) {
 			u.flagProgress = 0;
@@ -528,8 +564,28 @@ class Sim {
 				var ex = island.apexX - e.x, ey = island.apexY - e.y;
 				if (ex * ex + ey * ey < Rules.FLAG_CONTEST * Rules.FLAG_CONTEST) return; // contested
 			}
+		if (flagTeam == u.team) {
+			u.flagProgress = 0;
+			return;
+		}
 		u.flagProgress += TICK;
-		if (u.flagProgress >= Rules.FLAG_TIME) win(u.team, "flag");
+		if (flagTeam < 0 && u.flagProgress >= Rules.FLAG_TIME) {
+			if (firstFlagTick < 0) firstFlagTick = tick;
+			flagTeam = u.team;
+			flagHeld = 0;
+			u.flagProgress = 0;
+		} else if (flagTeam >= 0 && u.flagProgress >= Rules.FLAG_LOWER_TIME) {
+			flagTeam = -1;
+			flagHeld = 0;
+			u.flagProgress = 0;
+		}
+	}
+
+	/** The captain working the flag right now (raising or lowering), if any. **/
+	public function flagWorker():Null<Unit> {
+		for (u in units)
+			if (u.alive && u.kind == Captain && u.flagProgress > 0) return u;
+		return null;
 	}
 
 	function stepArrows() {
@@ -574,6 +630,7 @@ class Sim {
 		if (winner >= 0) return;
 		winner = team;
 		winReason = reason;
+		winTick = tick;
 	}
 
 	static inline function dist(a:Unit, b:Unit):Float {

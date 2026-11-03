@@ -18,6 +18,7 @@
 //   --autoland          the blue ship lands its crew at its home beach at once
 //   --blueai            a computer commander for blue too (watch AI vs AI)
 //   --gallery           line up one rigged figure per kind and take at the view centre
+//   --untiltick=750,1200   wait for these sim ticks (30/s) and take a shot at each
 //   --after=12          after everything else, wait this many seconds and take one more shot
 //   --no-build          skip `haxe build-js.hxml`
 //   --size=1280x760     viewport
@@ -87,6 +88,12 @@ page.on("console", (m) => {
   if (m.type() === "error" && !/passive event listener/.test(m.text())) problems.push(`console: ${m.text()}`);
 });
 
+// --untiltick: hold the sim at the first requested tick from the very start (the
+// normal first shot alone takes minutes in software rendering).
+if (args.untiltick) {
+  const first = Number(String(args.untiltick).split(",")[0]);
+  await page.addInitScript((n) => (window.atollHoldTick = n), first);
+}
 await page.goto(url);
 try {
   await page.waitForFunction(() => (window.atollFrames ?? 0) > 20, null, { timeout: 180000 });
@@ -126,6 +133,17 @@ if (args.walk) {
   await page.mouse.click(width * 0.5, height * 0.2, { button: "right" });
   await page.waitForTimeout(1500);
   await shot("-walk");
+}
+
+if (args.untiltick) {
+  // Wait for the sim to reach a tick (30 per second), then take a shot.
+  for (const t of String(args.untiltick).split(",")) {
+    await page.evaluate((n) => (window.atollHoldTick = n), Number(t));
+    await page.waitForFunction((n) => Number((window.atollSim ?? "tick=0").split(" ")[0].slice(5)) >= n, Number(t), { timeout: 600000 });
+    await page.waitForTimeout(3000); // a couple of frames at the held tick
+    await shot("-t" + t);
+  }
+  await page.evaluate(() => (window.atollHoldTick = undefined));
 }
 
 if (args.after) {

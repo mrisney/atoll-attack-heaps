@@ -37,6 +37,8 @@ class Directives {
 	public var flagRange = 2.5;
 	public var flagTime = 5.0;
 	public var flagContest = 6.0;
+	public var flagLowerTime = 5.0;
+	public var flagHoldTime = 60.0;
 
 	public function new() {}
 
@@ -92,6 +94,8 @@ class Directives {
 			d.flagRange = num(f, "range", d.flagRange);
 			d.flagTime = num(f, "raiseTime", d.flagTime);
 			d.flagContest = num(f, "contest", d.flagContest);
+			d.flagLowerTime = num(f, "lowerTime", d.flagLowerTime);
+			d.flagHoldTime = num(f, "holdTime", d.flagHoldTime);
 		}
 		current = d;
 	}

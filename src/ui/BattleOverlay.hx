@@ -19,6 +19,9 @@ class BattleOverlay extends h2d.Object {
 	final g:h2d.Graphics;
 	final banner:h2d.Text;
 	final sub:h2d.Text;
+	final flagLabel:h2d.Text;
+	final countdown:h2d.Text;
+	final topLine:h2d.Text;
 
 	public function new(?parent:h2d.Object) {
 		super(parent);
@@ -31,6 +34,30 @@ class BattleOverlay extends h2d.Object {
 		sub.textAlign = Center;
 		sub.dropShadow = {dx: 1, dy: 1, color: 0x10202A, alpha: 0.85};
 		banner.visible = sub.visible = false;
+		flagLabel = text(font);
+		countdown = text(font);
+		topLine = text(font);
+	}
+
+	function text(font:h2d.Font):h2d.Text {
+		var t = new h2d.Text(font, this);
+		t.textAlign = Center;
+		t.dropShadow = {dx: 1, dy: 1, color: 0x10202A, alpha: 0.85};
+		t.visible = false;
+		return t;
+	}
+
+	static inline function teamLight(team:Int):Int
+		return team == 0 ? 0x9CC2F0 : 0xF0A898;
+
+	/** An arc as a polyline (h2d.Graphics' current line style). **/
+	function arc(cx:Float, cy:Float, r:Float, start:Float, len:Float) {
+		var n = Std.int(Math.max(2, Math.abs(len) / (Math.PI * 2) * 48));
+		for (k in 0...n + 1) {
+			var a = start + len * k / n;
+			var x = cx + Math.cos(a) * r, y = cy + Math.sin(a) * r;
+			if (k == 0) g.moveTo(x, y) else g.lineTo(x, y);
+		}
 	}
 
 	public function update(sim:game.Sim, views:Array<render.UnitView>, cam:h3d.Camera, w:Float, h:Float) {
@@ -51,26 +78,66 @@ class BattleOverlay extends h2d.Object {
 			g.endFill();
 		}
 
-		// The flag going up.
-		for (u in sim.units)
-			if (u.alive && u.kind == Captain && u.flagProgress > 0) {
-				var p = cam.project(sim.island.apexX, sim.island.apexY, sim.island.apexH + 3.6, w, h);
-				var fw = 70 * ui, fh = 6 * ui;
-				var f = Math.min(1, u.flagProgress / game.Rules.FLAG_TIME);
-				g.beginFill(Palette.INK, 0.8);
-				g.drawRect(p.x - fw / 2 - ui * 1.5, p.y - ui * 1.5, fw + ui * 3, fh + ui * 3);
-				g.endFill();
-				g.beginFill(0xF2EEDF, 1);
-				g.drawRect(p.x - fw / 2, p.y, fw * f, fh);
-				g.endFill();
+		// The flag: raising or lowering (a bar with what's happening), and once it's
+		// planted, a countdown ring over the summit plus a line at the top of the screen.
+		var is = sim.island;
+		var ap = cam.project(is.apexX, is.apexY, is.apexH + 4.0, w, h);
+		var onScreen = ap.z > 0 && ap.z < 1;
+		var worker = sim.flagWorker();
+		flagLabel.visible = false;
+		if (worker != null && onScreen) {
+			var raising = sim.flagTeam < 0;
+			var need = raising ? game.Rules.FLAG_TIME : game.Rules.FLAG_LOWER_TIME;
+			var f = Math.min(1, worker.flagProgress / need);
+			var fw = 80 * ui, fh = 6 * ui;
+			var y = ap.y - 30 * ui;
+			g.beginFill(Palette.INK, 0.8);
+			g.drawRect(ap.x - fw / 2 - ui * 1.5, y - ui * 1.5, fw + ui * 3, fh + ui * 3);
+			g.endFill();
+			g.beginFill(teamLight(worker.team), 1);
+			g.drawRect(ap.x - fw / 2, y, fw * (raising ? f : 1 - f), fh);
+			g.endFill();
+			flagLabel.visible = true;
+			flagLabel.text = (worker.team == 0 ? "BLUE" : "RED") + (raising ? " RAISING THE FLAG" : " LOWERING THE FLAG");
+			flagLabel.textColor = teamLight(worker.team);
+			flagLabel.setScale(1.3 * ui);
+			flagLabel.setPosition(ap.x, y - 18 * ui);
+		}
+		countdown.visible = false;
+		topLine.visible = false;
+		if (sim.flagTeam >= 0 && sim.winner < 0) {
+			var left = Math.max(0, game.Rules.FLAG_HOLD_TIME - sim.flagHeld);
+			var col = teamLight(sim.flagTeam);
+			var secs = Std.int(Math.ceil(left));
+			var clock = Std.int(secs / 60) + ":" + StringTools.lpad(Std.string(secs % 60), "0", 2);
+			if (onScreen) {
+				// A ring that empties as the clock runs down, the seconds inside.
+				var r = 20 * ui, cx = ap.x, cy = ap.y - (worker != null ? 70 : 20) * ui;
+				g.lineStyle(7 * ui, Palette.INK, 0.6);
+				arc(cx, cy, r, 0, Math.PI * 2);
+				g.lineStyle(4.5 * ui, col, 1);
+				var frac = left / game.Rules.FLAG_HOLD_TIME;
+				arc(cx, cy, r, -Math.PI / 2, Math.PI * 2 * frac);
+				g.lineStyle();
+				countdown.visible = true;
+				countdown.text = Std.string(secs);
+				countdown.textColor = col;
+				countdown.setScale(1.6 * ui);
+				countdown.setPosition(cx, cy - 8 * ui);
 			}
+			topLine.visible = true;
+			topLine.text = (sim.flagTeam == 0 ? "BLUE" : "RED") + " FLAG FLIES  " + clock;
+			topLine.textColor = col;
+			topLine.setScale(2.2 * ui);
+			topLine.setPosition(w / 2, 14 * ui);
+		}
 
 		if (sim.winner >= 0) {
 			banner.visible = sub.visible = true;
 			banner.text = (sim.winner == 0 ? "BLUE" : "RED") + " WINS";
 			banner.textColor = sim.winner == 0 ? 0x9CC2F0 : 0xF0A898;
 			var how = switch sim.winReason {
-				case "flag": "The flag is planted on the summit.";
+				case "flag": "Their flag held the summit for " + Std.int(game.Rules.FLAG_HOLD_TIME) + " seconds.";
 				case "captain": "The enemy captain has fallen.";
 				default: "The enemy crew is gone.";
 			};

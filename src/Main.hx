@@ -22,6 +22,7 @@ class Main extends hxd.App {
 	var unitViews:Array<UnitView> = [];
 	var shipViews:Array<render.ShipView> = [];
 	var arrowsView:Null<render.ArrowsView>;
+	var flagView:Null<render.FlagView>;
 	var battle:Null<ui.BattleOverlay>;
 	var rtsCam:RtsCamera;
 	var selection:SelectionController;
@@ -97,6 +98,7 @@ class Main extends hxd.App {
 		for (v in shipViews) v.remove();
 		shipViews = [];
 		if (arrowsView != null) arrowsView.remove();
+		if (flagView != null) flagView.remove();
 		if (selection != null) selection.dispose();
 
 		island = new Island(seed, shape);
@@ -108,6 +110,7 @@ class Main extends hxd.App {
 		for (u in sim.units) unitViews.push(new UnitView(u, island.heightAt, s3d));
 		for (s in sim.ships) shipViews.push(new render.ShipView(s, s3d));
 		arrowsView = new render.ArrowsView(sim, s3d);
+		flagView = new render.FlagView(sim, s3d);
 		// A dock at each side's home beach (where its ship lies off at the start).
 		var docks = islandView.addLandings(sim.homeBeach);
 		selection = new SelectionController(sim, unitViews, s3d, s2d, rtsCam);
@@ -352,10 +355,17 @@ class Main extends hxd.App {
 		var now = haxe.Timer.stamp();
 		var simDt = lastStamp < 0 ? dt : now - lastStamp;
 		lastStamp = now;
+		#if js
+		// Automation can hold the sim at a tick (snapshot.mjs --untiltick) so the shot
+		// shows that moment: software rendering takes far longer than a tick per frame.
+		var hold:Null<Int> = js.Syntax.code("window.atollHoldTick");
+		sim.update(simDt, hold == null ? -1 : hold);
+		#else
 		sim.update(simDt);
+		#end
 		#if js
 		// For automation (scripts/snapshot.mjs): where the ships are and what they're doing.
-		js.Syntax.code("window.atollSim = {0}", 'tick=${sim.tick} winner=${sim.winner} ' + [for (sh in sim.ships) 'ship${sh.team}:${sh.state}@${Math.round(sh.x)},${Math.round(sh.y)} crew=${sh.crew.length}'].join(" ")
+		js.Syntax.code("window.atollSim = {0}", 'tick=${sim.tick} winner=${sim.winner}@${sim.winTick} firstflag=${sim.firstFlagTick} flag=${sim.flagTeam}:${Math.round(sim.flagHeld)} ' + [for (sh in sim.ships) 'ship${sh.team}:${sh.state}@${Math.round(sh.x)},${Math.round(sh.y)} crew=${sh.crew.length}'].join(" ")
 			+ ' red:' + [for (u in sim.units) if (u.team == 1 && u.alive) '${Math.round(u.x)},${Math.round(u.y)}${u.ordered ? "o" : ""}${u.targetId >= 0 ? "t" : ""}'].join(" "));
 		#end
 		islandView.update(dt);
@@ -365,6 +375,7 @@ class Main extends hxd.App {
 		for (v in unitViews) v.syncFromSim(dt);
 		for (v in shipViews) v.syncFromSim(dt);
 		arrowsView.syncFromSim();
+		flagView.syncFromSim(dt);
 		battle.update(sim, unitViews, s3d.camera, s2d.width, s2d.height);
 		selection.update(dt);
 		controls.update(dt, s2d.width, s2d.height);

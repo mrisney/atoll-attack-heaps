@@ -86,8 +86,18 @@ to the flag); player orders always override it.
   (scored by `Rules.targetScore`), lets them go past `LEASH`, and hits back
   when hit. Archers shoot `Arrow`s (homing projectiles, damage fixed at the
   loose) from 18 m and step back from melee. The captain only defends
-  himself; standing within 2.5 m of the apex for 5 s uncontested he plants
-  the flag. Wins: flag, enemy captain dead, or enemy crew gone. Units think
+  himself (and duels the enemy captain if he's close: two lone captains at
+  the summit stood off forever). Wins: flag held, enemy captain dead, or
+  enemy crew gone.
+- **The flag** (owner's rule, all values in directives.json `flag`): a
+  captain within `range` of the apex for `raiseTime` uncontested plants his
+  flag; it must stand `holdTime` (60 s) to win. The enemy captain can lower
+  it (`lowerTime`), which resets the clock. `Sim.workFlag`, `flagTeam`,
+  `flagHeld`. Shown by `render/FlagView` (team cloth climbing/sliding on the
+  pole, rippling; neutral banner when unclaimed) and `ui/BattleOverlay`
+  (RAISING/LOWERING bar over the summit, a countdown ring, and "BLUE FLAG
+  FLIES 0:42" at the top). The commander lowers an enemy flag, urgently
+  with under 20 s left, and keeps its captain back while its own flies. Units think
   in alternating order each tick (blue spawned first and always struck first).
   **Right-click an enemy** to attack it.
 - **Directives file** (`res/data/directives.json`, read by `game/Directives`):
@@ -117,6 +127,18 @@ to the flag); player orders always override it.
   Without it units walking into an inlet just stopped.
 - Seen at the screen edges up close, figures look stretched: that's the
   camera's wide angle, not a scaling bug.
+- **Separation is twisted ~35°** (`Sim.separate`): a straight push exactly
+  cancels two units walking into each other, and a captain stayed gridlocked
+  with two pikers for a minute. The commander also retries landing further
+  along the coast when its ship gives up at sea.
+- **Determinism checked** in the browser: same seed, different graphics and
+  camera: identical first-flag and winning ticks (`Sim.firstFlagTick`,
+  `winTick`). The headless interpreter (SimTest) plays a *different* match on
+  the same seed (float maths differs between targets): fine for testing, but
+  cross-platform lockstep will need fixed-point or careful floats.
+- Snapshots of a moment: `--untiltick=850,1300` holds the sim at exact ticks
+  (`window.atollHoldTick`, `Sim.update(dt, stopAtTick)`; set from page start,
+  since the first shot alone takes minutes).
 - The sim advances on **wall-clock time** (Heaps' `dt` is smoothed and lags
   badly when frames are slow), capped by `Sim.maxCatchUp` (0.25 s; snapshots
   pass `?catchup=10` since software rendering takes seconds per frame).

@@ -77,6 +77,8 @@ class Palette {
 	public static inline var SHIP_HULL = 0x7A5A3E;
 	public static inline var SHIP_DECK = 0xB89B74;
 	public static inline var SAIL = 0xEDE6D4;
+	/** The summit's unclaimed banner (FlagView). **/
+	public static inline var FLAG_NEUTRAL = 0xEFE8D8;
 	public static inline var SELECT = 0xF4E27A;
 	public static inline var INK = 0x1F1A15;
 
