@@ -48,6 +48,8 @@ class TerrainStyle extends hxsl.Shader {
 		@param var dirtTex:Sampler2D;
 		@param var sandTex:Sampler2D;
 		@param var rockTex:Sampler2D;
+		/** Loose gravel for the high ground (owner: "more gravel, loose stone"). **/
+		@param var gravelTex:Sampler2D;
 
 		@param var mapOrigin:Vec2;
 		/** GrassField's map (R = field), to tint the ground under fields like the blades. **/
@@ -87,8 +89,21 @@ class TerrainStyle extends hxsl.Shader {
 				var dirtW = smoothstep(0.6, 0.72, patch) * (1.0 - smoothstep(tUpland, tUpland + 0.6, h));
 				c = mix(c, twoScale(dirtTex, p), dirtW);
 
-				var rockW = max(smoothstep(0.32, 0.5, steep + (patch - 0.5) * 0.25), smoothstep(tUpland + 0.7, tUpland + 1.5, h + (broad - 0.5) * 1.4));
-				c = mix(c, twoScale(rockTex, p), rockW);
+				// The high ground is loose gravel and stones; only the steepest faces show bare rock.
+				var cliffW = smoothstep(0.32, 0.5, steep + (patch - 0.5) * 0.25);
+				var gravelW = max(smoothstep(tUpland + 0.7, tUpland + 1.5, h + (broad - 0.5) * 1.4), cliffW);
+				var gravel = mix(gravelTex.get(p / 2.6).rgb, gravelTex.get(p / 8.3 + vec2(0.41, 0.17)).rgb, 0.3);
+				// Slump streaks running downhill, and darker damp / lighter dusty patches, as on
+				// a real gravel pile seen from above.
+				var down = n.xy / max(length(n.xy), 0.001);
+				var along = dot(p, down);
+				var across = dot(p, vec2(-down.y, down.x));
+				var streak = dirtTex.get(vec2(across / 2.2, along / 16.0)).a;
+				var fine = grassTex.get(vec2(across / 0.9, along / 6.0)).a;
+				gravel *= 0.8 + 0.38 * streak + 0.1 * (fine - 0.5);
+				gravel *= 0.9 + broad * 0.2;
+				c = mix(c, gravel, gravelW);
+				c = mix(c, twoScale(rockTex, p), smoothstep(0.55, 0.75, steep) * 0.7);
 
 				var sandEdge = tSand - 0.05 + (broad - 0.5) * 0.9;
 				var sandW = 1.0 - smoothstep(sandEdge - 0.12, sandEdge + 0.12, h);
@@ -141,6 +156,7 @@ class TerrainStyle extends hxsl.Shader {
 		dirtTex = gt.dirt;
 		sandTex = gt.sand;
 		rockTex = gt.rock;
+		gravelTex = gt.gravel;
 		sunDir.set(0.55, 0.35, 0.76);
 		sunDir.normalize();
 		setColor(seabed, 0x8FD3C6);

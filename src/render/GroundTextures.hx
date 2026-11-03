@@ -24,6 +24,8 @@ class GroundTextures {
 	public final dirt:h3d.mat.Texture;
 	public final sand:h3d.mat.Texture;
 	public final rock:h3d.mat.Texture;
+	/** Loose gravel and stones (the summit). **/
+	public final gravel:h3d.mat.Texture;
 
 	/** Generated once and shared by every island. **/
 	public static function get():GroundTextures {
@@ -36,6 +38,7 @@ class GroundTextures {
 		dirt = paintDirt();
 		sand = paintSand();
 		rock = paintRock();
+		gravel = paintGravel();
 	}
 
 	// --- periodic noise -------------------------------------------------------
@@ -110,6 +113,84 @@ class GroundTextures {
 					buf[i + 2] += (cb - buf[i + 2]) * alpha;
 				}
 		}
+	}
+
+	/**
+		Loose gravel: a sandy, dusty matrix with two layers of stones on top,
+		small gravel (~5 cm) and coarser stones (~13 cm). Stones come from a
+		tileable jittered-cell (Voronoi) pattern. Each is shaded as a small
+		dome lit from the upper left (rounded or flatter, angular ones), with a
+		dark contact shadow at its rim and its own colour: greys, muted browns,
+		rusty reds, the odd pale quartz. Some cells are left empty so the
+		matrix shows between.
+	**/
+	static function paintGravel():h3d.mat.Texture {
+		var buf = base(0x85837E, 0x686662, 8, 7001);
+		// Fine speckle in the matrix: sand and dust.
+		for (y in 0...SIZE)
+			for (x in 0...SIZE) {
+				var i = (y * SIZE + x) * 3;
+				var s = hash(x, y, 7003) - 0.5;
+				for (c in 0...3) buf[i + c] *= 1 + s * 0.22;
+			}
+		// Mostly greys, like a real gravel pile seen from above, with a few warmer stones.
+		var palette = [0x8D8C88, 0x9A9893, 0x7A7975, 0x6B6A66, 0x8F8A82, 0x84796D, 0xA6A39C, 0x5F5E5B, 0x8A7564];
+		for (layer in [{n: 84, keep: 0.9, seed: 7101, rmin: 0.6, rmax: 0.95}, {n: 36, keep: 0.3, seed: 7201, rmin: 0.6, rmax: 0.95}]) {
+			var n = layer.n;
+			var cell = SIZE / n;
+			// Feature point, size and colour per cell (wrapping, so it tiles).
+			inline function fx(i:Int, j:Int) return (i + 0.15 + 0.7 * hash(i, j, layer.seed)) * cell;
+			inline function fy(i:Int, j:Int) return (j + 0.15 + 0.7 * hash(i, j, layer.seed + 1)) * cell;
+			for (y in 0...SIZE)
+				for (x in 0...SIZE) {
+					var ci = Std.int(x / cell), cj = Std.int(y / cell);
+					var best = 1e9, second = 1e9, bi = 0, bj = 0, bdx = 0.0, bdy = 0.0;
+					for (dj in -1...2)
+						for (di in -1...2) {
+							var i = ci + di, j = cj + dj;
+							var wi = ((i % n) + n) % n, wj = ((j % n) + n) % n;
+							var px = fx(wi, wj) + (i - wi) * cell, py = fy(wi, wj) + (j - wj) * cell;
+							var dx = x + 0.5 - px, dy = y + 0.5 - py;
+							var d = Math.sqrt(dx * dx + dy * dy);
+							if (d < best) {
+								second = best;
+								best = d;
+								bi = wi;
+								bj = wj;
+								bdx = dx;
+								bdy = dy;
+							} else if (d < second) second = d;
+						}
+					if (hash(bi, bj, layer.seed + 2) > layer.keep) continue;
+					// Stone radius: a fraction of the way to the cell border.
+					var half = (best + second) * 0.5;
+					var size = layer.rmin + (layer.rmax - layer.rmin) * hash(bi, bj, layer.seed + 3);
+					var r = half * size;
+					var edge = best / Math.max(r, 1e-3); // 0 centre .. 1 rim
+					var i = (y * SIZE + x) * 3;
+					if (edge > 1.25) continue;
+					if (edge > 1.0) {
+						// Contact shadow just outside the stone.
+						var sh = 1 - 0.35 * (1 - (edge - 1) / 0.25);
+						for (c in 0...3) buf[i + c] *= sh;
+						continue;
+					}
+					// Dome normal; angular stones are flatter-topped with sharper rims.
+					var angular = hash(bi, bj, layer.seed + 4) < 0.45;
+					var ux = bdx / r, uy = bdy / r;
+					var z = angular ? Math.sqrt(Math.max(0.0, 1 - Math.pow(edge, 4))) : Math.sqrt(Math.max(0.0, 1 - edge * edge));
+					var nl = Math.sqrt(ux * ux + uy * uy + z * z * 1.6);
+					var light = (-ux * 0.55 - uy * 0.55 + z * 1.264 * 0.62) / nl;
+					var shade = 0.62 + 0.5 * Math.max(0, light);
+					var col = palette[Std.int(hash(bi, bj, layer.seed + 5) * palette.length) % palette.length];
+					var grain = 1 + (hash(x, y, layer.seed + 6) - 0.5) * 0.1;
+					var rim = 1 - 0.25 * Math.pow(edge, 6);
+					buf[i] = ((col >> 16) & 255) / 255 * shade * grain * rim;
+					buf[i + 1] = ((col >> 8) & 255) / 255 * shade * grain * rim;
+					buf[i + 2] = (col & 255) / 255 * shade * grain * rim;
+				}
+		}
+		return toTexture(buf, 7301);
 	}
 
 	static function toTexture(buf:Array<Float>, alphaSeed:Int):h3d.mat.Texture {

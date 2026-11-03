@@ -187,8 +187,14 @@ URL params on the web build make runs reproducible:
   fields. Trees grow in winding **tree lines** (`Props.treeLineAt`, a noise
   isoline broken into runs), small **copses** (densest forest noise only),
   and rare lone parkland trees. Grass climbs high, and rock texture only
-  shows near the summit. **Rocks:** a rocky high point (outcrops and scree
-  on the summit band) and only a few scattered in the meadows. Owner: "meadows
+  shows near the summit. **The high point is loose gravel** (owner pointed at
+  gravel textures and an aerial photo of a gravel pile): `GroundTextures.gravel`
+  is painted in code (two Voronoi stone layers, mostly greys, over a sandy
+  matrix; the reference textures' licences weren't usable). `TerrainStyle`
+  uses it for the summit band, with **slump streaks running downhill** (noise
+  stretched along the slope direction) and damp and dusty patches. Bare
+  rock shows only on the steepest faces. Few 3D stones and boulders, and
+  only a few scattered in the meadows. Owner: "meadows
   of grass blades, windswept, where there are not trees, with some small
   amount of rocks, rocky area at the high point".
 - **Boulders are sparse** (the owner asked for fewer random boulders), so keep

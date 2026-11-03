@@ -175,9 +175,11 @@ class Props {
 					// Peak
 					// Sparse: a few boulder groups and loose stones (the owner found them too many).
 					// The rocky high point: outcrops and scree around the summit.
-					if (roll < 0.05) rockCluster(x, y, z, 1 + Std.int(r() * 3));
-					else if (roll < 0.14) stones(x, y, z, 2);
-					else if (roll < 0.16) snag(x, y, z);
+					// The high point: loose gravel (terrain texture) strewn with stones, a few
+					// boulders, the odd dead snag.
+					if (roll < 0.02) rockCluster(x, y, z, 1 + Std.int(r() * 2));
+					else if (roll < 0.1) stones(x, y, z, 2);
+					else if (roll < 0.105) snag(x, y, z);
 				}
 			}
 
