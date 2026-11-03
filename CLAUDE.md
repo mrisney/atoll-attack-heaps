@@ -138,14 +138,14 @@ URL params on the web build make runs reproducible:
   github.com/spacejack/terra ("looks much better on the demo"). Terra is
   **CC BY-NC** (non-commercial) except a few MIT files, so **don't copy its
   code**: GrassField is our own version of the same idea. **One shared dense
-  patch** (10 m, about 34 blades/m²) is drawn on every 10 m tile that has
+  patch** (10 m, about 68 fine blades/m², 2.5–4.5 cm wide; owner wanted it "finer and closer together") is drawn on every 10 m tile that has
   field. The vertex shader puts blades on the ground from an R32F height
   grid (bilinear by hand, matching `Island.heightAt`) and scales them by a
   field map (R field, G clump, B dryness), so the repeating patch never
   shows. Blades are olive, lit as translucent, bent by rolling gusts, drawn
   in the alpha pass, and receive but don't cast shadows. `TerrainStyle`
   tints the ground under fields to the blade colour (`fieldMask`), so gaps
-  read as grass. Visible blades are about 100k at normal zoom on desktop;
+  read as grass. Visible blades are about 200k at normal zoom on desktop;
   that's the first thing to cut for phones (`DENSITY`).
 - **The island is pastoral** (owner: "more uninterrupted fields, with some
   tree lines, more campus, pastoral like"): open lowland and upland are

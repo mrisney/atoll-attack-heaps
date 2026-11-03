@@ -33,7 +33,7 @@ class GrassField {
 	public static inline var BLADE_SEGS = 3;
 	public static inline var TILE = 10.0;
 	/** Blades per square metre at full field strength. **/
-	public static inline var DENSITY = 34.0;
+	public static inline var DENSITY = 68.0; // owner: "finer and closer together"; 6.8k blades per tile (<65k verts)
 	public static inline var MASK_RES = 256;
 
 	public var bladesPerTile(default, null) = 0;
@@ -140,7 +140,7 @@ class GrassField {
 		inline function r():Float return rnd.rand(k++, 17);
 		for (b in 0...n) {
 			var root = new Point(r() * TILE, r() * TILE, 0);
-			var nm = new Point(r() * Math.PI * 2, 0.05 + r() * 0.04, 0.32 + r() * 0.36);
+			var nm = new Point(r() * Math.PI * 2, 0.025 + r() * 0.02, 0.24 + r() * 0.26);
 			var cl = new Point((r() - 0.5) * 0.45, 0.2 + r() * 0.45, r());
 			var base = pts.length;
 			for (d in 0...BLADE_SEGS + 1)
