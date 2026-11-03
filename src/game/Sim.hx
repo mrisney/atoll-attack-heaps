@@ -68,9 +68,11 @@ class Sim {
 		var d = 0.0;
 		var limit = island.halfExtent * 0.92;
 		var r0 = Math.sqrt(beach.x * beach.x + beach.y * beach.y);
-		while (r0 + d < limit && island.heightAt(beach.x + dx * d, beach.y + dy * d) > -2.0)
-			d += 1;
-		d = Math.min(d + 10, limit - r0);
+		// Just past the shallows: deep enough to sail, close enough to be seen from the
+		// beach at the starting zoom (it used to sit in the map corner, off screen).
+		while (r0 + d < limit && island.heightAt(beach.x + dx * d, beach.y + dy * d) > Ship.DRAFT - 0.6)
+			d += 0.5;
+		d = Math.min(d + 4, limit - r0);
 		var ship = new Ship(nextId++, team, beach.x + dx * d, beach.y + dy * d, angle + Math.PI);
 		ships.push(ship);
 		for (kind in CREW) {

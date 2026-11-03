@@ -136,10 +136,10 @@ class Main extends hxd.App {
 		selection.uiHitTest = (x, y) -> controls.hitTest(x, y) || minimap.hitTest(x, y);
 		selection.onBlast = (x, y) -> islandView.decals.crater(x, y, 2.6);
 
-		// Start looking at the blue ship and its home beach.
+		// Start looking at the blue ship, with its home beach in view.
 		var blue = sim.ships[0];
-		rtsCam.targetX = (blue.x + sim.homeBeach[0].x) / 2;
-		rtsCam.targetY = (blue.y + sim.homeBeach[0].y) / 2;
+		rtsCam.targetX = blue.x * 0.7 + sim.homeBeach[0].x * 0.3;
+		rtsCam.targetY = blue.y * 0.7 + sim.homeBeach[0].y * 0.3;
 		rtsCam.bounds = island.halfExtent;
 		rtsCam.snap();
 
