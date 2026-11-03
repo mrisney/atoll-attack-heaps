@@ -40,6 +40,7 @@ typedef PropGroups = {
 	var fieldMask:Null<h3d.mat.Texture>;
 	/** The grass (call setFocus each frame with the camera's look-at). **/
 	var grass:Null<GrassField>;
+	var trees:ProcTrees;
 }
 
 class Props {
@@ -206,7 +207,7 @@ class Props {
 		js.Syntax.code("window.grassBlades = {0}", fields.blades);
 		#end
 		palms.build(parent);
-		return {lowPoly: lowPoly, sprites: sprites, proc: proc, canopies: canopies, fieldMask: fields.mask, grass: fields};
+		return {lowPoly: lowPoly, sprites: sprites, proc: proc, canopies: canopies, fieldMask: fields.mask, grass: fields, trees: procTrees};
 	}
 
 	inline function pickName(list:Array<String>):String

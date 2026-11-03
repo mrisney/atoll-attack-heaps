@@ -165,6 +165,19 @@ URL params on the web build make runs reproducible:
   fields olive (`fieldMask`), which carries the look beyond `depth`.
   **Heaps doesn't frustum-cull meshes without a `cullingCollider`**, which
   is another reason the budget is fixed. For phones, lower `blades`.
+- **Grass parts around units** (`render/Trample.hx`). The owner pointed at the
+  Codrops "False Earth" WebGPU write-up (it couldn't be fetched; we built
+  the standard trample-map technique, which runs in WebGL). A 512² RGBA map
+  over the island is stamped on the CPU each frame by every living unit.
+  RG holds the push direction (outward), and B the amount, decaying over
+  ~2.8 s so trails spring back. A marks "a unit is here" (not decayed).
+  `GrassShader` bends blades from the root along the push and damps the
+  wind there. Clear values: R = G = 0.5, **B = 0** (an early bug cleared B
+  to 0.5, which flattened every blade).
+- **Canopy see-through**: `Trample.CanopyReveal` dithers away tree leaves within
+  ~2.2 m of a unit (from the A channel), so figures stay visible under trees.
+  The owner also asked for "slightly less tree canopy density", so there are
+  fewer leaf cards and the crowns start higher.
 - **Antialiasing**: `h3d.Engine.ANTIALIASING = 4` (MSAA on the screen) in
   `Main.main`. MSAA doesn't apply when the scene renders offscreen
   (tilt-shift in Painted), so `InkRenderer` runs FXAA on that frame

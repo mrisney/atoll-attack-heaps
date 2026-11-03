@@ -49,6 +49,15 @@ class GrassField {
 	/** One shader per layer; `setFocus` moves both. **/
 	public final layers:Array<GrassShader> = [];
 
+	/** Connect the trample map, so blades part around units. **/
+	public function setTrample(t:Trample) {
+		for (l in layers) {
+			l.trample = t.texture;
+			l.trampleOrigin = t.origin;
+			l.trampleSpan = t.span;
+		}
+	}
+
 	final island:world.Island;
 
 	/** Defaults for new islands; Main sets these from `?blades=` and `?depth=`. **/
@@ -207,6 +216,10 @@ class GrassShader extends hxsl.Shader {
 		/** Distance from the focus where the layer fades in (x..y) and out (x..y). **/
 		@param var fadeIn:Vec2;
 		@param var fadeOut:Vec2;
+		/** Trample map (RG push direction, B amount; see Trample). **/
+		@param var trample:Sampler2D;
+		@param var trampleOrigin:Float;
+		@param var trampleSpan:Float;
 
 		/** Toward the sun. **/
 		@param var sunDir:Vec3;
@@ -279,9 +292,17 @@ class GrassShader extends hxsl.Shader {
 			var s = sin(heading);
 			var p = vec3(root.x + hw * c - fwd * s, root.y + hw * s + fwd * c, ground(root) - 0.03 + up);
 			// Wind pushes everything downwind, more toward the tip, shortening the blade a little.
-			var w = gust * windStrength * h * h;
+			// Trampled: blades part away from the unit, bending from the root, and the wind
+			// has less to catch.
+			var tr = trample.getLod((root - trampleOrigin) / trampleSpan, 0.0);
+			var push = tr.b;
+			var pdir = tr.rg * 2.0 - 1.0;
+			var w = gust * windStrength * h * h * (1.0 - push * 0.8);
 			p.xy += windDir * (sin(w) * height);
 			p.z -= (1.0 - cos(w)) * height;
+			var tb = push * 1.35 * h;
+			p.xy += pdir * (sin(tb) * height * h);
+			p.z -= (1.0 - cos(tb)) * height * h;
 			transformedPosition = p;
 
 			var n = normalize(vec3(s * cos(a), -c * cos(a), sin(a)));
@@ -320,5 +341,8 @@ class GrassShader extends hxsl.Shader {
 		TerrainStyle.setColor(dryColor, Palette.GRASS_BLADE_DRY);
 		windDir.set(0.8, 0.6);
 		windStrength = 0.7;
+		trample = h3d.mat.Texture.fromColor(0x808000);
+		trampleOrigin = 0;
+		trampleSpan = 1;
 	}
 }

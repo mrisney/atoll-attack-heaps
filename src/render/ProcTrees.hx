@@ -35,6 +35,8 @@ class ProcTrees {
 	final leaves = new Batch();
 	final needles = new Batch();
 	public var count(default, null) = 0;
+	/** See-through canopy over units; `setTrample` connects it. **/
+	public final reveal = new Trample.CanopyReveal();
 
 	public function new() {}
 
@@ -92,7 +94,16 @@ class ProcTrees {
 		count++;
 	}
 
+	public function setTrample(t:Trample) {
+		reveal.trample = t.texture;
+		reveal.origin = t.origin;
+		reveal.span = t.span;
+	}
+
 	public function build(parent:h3d.scene.Object) {
+		reveal.trample = h3d.mat.Texture.fromColor(0x808000);
+		reveal.origin = 0;
+		reveal.span = 1;
 		for (p in bark.done()) {
 			var m = new h3d.scene.Mesh(p, parent);
 			FlatMeshBuilder.setupMaterial(m.material, true);
@@ -109,6 +120,7 @@ class ProcTrees {
 				mat.textureShader.killAlphaThreshold = 0.5;
 				mat.mainPass.culling = None;
 				mat.mainPass.addShader(new SwayShader(0.04, 0.9));
+				mat.mainPass.addShader(reveal);
 				FlatMeshBuilder.shadows(mat, true, true);
 			}
 	}
@@ -142,7 +154,7 @@ class ProcTrees {
 					gnarliness: [0, -0.1, -0.15, 0.09], length: [37.24, 11.08, 12.39, 7.16],
 					radius: [1.41, 0.9, 0.69, 1.19], sections: [6, 4, 2, 1], segments: [6, 4, 3, 3],
 					start: [0, 0.49, 0.06, 0.12], taper: [0.73, 0.42, 0.69, 0.75], twist: [-0.23, 0.42, 0, 0],
-					leafAngle: 42, leafCount: 7, leafStart: 0.16, leafSize: 7.4, leafSizeVariance: 0.5
+					leafAngle: 42, leafCount: 5, leafStart: 0.3, leafSize: 6.8, leafSizeVariance: 0.5
 				};
 			case Ash: {
 					seed: seed, evergreen: false, levels: 3,
@@ -150,7 +162,7 @@ class ProcTrees {
 					gnarliness: [0.03, 0.25, 0.2, 0.09], length: [43.47, 27.14, 9.51, 4.6],
 					radius: [2, 0.63, 0.76, 0.7], sections: [7, 4, 2, 1], segments: [6, 4, 3, 3],
 					start: [0, 0.23, 0.33, 0], taper: [0.7, 0.7, 0.7, 0.7], twist: [0.09, -0.07, 0, 0],
-					leafAngle: 55, leafCount: 7, leafStart: 0, leafSize: 7.6, leafSizeVariance: 0.5
+					leafAngle: 55, leafCount: 5, leafStart: 0.25, leafSize: 7.0, leafSizeVariance: 0.5
 				};
 			case Aspen: {
 					seed: seed, evergreen: false, levels: 2,
@@ -158,7 +170,7 @@ class ProcTrees {
 					gnarliness: [0.05, 0.12, 0.12, 0.02], length: [50, 6.07, 11.19, 1],
 					radius: [0.72, 0.41, 0.7, 0.7], sections: [8, 4, 3, 2], segments: [6, 4, 3, 3],
 					start: [0, 0.59, 0.35, 0], taper: [0.37, 0.13, 0.7, 0.7], twist: [0, 0, 0, 0],
-					leafAngle: 30, leafCount: 8, leafStart: 0.124, leafSize: 5.2, leafSizeVariance: 0.5
+					leafAngle: 30, leafCount: 6, leafStart: 0.2, leafSize: 4.8, leafSizeVariance: 0.5
 				};
 			case Pine: {
 					seed: seed, evergreen: true, levels: 1,

@@ -246,6 +246,7 @@ class Main extends hxd.App {
 		sim.update(dt);
 		islandView.update(dt);
 		islandView.setGrassFocus(s3d.camera.target.x, s3d.camera.target.y);
+		islandView.updateTrample(dt, [for (v in unitViews) if (v.unit.alive) {x: v.x, y: v.y}]);
 		for (v in unitViews) v.syncFromSim(dt);
 		selection.update(dt);
 		controls.update(dt, s2d.width, s2d.height);

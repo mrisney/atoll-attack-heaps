@@ -208,6 +208,18 @@ class IslandView extends h3d.scene.Object {
 
 	public function update(dt:Float) {}
 
+	var trample:Null<Trample>;
+
+	/** Units press the grass aside and open the canopy above them (call every frame). **/
+	public function updateTrample(dt:Float, units:Array<{x:Float, y:Float}>) {
+		if (trample == null) {
+			trample = new Trample(island);
+			if (props.grass != null) props.grass.setTrample(trample);
+			props.trees.setTrample(trample);
+		}
+		trample.update(dt, units);
+	}
+
 	/** Keep the grass centred where the camera looks (call every frame). **/
 	public function setGrassFocus(x:Float, y:Float) {
 		if (props != null && props.grass != null) props.grass.setFocus(x, y);

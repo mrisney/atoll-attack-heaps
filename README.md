@@ -39,6 +39,7 @@ The goal of this spike is to answer one question: does Heaps give the Northgard-
 - **Wind waves**: an FFT ocean (Tessendorf's method, Phillips spectrum) baked once at startup into a seamless looping texture, so on the GPU it's just texture lookups. The water is lit by the waves (light and shade, sun glints, lighter crests). Foam comes from the simulation itself (where crests fold over), lingering in patches: sparse whitecaps at sea, and in the shallows the swell breaks into froth that rolls in along the depth contours and runs up the sand as swash, leaving it wet. Only shores exposed to the open swell break; lagoons stay calm.
 - **Blast craters**: scorched pits with thrown soil, draped over the terrain where X blasts land.
 - **Pastoral island with grass fields in the wind**: broad open fields divided by winding tree lines, with small copses and lone trees. The grass is a fixed budget of real blades around the view (100k blades out to 85 m by default, `?blades=` / `?depth=`, like terra's settings), wrapped onto a world grid so it never slides, placed on the ground and shaped by a field map in the vertex shader,, bent by rolling gusts and lit as translucent leaves. Inspired by spacejack/terra; own implementation.
+- **Grass parts as units walk through it**: a trample map stamped by every unit bends blades outward from their feet, leaving trails that spring back over a few seconds. Tree canopies open up over figures walking beneath them.
 - **Micro-scatter**: wildflowers in the meadows, shells on the beaches, loose pebbles in the uplands.
 - **Tilt-shift** (B to toggle; on by default in Painted).
 - **Antialiasing**: 4x MSAA, plus FXAA when tilt-shift renders offscreen (`?aa=0` turns FXAA off).
@@ -62,6 +63,7 @@ src/
   render/GrassField.hx      wind-blown grass fields: blade strips bent and lit in a vertex shader
   render/TreeGen.hx         procedural tree skeleton + mesh (port of EZ-Tree, MIT)
   render/ProcTrees.hx       tree species presets, templates, instancing, leaf/bark textures
+  render/Trample.hx         trample map (grass parting, trails) + canopy see-through over units
   render/Palms.hx           coconut palms: curved smooth trunks, arched leafy fronds (texture painted in code)
   render/SpriteProps.hx     painted sprites on alpha-tested domes (one draw call per sprite)
   render/Rocks.hx           procedural 3D boulders and stones (triplanar painted texture)
