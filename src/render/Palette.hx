@@ -33,12 +33,17 @@ class Palette {
 	// Wind-blown grass fields (GrassField): darker at the root, sunlit tips, some dry blades.
 	// Olive and khaki, like a real meadow (the Stronghold screenshots and the terra demo
 	// the owner liked), not lime.
-	public static inline var GRASS_BLADE_BASE = 0x38461C;
-	public static inline var GRASS_BLADE_TIP = 0x929B4A;
-	public static inline var GRASS_BLADE_DRY = 0xB3A264;
-	/** Ground under a grass field: the colour you'd glimpse between blades. **/
-	public static inline var FIELD_GROUND = 0x58622D;
+	// Owner's windswept-meadow reference: deep green blades, yellow-green tips, straw
+	// seed heads, over a brown thatch.
+	public static inline var GRASS_BLADE_BASE = 0x2E3A13;
+	public static inline var GRASS_BLADE_TIP = 0x7E993A;
+	public static inline var GRASS_BLADE_DRY = 0xAFA05E;
+	/** Ground under a grass field: the brown thatch you'd glimpse between blades. **/
+	public static inline var FIELD_GROUND = 0x535A29;
 	/** Multiplies the dirt/sand blend on worn tracks: pale, dusty khaki. **/
+	/** Rigged characters (CharacterModel): weapon wood and iron. **/
+	public static inline var CHAR_WOOD = 0x8A6A4C;
+	public static inline var CHAR_METAL = 0xB8BEC4;
 	public static inline var TRACK_DUST = 0xE2D6BC;
 	/** Low dark ground cover in the fields (low-poly look). **/
 	public static inline var GROUND_COVER = 0x3E4A26;

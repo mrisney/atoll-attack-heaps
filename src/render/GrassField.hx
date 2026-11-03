@@ -35,10 +35,10 @@ import h3d.prim.UV;
 	  without a collider, so a fixed budget is also what keeps this bounded.
 **/
 class GrassField {
-	public static inline var BLADE_SEGS = 3;
+	public static inline var BLADE_SEGS = 4;
 	public static inline var MASK_RES = 256;
-	/** Blades per mesh (8 vertices each, under the 16-bit index limit). **/
-	static inline var CHUNK = 8000;
+	/** Blades per mesh (10 vertices each, under the 16-bit index limit). **/
+	static inline var CHUNK = 6000;
 
 	/** Total blades drawn (terra's BLADES). **/
 	public final blades:Int;
@@ -73,8 +73,15 @@ class GrassField {
 	}
 
 	/** Centre the grass on this world point (the camera's look-at), every frame. **/
-	public function setFocus(x:Float, y:Float) {
-		for (l in layers) l.focus.set(x, y);
+	public function setFocus(x:Float, y:Float, ?viewDistance:Float) {
+		// Zoomed in, the same blades are packed into a smaller patch: denser where
+		// individual blades can be seen (owner: "finer, closer together"). Zoomed
+		// out, the patch spreads to `depth` and the ground colour carries the look.
+		var s = viewDistance == null ? 1.0 : Math.max(0.35, Math.min(1.0, viewDistance / 28));
+		for (l in layers) {
+			l.focus.set(x, y);
+			l.scale = s;
+		}
 	}
 
 	/**
@@ -114,10 +121,12 @@ class GrassField {
 		heightTex.wrap = Clamp;
 
 		// --- the two layers --------------------------------------------------------
-		var nearR = depth * 0.24;
+		// A tighter near patch than terra's: ~70 blades/m² at the defaults (owner: "finer,
+		// closer together").
+		var nearR = depth * 0.2;
 		var nearCount = Std.int(blades * 0.8);
 		addLayer(parent, nearCount, nearR * 2, 1.0, -2, -1, nearR * 0.75, nearR, 101, heightTex, he, span);
-		addLayer(parent, blades - nearCount, depth * 2, 2.6, nearR * 0.7, nearR, depth * 0.8, depth, 202, heightTex, he, span);
+		addLayer(parent, blades - nearCount, depth * 2, 2.0, nearR * 0.7, nearR, depth * 0.8, depth, 202, heightTex, he, span);
 	}
 
 	function addLayer(parent:h3d.scene.Object, count:Int, size:Float, widthScale:Float, inA:Float, inB:Float, outA:Float, outB:Float,
@@ -164,8 +173,9 @@ class GrassField {
 		var idx = new hxd.IndexBuffer();
 		for (b in 0...n) {
 			var root = new Point(r() * size, r() * size, 0);
-			var nm = new Point(r() * Math.PI * 2, 0.025 + r() * 0.02, 0.24 + r() * 0.26);
-			var cl = new Point((r() - 0.5) * 0.45, 0.2 + r() * 0.45, r());
+			// Fine, long blades (owner's windswept-meadow reference): 1-2 cm wide, 30-70 cm long.
+			var nm = new Point(r() * Math.PI * 2, 0.013 + r() * 0.012, 0.3 + r() * 0.4);
+			var cl = new Point((r() - 0.5) * 0.3, 0.25 + r() * 0.5, r());
 			var base = pts.length;
 			for (d in 0...BLADE_SEGS + 1)
 				for (edge in 0...2) {
@@ -213,6 +223,8 @@ class GrassShader extends hxsl.Shader {
 		/** View centre the grass wraps around, and this layer's patch size. **/
 		@param var focus:Vec2;
 		@param var patchSize:Float;
+		/** Shrinks the patch (and the fade distances) to pack blades denser when zoomed in. **/
+		@param var scale:Float;
 		@param var widthScale:Float;
 		/** Distance from the focus where the layer fades in (x..y) and out (x..y). **/
 		@param var fadeIn:Vec2;
@@ -231,6 +243,8 @@ class GrassShader extends hxsl.Shader {
 		@param var windDir:Vec2;
 		/** How far gusts push blades over (radians at the tip). **/
 		@param var windStrength:Float;
+		/** Constant lay-over downwind (radians at the tip): a windswept meadow, every blade combed the same way. **/
+		@param var sweep:Float;
 
 		var transformedPosition:Vec3;
 		var transformedNormal:Vec3;
@@ -256,8 +270,9 @@ class GrassShader extends hxsl.Shader {
 
 		function vertex() {
 			// Wrap this blade onto the copy of the patch grid nearest the view centre.
-			var off = input.position.xy;
-			var root = off + floor((focus - off) / patchSize) * patchSize + patchSize * 0.5;
+			var off = input.position.xy * scale;
+			var ps = patchSize * scale;
+			var root = off + floor((focus - off) / ps) * ps + ps * 0.5;
 			var dist = length(root - focus);
 			var edge = input.uv.x;
 			var h = input.uv.y;
@@ -271,7 +286,7 @@ class GrassShader extends hxsl.Shader {
 
 			// How much field grows here, clumpiness and dryness: from the world, not the patch.
 			var m = mask.getLod((root - maskOrigin) / maskSize, 0.0);
-			var grow = smoothstep(0.02, 0.5, m.r) * smoothstep(fadeIn.x, fadeIn.y, dist) * (1.0 - smoothstep(fadeOut.x, fadeOut.y, dist));
+			var grow = smoothstep(0.02, 0.5, m.r) * smoothstep(fadeIn.x * scale, fadeIn.y * scale, dist) * (1.0 - smoothstep(fadeOut.x * scale, fadeOut.y * scale, dist));
 			// Worn ground (tracks): fewer, shorter, drier blades. Each blade survives up to
 			// its own threshold, so the edge frays into straggling tufts, not a clean line.
 			var wear = m.a;
@@ -303,7 +318,7 @@ class GrassShader extends hxsl.Shader {
 			var tr = trample.getLod((root - trampleOrigin) / trampleSpan, 0.0);
 			var push = tr.b;
 			var pdir = tr.rg * 2.0 - 1.0;
-			var w = gust * windStrength * h * h * (1.0 - push * 0.8);
+			var w = (sweep * (0.75 + 0.5 * curve) + gust * windStrength) * h * h * (1.0 - push * 0.8);
 			p.xy += windDir * (sin(w) * height);
 			p.z -= (1.0 - cos(w)) * height;
 			var tb = push * 1.35 * h;
@@ -324,6 +339,8 @@ class GrassShader extends hxsl.Shader {
 			var sheen = pow(max(dot(normalize(sunDir + view), n) * sign(dot(n, view)), 0.0), 6.0) * 0.16 * h;
 			var col = mix(baseColor, tipColor, h * 0.85 + 0.15 * tone);
 			col = mix(col, dryColor, dry * 0.7);
+			// Seed heads: about one blade in five ends in a pale, straw-coloured tip.
+			col = mix(col, dryColor * 1.08, smoothstep(0.72, 1.0, h) * step(0.8, fract(tone * 17.0)) * 0.85);
 			// Per-blade variation, so the carpet isn't one flat colour.
 			col *= vec3(0.9 + 0.2 * tone, 0.94 + 0.12 * fract(tone * 7.0), 0.9 + 0.1 * fract(tone * 13.0));
 			bladeColor = col * light + vec3(sheen, sheen, sheen * 0.4);
@@ -346,7 +363,9 @@ class GrassShader extends hxsl.Shader {
 		TerrainStyle.setColor(tipColor, Palette.GRASS_BLADE_TIP);
 		TerrainStyle.setColor(dryColor, Palette.GRASS_BLADE_DRY);
 		windDir.set(0.8, 0.6);
-		windStrength = 0.7;
+		windStrength = 0.55;
+		scale = 1;
+		sweep = 0.85;
 		trample = h3d.mat.Texture.fromColor(0x808000);
 		trampleOrigin = 0;
 		trampleSpan = 1;

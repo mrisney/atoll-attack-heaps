@@ -34,8 +34,11 @@ class Tracks {
 
 		var wander = new Noise(island.seed + 1201);
 		var widthN = new Noise(island.seed + 1202);
+		edgeN = new Noise(island.seed + 1204);
 		var k = 0;
-		for (angle in [0.25, 1.25, 0.8, 1.75]) {
+		// Only the two landing beaches: four tracks fanned out from the summit like
+		// spokes (owner: "a distinct pattern... very computer generated").
+		for (angle in [0.25, 1.25]) {
 			k++;
 			var start = island.findLandNear(Math.PI * angle);
 			var x = start.x, y = start.y;
@@ -45,7 +48,9 @@ class Tracks {
 				var dx = island.apexX - x, dy = island.apexY - y;
 				var d = Math.sqrt(dx * dx + dy * dy);
 				if (d < 5) break;
-				var a = Math.atan2(dy, dx) + (wander.fbm(travelled * 0.025 + k * 17, k * 5.3, 2) - 0.5) * 2.4;
+				// Long lazy bends plus small kinks, like a path that found its own way.
+				var a = Math.atan2(dy, dx) + (wander.fbm(travelled * 0.011 + k * 17, k * 5.3, 2) - 0.5) * 3.0
+					+ (wander.fbm(travelled * 0.07 + 40, k * 2.1, 2) - 0.5) * 0.8;
 				x += Math.cos(a) * 0.6;
 				y += Math.sin(a) * 0.6;
 				travelled += 0.6;
@@ -53,8 +58,10 @@ class Tracks {
 				if (h < tSand - 0.1) continue; // still on the beach / in the shallows
 				// Wider near the beach and the summit, where traffic gathers; a little
 				// narrower in between.
-				var hw = 0.9 + widthN.fbm(travelled * 0.05 + k * 9, 3.1, 2) * 1.6;
-				stamp(x, y, hw);
+				var hw = 0.5 + widthN.fbm(travelled * 0.04 + k * 9, 3.1, 2) * 1.1;
+				// Worn harder in places and barely at all in others, so it comes and goes.
+				var strength = 0.35 + 0.65 * smoothstep(0.3, 0.7, widthN.fbm(travelled * 0.03 + k * 4, 8.7, 2));
+				stamp(x, y, hw, strength);
 			}
 		}
 
@@ -63,22 +70,26 @@ class Tracks {
 		for (j in 0...RES)
 			for (i in 0...RES) {
 				var x = origin + (i + 0.5) / RES * span, y = origin + (j + 0.5) / RES * span;
-				var p = smoothstep(0.64, 0.78, patchN.fbm(x * 0.05 + 11, y * 0.05 + 11, 3)) * 0.65;
+				var p = smoothstep(0.66, 0.8, patchN.fbm(x * 0.05 + 11, y * 0.05 + 11, 3)) * 0.45;
 				var id = j * RES + i;
 				if (p > grid[id]) grid[id] = p;
 			}
 	}
 
-	function stamp(x:Float, y:Float, hw:Float) {
+	var edgeN:Noise;
+
+	function stamp(x:Float, y:Float, hw:Float, strength:Float) {
 		var cell = span / RES;
-		var outer = hw + 1.6;
+		var outer = hw + 1.2;
 		var cx = (x - origin) / cell, cy = (y - origin) / cell, r = outer / cell;
 		for (j in Std.int(cy - r - 1)...Std.int(cy + r + 2))
 			for (i in Std.int(cx - r - 1)...Std.int(cx + r + 2)) {
 				if (i < 0 || j < 0 || i >= RES || j >= RES) continue;
 				var dx = (i + 0.5 - cx) * cell, dy = (j + 0.5 - cy) * cell;
-				var d = Math.sqrt(dx * dx + dy * dy);
-				var w = 1 - smoothstep(hw * 0.4, outer, d);
+				// Ragged edge: non-repeating noise pushes the border in and out.
+				var wx = origin + (i + 0.5) * cell, wy = origin + (j + 0.5) * cell;
+				var d = Math.sqrt(dx * dx + dy * dy) + (edgeN.fbm(wx * 0.7, wy * 0.7, 3) - 0.5) * 1.6;
+				var w = (1 - smoothstep(hw * 0.4, outer, d)) * strength;
 				var id = j * RES + i;
 				if (w > grid[id]) grid[id] = w;
 			}

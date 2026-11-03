@@ -228,8 +228,8 @@ class IslandView extends h3d.scene.Object {
 	}
 
 	/** Keep the grass centred where the camera looks (call every frame). **/
-	public function setGrassFocus(x:Float, y:Float) {
-		if (props != null && props.grass != null) props.grass.setFocus(x, y);
+	public function setGrassFocus(x:Float, y:Float, ?viewDistance:Float) {
+		if (props != null && props.grass != null) props.grass.setFocus(x, y, viewDistance);
 	}
 
 	/**

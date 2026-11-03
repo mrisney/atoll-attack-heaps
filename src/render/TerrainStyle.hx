@@ -101,14 +101,13 @@ class TerrainStyle extends hxsl.Shader {
 				var cliffW = smoothstep(0.32, 0.5, steep + (patch - 0.5) * 0.25);
 				var gravelW = max(smoothstep(tUpland + 0.7, tUpland + 1.5, h + (broad - 0.5) * 1.4), cliffW);
 				var gravel = mix(gravelTex.get(p / 2.6).rgb, gravelTex.get(p / 8.3 + vec2(0.41, 0.17)).rgb, 0.3);
-				// Slump streaks running downhill, and darker damp / lighter dusty patches, as on
-				// a real gravel pile seen from above.
-				var down = n.xy / max(length(n.xy), 0.001);
-				var along = dot(p, down);
-				var across = dot(p, vec2(-down.y, down.x));
-				var streak = dirtTex.get(vec2(across / 2.2, along / 16.0)).a;
-				var fine = grassTex.get(vec2(across / 0.9, along / 6.0)).a;
-				gravel *= 0.8 + 0.38 * streak + 0.1 * (fine - 0.5);
+				// Damp and dusty patches, as on a real gravel pile seen from above. (Streaks bent
+				// along the downhill direction wrapped the hill in fingerprint-like rings; the
+				// owner found that pattern computer-made, so the variation is plain patches now.)
+				var q = vec2(p.x * 0.8 - p.y * 0.6, p.x * 0.6 + p.y * 0.8);
+				var damp = dirtTex.get(q / 9.1 + vec2(0.3, 0.8)).a;
+				var fine = grassTex.get(p / 2.3 + vec2(0.7, 0.2)).a;
+				gravel *= 0.88 + 0.2 * damp + 0.08 * (fine - 0.5);
 				gravel *= (0.9 + broad * 0.2) * 1.1; // a touch lighter (owner)
 				c = mix(c, gravel, gravelW);
 				c = mix(c, twoScale(rockTex, p), smoothstep(0.55, 0.75, steep) * 0.7);
@@ -130,9 +129,12 @@ class TerrainStyle extends hxsl.Shader {
 
 				// Worn ground (Tracks, in the mask's alpha): pale dusty earth, the edge frayed
 				// by noise so it breaks up into the grass.
-				var speck = grassTex.get(p / 1.3).a;
-				var tuft = dirtTex.get(p / 0.45).a;
-				var wt = smoothstep(0.25, 0.85, fm.a + (patch - 0.5) * 0.7 + (speck - 0.5) * 0.6 + (tuft - 0.5) * 0.45);
+				// Break-up noise at odd scales on rotated axes, so the textures' tiling can't line
+				// up into a visible grid (small repeats read as a plaid pattern on the tracks).
+				var q = vec2(p.x * 0.8 - p.y * 0.6, p.x * 0.6 + p.y * 0.8);
+				var speck = dirtTex.get(q / 7.3 + vec2(0.21, 0.63)).a;
+				var tuft = grassTex.get(p / 3.7 + vec2(0.57, 0.11)).a;
+				var wt = smoothstep(0.25, 0.85, fm.a + (patch - 0.5) * 0.5 + (speck - 0.5) * 0.5 + (tuft - 0.5) * 0.3);
 				// Even the middle of a track keeps the odd thin, trodden patch of grass.
 				wt *= 0.8 + 0.2 * smoothstep(0.35, 0.6, speck);
 				var dust = mix(twoScale(dirtTex, p), twoScale(sandTex, p), 0.5);
