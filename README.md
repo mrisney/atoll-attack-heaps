@@ -42,6 +42,7 @@ The goal of this spike is to answer one question: does Heaps give the Northgard-
 - **Grass parts as units walk through it**: a trample map stamped by every unit bends blades outward from their feet, leaving trails that spring back over a few seconds. Tree canopies open up over figures walking beneath them.
 - **Micro-scatter**: wildflowers in the meadows, shells on the beaches, loose pebbles in the uplands.
 - **Tilt-shift** (B to toggle; on by default in Painted).
+- **Ships and landings**: each side's crew (14 characters) starts aboard its ship. Click your ship, then click a stretch of coast: it sails round through deep water, anchors, and the crew wades ashore. Click open water to just sail.
 - **Weather**: sunny, fog, or rain/storm (rain streaks, rougher sea, darker sky, drifting fog). Each style starts in one; **C** cycles, `?weather=sunny|fog|rain`.
 - **Antialiasing**: 4x MSAA, plus FXAA when tilt-shift renders offscreen (`?aa=0` turns FXAA off).
 - **Prop variety**: palms leaning toward the sea, mixed broadleaf and pine woods with the odd turning tree, bushes, grass meadows, rock outcrops, driftwood, loose stones and dead snags on the heights. Placed by elevation band and clustered by noise, with a colour and size per instance, merged into a handful of draw calls.
@@ -83,6 +84,8 @@ res/                        art from WildCurrent (embedded into the build; see r
   render/ink/GeoOut.hx      per-material normal/depth output
   render/ink/TiltShift.hx   miniature-style blur toward the top and bottom of the frame
   render/UnitView.hx        unit figures, selection rings, interpolation, rag doll hookup
+  render/ShipView.hx        the ships: timber hull, team sail, bobbing on the swell
+  game/Ship.hx              ships: deep-water sailing, anchoring, crew landing (sim side)
   render/CharacterModel.hx  rigged FBX character (opt-in ?figures=rigged): props on joints, takes, rag doll on the skeleton
   render/CharacterInk.hx    pencil hatching + inverted-hull outline for the rigged characters
   render/Tracks.hx          worn tracks and scuffed ground (thins grass, dusty earth)

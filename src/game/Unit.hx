@@ -4,7 +4,7 @@ enum UnitKind {
 	Captain;
 	Archer;
 	Swordsman;
-	/** Long pike. Not spawned yet (comes with the gameplay port); the views support it. **/
+	/** Long pike: melee with reach. **/
 	Piker;
 }
 
@@ -23,6 +23,8 @@ class Unit {
 	public var facing:Float = 0;
 
 	public var alive = true;
+	/** The ship this unit is aboard (not on the island yet), or -1. **/
+	public var aboard = -1;
 	/** Where the killing blow came from — the view uses it to fling the body away. **/
 	public var hitFromX = 0.0;
 	public var hitFromY = 0.0;

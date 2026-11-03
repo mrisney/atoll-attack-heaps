@@ -20,6 +20,7 @@ class Main extends hxd.App {
 	var sim:Sim;
 	var islandView:IslandView;
 	var unitViews:Array<UnitView> = [];
+	var shipViews:Array<render.ShipView> = [];
 	var rtsCam:RtsCamera;
 	var selection:SelectionController;
 	var hud:h2d.Text;
@@ -91,6 +92,8 @@ class Main extends hxd.App {
 		if (islandView != null) islandView.remove();
 		for (v in unitViews) v.remove();
 		unitViews = [];
+		for (v in shipViews) v.remove();
+		shipViews = [];
 		if (selection != null) selection.dispose();
 
 		island = new Island(seed, shape);
@@ -98,10 +101,13 @@ class Main extends hxd.App {
 		islandView = new IslandView(island, s3d);
 		applyStyle();
 		for (u in sim.units) unitViews.push(new UnitView(u, island.heightAt, s3d));
-		// A dock at each squad's landing beach (the captains start there).
-		var captains = [for (u in sim.units) if (u.kind == Captain) u];
-		var docks = islandView.addLandings([for (u in captains) {x: u.x, y: u.y}]);
+		for (s in sim.ships) shipViews.push(new render.ShipView(s, s3d));
+		// A dock at each side's home beach (where its ship lies off at the start).
+		var docks = islandView.addLandings(sim.homeBeach);
 		selection = new SelectionController(sim, unitViews, s3d, s2d, rtsCam);
+		selection.ships = shipViews;
+		// Debug (?autoland=1): land the blue crew at its home beach straight away.
+		if (autoLand) sim.queue(ShipTo(sim.ships[0].id, sim.homeBeach[0].x, sim.homeBeach[0].y));
 		if (controls == null) {
 			drafting = new ui.DraftingOverlay(s3d.camera, rtsCam);
 			s2d.addChildAt(drafting, 0);
@@ -111,10 +117,10 @@ class Main extends hxd.App {
 			minimap = new ui.Minimap(rtsCam, s2d);
 			minimap.setScale(uiScale);
 		}
-		minimap.setIsland(island, sim.units);
+		minimap.setIsland(island, sim.units, sim.ships);
 		drafting.setIsland(island, [
 			for (k in 0...docks.length)
-				{x: docks[k].x, y: docks[k].y, label: 'LANDING ' + (captains[k].team == 0 ? "A  -  BLUE" : "B  -  RED")}
+				{x: docks[k].x, y: docks[k].y, label: 'LANDING ' + (k == 0 ? "A  -  BLUE" : "B  -  RED")}
 		]);
 		drafting.visible = style == Sketch;
 		selection.onOrder = drafting.addDimension;
@@ -122,10 +128,10 @@ class Main extends hxd.App {
 		selection.uiHitTest = (x, y) -> controls.hitTest(x, y) || minimap.hitTest(x, y);
 		selection.onBlast = (x, y) -> islandView.decals.crater(x, y, 2.6);
 
-		// Start looking at the blue squad's beach.
-		var blue = sim.units[0];
-		rtsCam.targetX = blue.x;
-		rtsCam.targetY = blue.y;
+		// Start looking at the blue ship and its home beach.
+		var blue = sim.ships[0];
+		rtsCam.targetX = (blue.x + sim.homeBeach[0].x) / 2;
+		rtsCam.targetY = (blue.y + sim.homeBeach[0].y) / 2;
 		rtsCam.bounds = island.halfExtent;
 		rtsCam.snap();
 
@@ -195,6 +201,8 @@ class Main extends hxd.App {
 	/** `?at=x,y`: start the camera looking at this world point (for reproducible shots). **/
 	var startAt:Null<{x:Float, y:Float}> = null;
 	var galleryWanted = false;
+	var autoLand = false;
+	var lastStamp = -1.0;
 
 	/**
 		Web build only: `index.html?seed=123&style=inkmap&shape=atoll&dist=80`
@@ -220,6 +228,8 @@ class Main extends hxd.App {
 		// Grass budget, like terra's BLADES / DEPTH settings.
 		if (q.get("figures") == "rigged") UnitView.rigged = true;
 		galleryWanted = q.has("gallery");
+		autoLand = q.has("autoland");
+		if (q.has("catchup")) Sim.maxCatchUp = Std.parseFloat(q.get("catchup"));
 		if (q.has("blades")) GrassField.defaultBlades = Std.parseInt(q.get("blades"));
 		if (q.has("depth")) GrassField.defaultDepth = Std.parseFloat(q.get("depth"));
 		if (q.get("aa") == "0") inkRenderer.fxaa = false;
@@ -325,11 +335,21 @@ class Main extends hxd.App {
 			buildWorld();
 		}
 		rtsCam.update(dt, selection.mouseX, selection.mouseY, s2d.width, s2d.height);
-		sim.update(dt);
+		// The sim runs on wall-clock time (Heaps' dt is smoothed and lags far behind
+		// when frames are slow); Sim.update still caps how much it catches up at once.
+		var now = haxe.Timer.stamp();
+		var simDt = lastStamp < 0 ? dt : now - lastStamp;
+		lastStamp = now;
+		sim.update(simDt);
+		#if js
+		// For automation (scripts/snapshot.mjs): where the ships are and what they're doing.
+		js.Syntax.code("window.atollSim = {0}", 'tick=${sim.tick} ' + [for (sh in sim.ships) 'ship${sh.team}:${sh.state}@${Math.round(sh.x)},${Math.round(sh.y)} crew=${sh.crew.length}'].join(" "));
+		#end
 		islandView.update(dt);
 		islandView.setGrassFocus(s3d.camera.target.x, s3d.camera.target.y, rtsCam.distance);
-		islandView.updateTrample(dt, [for (v in unitViews) if (v.unit.alive) {x: v.x, y: v.y}]);
+		islandView.updateTrample(dt, [for (v in unitViews) if (v.unit.alive && v.unit.aboard < 0) {x: v.x, y: v.y}]);
 		for (v in unitViews) v.syncFromSim(dt);
+		for (v in shipViews) v.syncFromSim(dt);
 		selection.update(dt);
 		controls.update(dt, s2d.width, s2d.height);
 		minimap.update(s2d.width, s2d.height);

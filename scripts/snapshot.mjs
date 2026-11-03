@@ -15,7 +15,9 @@
 //   --at=-38,0          start the camera looking at this world point (x,y)
 //   --figures=rigged    draw units as the rigged FBX character
 //   --weather=rain      sunny | fog | rain (default: the style's own)
+//   --autoland          the blue ship lands its crew at its home beach at once
 //   --gallery           line up one rigged figure per kind and take at the view centre
+//   --after=12          after everything else, wait this many seconds and take one more shot
 //   --no-build          skip `haxe build-js.hxml`
 //   --size=1280x760     viewport
 //
@@ -66,6 +68,9 @@ if (args.at) params.set("at", args.at);
 if (args.figures) params.set("figures", args.figures);
 if (args.gallery) params.set("gallery", "1");
 if (args.weather) params.set("weather", args.weather);
+if (args.autoland) params.set("autoland", "1");
+// Software rendering is slow (seconds per frame); let the sim catch up to real time.
+params.set("catchup", args.catchup ?? "10");
 const url = `file://${join(root, "bin", "index.html")}?${params}`;
 
 // Software GL fallback keeps this working on CI/headless boxes without a GPU.
@@ -119,6 +124,12 @@ if (args.walk) {
   await page.mouse.click(width * 0.5, height * 0.2, { button: "right" });
   await page.waitForTimeout(1500);
   await shot("-walk");
+}
+
+if (args.after) {
+  // Let the game run on (ships sailing, crews landing, fights), then one more shot.
+  await page.waitForTimeout(Number(args.after) * 1000);
+  await shot("-after");
 }
 
 await browser.close();

@@ -41,6 +41,8 @@ class SelectionController {
 	final box:h2d.Graphics;
 
 	public var localTeam = 0;
+	/** Ships (set by Main): click your ship to select it, then click a beach to land there. **/
+	public var ships:Array<render.ShipView> = [];
 	/** Returns true when a point is over on-screen UI, so taps there aren't orders. **/
 	public var uiHitTest:Null<(Float, Float) -> Bool> = null;
 	/** Called after a move order: (from = selected units' centre, to = target), world xy. **/
@@ -219,6 +221,7 @@ class SelectionController {
 	function click(sx:Float, sy:Float) {
 		var additive = hxd.Key.isDown(hxd.Key.SHIFT);
 		var hit = pickUnit(sx, sy);
+		var shipHit = hit == null ? pickShip(sx, sy) : null;
 		if (hit != null && hit.unit.team == localTeam) {
 			if (additive) {
 				hit.selected = !hit.selected;
@@ -226,7 +229,10 @@ class SelectionController {
 				clearSelection();
 				hit.selected = true;
 			}
-		} else if (selectedIds().length > 0) {
+		} else if (shipHit != null) {
+			if (!additive) clearSelection();
+			shipHit.selected = true;
+		} else if (selectedIds().length > 0 || selectedShip() != null) {
 			orderMoveAt(sx, sy);
 		} else {
 			clearSelection();
@@ -299,11 +305,30 @@ class SelectionController {
 	// --- selection -------------------------------------------------------
 
 	public function selectedIds():Array<Int> {
-		return [for (v in views) if (v.selected && v.unit.alive) v.unit.id];
+		return [for (v in views) if (v.selected && v.unit.alive && v.unit.aboard < 0) v.unit.id];
+	}
+
+	public function selectedShip():Null<render.ShipView> {
+		for (s in ships)
+			if (s.selected) return s;
+		return null;
 	}
 
 	function clearSelection() {
 		for (v in views) v.selected = false;
+		for (s in ships) s.selected = false;
+	}
+
+	/** Your own ship under the cursor (generous radius: it's a big target). **/
+	function pickShip(sx:Float, sy:Float):Null<render.ShipView> {
+		for (s in ships) {
+			if (s.ship.team != localTeam) continue;
+			var p = s3d.camera.project(s.x, s.y, 1.5, s2d.width, s2d.height);
+			var dx = p.x - sx, dy = p.y - sy;
+			var r = PICK_RADIUS * 3;
+			if (dx * dx + dy * dy < r * r) return s;
+		}
+		return null;
 	}
 
 	function screenPos(v:UnitView):h3d.Vector {
@@ -314,7 +339,7 @@ class SelectionController {
 		var best:UnitView = null;
 		var bestD = PICK_RADIUS * PICK_RADIUS;
 		for (v in views) {
-			if (!v.unit.alive) continue;
+			if (!v.unit.alive || v.unit.aboard >= 0) continue;
 			var p = screenPos(v);
 			var dx = p.x - sx, dy = p.y - sy;
 			var d = dx * dx + dy * dy;
@@ -330,11 +355,22 @@ class SelectionController {
 		var minX = Math.min(x0, x1), maxX = Math.max(x0, x1);
 		var minY = Math.min(y0, y1), maxY = Math.max(y0, y1);
 		if (!additive) clearSelection();
+		var any = false;
 		for (v in views) {
-			if (v.unit.team != localTeam || !v.unit.alive) continue;
+			if (v.unit.team != localTeam || !v.unit.alive || v.unit.aboard >= 0) continue;
 			var p = screenPos(v);
-			if (p.x >= minX && p.x <= maxX && p.y >= minY && p.y <= maxY) v.selected = true;
+			if (p.x >= minX && p.x <= maxX && p.y >= minY && p.y <= maxY) {
+				v.selected = true;
+				any = true;
+			}
 		}
+		// The ship only when the box caught no one on land (units are what you usually mean).
+		if (!any)
+			for (s in ships) {
+				if (s.ship.team != localTeam) continue;
+				var p = s3d.camera.project(s.x, s.y, 1.5, s2d.width, s2d.height);
+				if (p.x >= minX && p.x <= maxX && p.y >= minY && p.y <= maxY) s.selected = true;
+			}
 	}
 
 	function drawBox(x:Float, y:Float) {
@@ -350,8 +386,10 @@ class SelectionController {
 	/** Order the selected units to a world position (used by the minimap). **/
 	public function orderMoveWorld(x:Float, y:Float) {
 		var ids = selectedIds();
-		if (ids.length == 0) return;
-		sim.queue(Move(ids, x, y));
+		var ship = selectedShip();
+		if (ship != null) sim.queue(ShipTo(ship.ship.id, x, y));
+		if (ids.length == 0 && ship == null) return;
+		if (ids.length > 0) sim.queue(Move(ids, x, y));
 		notifyOrder(x, y);
 		marker.setPosition(x, y, Math.max(sim.island.heightAt(x, y), 0));
 		marker.setScale(1);
@@ -361,10 +399,13 @@ class SelectionController {
 
 	function orderMoveAt(sx:Float, sy:Float) {
 		var ids = selectedIds();
-		if (ids.length == 0) return;
+		var ship = selectedShip();
+		if (ids.length == 0 && ship == null) return;
 		var hit = groundAt(sx, sy);
 		if (hit == null) return;
-		sim.queue(Move(ids, hit.x, hit.y));
+		// The ship sails there (or lands its crew there, if it's land).
+		if (ship != null) sim.queue(ShipTo(ship.ship.id, hit.x, hit.y));
+		if (ids.length > 0) sim.queue(Move(ids, hit.x, hit.y));
 		notifyOrder(hit.x, hit.y);
 		marker.setPosition(hit.x, hit.y, Math.max(hit.z, 0));
 		marker.setScale(1);

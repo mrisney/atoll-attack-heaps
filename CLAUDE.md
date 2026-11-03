@@ -54,6 +54,32 @@ URL params on the web build make runs reproducible:
   interfaces with one implementation per target. Don't call Steam/Capacitor
   APIs from game code.
 
+## Game design (owner's brief)
+
+A **light RTS**: capture the flag on island atolls. Deliberately minimal: no
+base building, no resource gathering, no macro. Each side has **one ship
+with a small band of 12-20 plain characters** (`Sim.CREW`: captain, 5
+swordsmen, 4 pikers, 4 archers), and it's decided by strategy. Many RTS
+games "suffer from too much macro, too many units"; this one must not.
+Characters get simple **per-unit AI** (melee units engage what comes near,
+archers keep range and shoot, the captain stays out of fights unless sent
+to the flag); player orders always override it.
+
+- **Ships and landings** (`game/Ship.hx`, `Sim.stepShips`, `render/ShipView`):
+  each side starts at sea off its home beach (its dock) with the whole crew
+  aboard (`Unit.aboard = ship id`: real units, hidden, riding along). Select
+  your ship (click it, or box it when no one's ashore) and click a coast:
+  `Command.ShipTo` finds the nearest deep-water anchorage (`Ship.DRAFT`),
+  sails there (steering by sampling headings that keep deep water ahead),
+  and the crew wades ashore one at a time and gathers inland. Click open
+  water to just sail. Red's ship lands at its home beach on its own for
+  now. `?autoland=1` lands blue too (automation).
+- The sim advances on **wall-clock time** (Heaps' `dt` is smoothed and lags
+  badly when frames are slow), capped by `Sim.maxCatchUp` (0.25 s; snapshots
+  pass `?catchup=10` since software rendering takes seconds per frame).
+  `tools/simtest/SimTest.hx` runs a match headless (`haxe -cp src -cp
+  tools/simtest -main SimTest --interp`): use it to check sim logic fast.
+
 ## Art direction (decided — keep consistent)
 
 **Signed off (Nov 2026):** the owner called the scenes (terrain, grass, water,

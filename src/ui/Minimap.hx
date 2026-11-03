@@ -60,7 +60,10 @@ class Minimap extends h2d.Object {
 	}
 
 	/** Rebuild the map image for a new island. **/
-	public function setIsland(island:world.Island, units:Array<game.Unit>) {
+	var ships:Array<game.Ship> = [];
+
+	public function setIsland(island:world.Island, units:Array<game.Unit>, ?ships:Array<game.Ship>) {
+		this.ships = ships == null ? [] : ships;
 		this.island = island;
 		this.units = units;
 		var res = 128;
@@ -107,10 +110,26 @@ class Minimap extends h2d.Object {
 				overlay.lineTo(p.x, p.y);
 			}
 		}
-		// Units.
+		// Ships: a small hull pointing along their heading.
 		overlay.lineStyle();
+		for (s in ships) {
+			var c = Math.cos(s.heading), sn = Math.sin(s.heading);
+			inline function pt(fx:Float, fy:Float) return toMap(s.x + c * fx - sn * fy, s.y + sn * fx + c * fy);
+			var a = pt(5, 0), b = pt(-4, 2), d = pt(-4, -2);
+			overlay.beginFill(Palette.INK, 1);
+			overlay.moveTo(a.x, a.y);
+			overlay.lineTo(b.x, b.y);
+			overlay.lineTo(d.x, d.y);
+			overlay.lineTo(a.x, a.y);
+			overlay.endFill();
+			var p = toMap(s.x, s.y);
+			overlay.beginFill(s.team == 0 ? 0x5B8FD6 : 0xD66A5B, 1);
+			overlay.drawCircle(p.x, p.y, 2.0, 8);
+			overlay.endFill();
+		}
+		// Units (ashore only; the crew aboard is the ship's).
 		for (u in units) {
-			if (!u.alive) continue;
+			if (!u.alive || u.aboard >= 0) continue;
 			var p = toMap(u.x, u.y);
 			overlay.beginFill(Palette.INK, 1);
 			overlay.drawCircle(p.x, p.y, 3.2, 8);

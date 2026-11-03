@@ -179,6 +179,18 @@ class UnitView extends h3d.scene.Object {
 		return ragdoll != null;
 
 	public function syncFromSim(dt:Float) {
+		// Aboard a ship: not on the island yet. Appear exactly where the unit wades ashore.
+		if (unit.aboard >= 0) {
+			visible = false;
+			return;
+		}
+		if (!visible) {
+			visible = true;
+			setPosition(unit.x, unit.y, unit.z);
+			lastX = unit.x;
+			lastY = unit.y;
+			heading = unit.facing;
+		}
 		if (!unit.alive) {
 			if (ragdoll == null) startRagdoll();
 			ragdoll.update(dt);

@@ -73,6 +73,10 @@ class Palette {
 	public static inline var TEAM_BLUE = 0x3B5F8E;
 	public static inline var TEAM_RED = 0x9C4436;
 	public static inline var WOOD = 0x8A6440;
+	/** Ships (ShipView): weathered planking, a paler deck, canvas sail. **/
+	public static inline var SHIP_HULL = 0x7A5A3E;
+	public static inline var SHIP_DECK = 0xB89B74;
+	public static inline var SAIL = 0xEDE6D4;
 	public static inline var SELECT = 0xF4E27A;
 	public static inline var INK = 0x1F1A15;
 
