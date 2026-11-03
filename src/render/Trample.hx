@@ -55,8 +55,28 @@ class Trample {
 		texture.uploadPixels(px);
 	}
 
+	/** Unit positions at the last upload, to skip work when nothing moved. **/
+	var lastStamp:Array<Float> = [];
+
 	/** Decay old trails, stamp the units at (x, y), upload. **/
 	public function update(dt:Float, units:Array<{x:Float, y:Float}>) {
+		// Optimisation: the upload is a whole 512² RGBA texture (1 MB), which matters on
+		// phones. If no trail is still recovering and every unit stands exactly where it
+		// was stamped last time, the map can't have changed: skip it all.
+		if (active.length == 0 && units.length * 2 == lastStamp.length) {
+			var same = true;
+			for (k in 0...units.length)
+				if (units[k].x != lastStamp[k * 2] || units[k].y != lastStamp[k * 2 + 1]) {
+					same = false;
+					break;
+				}
+			if (same) return;
+		}
+		lastStamp = [];
+		for (u in units) {
+			lastStamp.push(u.x);
+			lastStamp.push(u.y);
+		}
 		var k = Math.exp(-dt / RECOVER * 2.3);
 		// Clear last frame's reveal.
 		for (i in revealed) writeA(i, 0);

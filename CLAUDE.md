@@ -169,7 +169,7 @@ and check new work against it.
   colour so mipmaps don't halo. (Ink map used low-poly by default; now every
   style starts on 3D trees.)
 - **WildCurrent art in use** (see `res/SOURCE.md`): canopies (plain and
-  vine), bushes, vine mats, waterline/tall grass, reeds, the floating
+  vine), bushes, waterline/tall grass, reeds, the floating
   log and the dock (landing beaches). The swell-sheet surf sprites
   (crescent "arches") were **removed at the owner's request**: breaking waves
   are now froth from the wave simulation (see Ocean waves). Racing
@@ -237,7 +237,8 @@ and check new work against it.
   ~2.8 s so trails spring back. A marks "a unit is here" (not decayed).
   `GrassShader` bends blades from the root along the push and damps the
   wind there. Clear values: R = G = 0.5, **B = 0** (an early bug cleared B
-  to 0.5, which flattened every blade).
+  to 0.5, which flattened every blade). The 1 MB upload is skipped when no trail is
+  recovering and no unit has moved (`Trample.update`), which matters on phones.
 - **Canopy see-through**: `Trample.CanopyReveal` dithers away tree leaves within
   ~2.2 m of a unit (from the A channel), so figures stay visible under trees.
   The owner also asked for "slightly less tree canopy density", so there are
@@ -355,8 +356,8 @@ and check new work against it.
   only about 4 fps with the full scene, so hold keys about 1.5 s in automation
   or the press can fall between frames.
 - **Keep fragment shaders cheap**, because mobile is a target. Bake expensive
-  noise into textures once per island (see `TerrainStyle.bakeRelief`,
-  `WaterShader.setIsland`). Per-pixel fbm was too slow.
+  noise into textures once per island (see `WaterShader.setIsland`, the
+  ground textures in `GroundTextures`). Per-pixel fbm was too slow.
 - **Shadows are opt-in per mesh** via `FlatMeshBuilder.shadows(mat, cast, receive)`
   or `build(parent, lit, cast, receive)`. Heaps materials cast and receive by
   default, so `setupMaterial` turns both off. The receive shader multiplies

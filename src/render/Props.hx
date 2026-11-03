@@ -48,10 +48,8 @@ class Props {
 	static final CANOPIES = ["tree-canopy-01", "tree-canopy-02", "tree-canopy-03", "tree-canopy-04"];
 	/** Weeping, vine-draped canopies: mixed in, more often near water. **/
 	static final VINE_CANOPIES = ["tree-canopy-vine-01", "tree-canopy-vine-02", "tree-canopy-vine-03"];
-	static final VINE_MATS = ["vine-mat-01", "vine-mat-02"];
 	static final TALL_GRASS = ["waterline-grass-tall-01", "waterline-grass-tall-02", "waterline-grass-tall-03"];
 	static final BUSHES = ["bush-clump-01", "bush-clump-02", "bush-clump-03"];
-	static final BOULDERS = ["landmark-boulder-01", "landmark-boulder-02", "landmark-boulder-03"];
 	static final REEDS = [
 		"waterline-grass-01", "waterline-grass-03", "waterline-reeds-02", "waterline-cattails-sparse-01", "waterline-cattails-sparse-02",
 		"waterline-cattails-sparse-03"
@@ -240,11 +238,6 @@ class Props {
 		var vineChance = z < Island.classicHeight(0.47) ? 0.45 : 0.15;
 		var name = r() < vineChance ? pickName(VINE_CANOPIES) : pickName(CANOPIES);
 		canopySpr.add(SPRITES + name + ".png", x, y, z + trunkH, size, size * 0.28, r() * Math.PI * 2, 0.92 + r() * 0.16);
-	}
-
-	/** Creepers spilling out of the forest edge onto the open ground. **/
-	function vineMat(x:Float, y:Float, z:Float) {
-		spr.add(SPRITES + pickName(VINE_MATS) + ".png", x, y, z + 0.04, 1.4 + r() * 1.0, 0.08, r() * Math.PI * 2, 0.9 + r() * 0.2);
 	}
 
 	/** Dune grass clumps on the sand. **/

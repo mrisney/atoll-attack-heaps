@@ -103,22 +103,16 @@ class IslandView extends h3d.scene.Object {
 		FlatMeshBuilder.setupMaterial(m.material, false);
 		terrainStyle.setIsland(island);
 		m.material.mainPass.addShader(terrainStyle);
-		m.material.mainPass.addShader(terrainInk);
 		// Hills cast shadows too; receive must be enabled last (see FlatMeshBuilder.shadows).
 		FlatMeshBuilder.shadows(m.material, true, true);
 	}
 
-	/** Painted ground textures, or soft vertex colours (Ink map). **/
+	/** The painted ground (every style). **/
 	public final terrainStyle = new TerrainStyle();
-	/** Contours, coastline and slope hatching — tweak live via this shader's params. **/
-	public final terrainInk = new render.ink.TerrainInk();
 	public final waterShader = new WaterShader();
 
 	public function setStyle(style:VisualStyle) {
-		// Sketch keeps the painted ground for its detail; the tone mutes it to earth colours.
-		// Every style uses the painted ground now: Ink map moved onto it too (owner: "more
-		// consistent with the other scenes"), with its own brighter, ungraded look.
-		terrainStyle.painted = 1;
+		// Every style uses the painted ground; Sketch's tone mutes it to earth colours.
 		terrainStyle.light = style == Sketch ? 1 : 0;
 		sketchTone.amount = style == Sketch ? 1 : 0;
 		sketchProps.amount = sketchTone.amount;
@@ -150,36 +144,10 @@ class IslandView extends h3d.scene.Object {
 			case InkMap: 0x8FD3C6;
 			case Sketch: 0x7FA39B;
 		});
-		switch style {
-			case Painted:
-				waterShader.setPaintedColors();
-				waterShader.softness = 0.45;
-				terrainInk.minorAlpha = 0;
-				terrainInk.majorAlpha = 0;
-				terrainInk.hatchAlpha = 0;
-				terrainInk.coastWidth = 0;
-				terrainInk.coastLevel = -999;
-			case InkMap:
-				// Same water as Painted; no contours, slope hatching or inked coastline
-				// (owner asked to remove them). What's left of "ink" is the outline pass.
-				waterShader.setPaintedColors();
-				waterShader.softness = 0.45;
-				terrainInk.minorAlpha = 0;
-				terrainInk.majorAlpha = 0;
-				terrainInk.hatchAlpha = 0;
-				terrainInk.coastWidth = 0;
-				terrainInk.coastLevel = -999;
-			case Sketch:
-				// No contours or slope hatching: relief comes from real sun shading.
-				waterShader.setSketchColors();
-				waterShader.softness = 0.45;
-				terrainInk.minorAlpha = 0;
-				terrainInk.majorAlpha = 0;
-				terrainInk.hatchAlpha = 0;
-				// No inked coastline either: the shore reads from the water and froth alone.
-				terrainInk.coastWidth = 0;
-				terrainInk.coastLevel = -999;
-		}
+		// No contours, slope hatching or inked coastline in any style (the owner asked to
+		// remove them from Sketch, then Ink map); relief comes from sun shading.
+		if (style == Sketch) waterShader.setSketchColors() else waterShader.setPaintedColors();
+		waterShader.softness = 0.45;
 	}
 
 	function buildWater() {

@@ -21,8 +21,6 @@ class Palette {
 	public static inline var PEAK = 0xB7AE9E;
 
 	public static inline var TRUNK = 0x8C6A4E;
-	public static inline var PINE_A = 0x6F9157;
-	public static inline var PINE_B = 0x86A66A;
 	public static inline var STONE = 0xC4BCAE;
 
 	// Prop variety: each instance picks from a list, then gets a small tint.
@@ -59,7 +57,6 @@ class Palette {
 	public static inline var DRIFTWOOD = 0xC8B79A;
 	public static final FLOWERS = [0xF4F1E6, 0xF2D65C, 0xE9B8C4, 0xC9B6E4, 0xF6E9A8];
 	public static final SHELLS = [0xF3E6D6, 0xEBD2C0, 0xF7F0E4];
-	public static inline var COCONUT = 0x6E5236;
 
 	/** Shadow tint: cool and light, so shade reads as colour rather than black. **/
 	public static inline var SHADOW = 0x6A7390;
@@ -75,12 +72,9 @@ class Palette {
 
 	public static inline var TEAM_BLUE = 0x3B5F8E;
 	public static inline var TEAM_RED = 0x9C4436;
-	public static inline var SKIN = 0xE0B48C;
-	public static inline var STEEL = 0xB9BDC2;
 	public static inline var WOOD = 0x8A6440;
 	public static inline var SELECT = 0xF4E27A;
 	public static inline var INK = 0x1F1A15;
-	public static inline var LEATHER = 0x5A4130;
 
 	// Line-art figures: paper fill, team shown on the tunic and banner.
 	public static inline var PAPER = 0xF6F3EC;
@@ -99,8 +93,6 @@ class Palette {
 	public static inline var SKETCH_EARTH = 0xFFF0D2;
 	/** Drafting lines and annotation text. **/
 	public static inline var SKETCH_LINE = 0x3A3936;
-	/** The one warm material: timber. **/
-	public static inline var SKETCH_TIMBER = 0xB8773A;
 
 	public static inline function r(c:Int):Float
 		return ((c >> 16) & 0xFF) / 255;

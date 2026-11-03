@@ -43,7 +43,7 @@ class Main extends hxd.App {
 			case Sketch: null;
 		};
 	var shape:IslandShape = Single;
-	/** Tree look: null = the style's default (3D, or low-poly in Ink map); 0 = 3D, 1 = sprites, 2 = low-poly. **/
+	/** Tree look: null = default (3D); 0 = 3D, 1 = sprites, 2 = low-poly. P cycles. **/
 	var treeMode:Null<Int> = null;
 
 	override function init() {
@@ -254,7 +254,7 @@ class Main extends hxd.App {
 			var x = cx + ax * o, y = cy + ay * o;
 			m.setPosition(x, y, island.heightAt(x, y));
 			m.setRotation(0, 0, face);
-			m.play(shows[k].take, 1.0, 0, true);
+			m.play(shows[k].take, 1.0, true);
 			gallery.push(m);
 		}
 		// Two more in front of the line that fall as rag dolls, to check the skeleton mapping.

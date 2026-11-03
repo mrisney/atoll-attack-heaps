@@ -17,7 +17,7 @@ The goal of this spike is to answer one question: does Heaps give the Northgard-
 - **Two island shapes** (G to switch): *Single*, a direct port of the Flutter game's `island_water.frag` generator (fbm + three seeded peaks + radial falloff, same default amplitude/wavelength/bias/radius), and *Atoll*, a reef ring around a lagoon.
 - **Three visual styles** (T cycles them):
   - *Painted* (the default) blends painted grass, dirt, rock and sand textures (generated in code, no assets), with wandering patch edges, wet sand at the waterline, soft turquoise water, and a tilt-shift blur for a miniature-diorama feel.
-  - *Ink map* adds soft colours, contours, hatching and ink outlines.
+  - *Ink map* is the same world as Painted without its colour grade, blur and vignette (the brighter scene), with soft ink outlines.
   - *Sketch* is an architectural presentation drawing. Nature is in muted earth tones (sage, olive, warm stone, slate water) on paper, with real sun shading on the terrain instead of contour lines. Timber (docks, the flag pole) keeps its full colour. The water is a dark, muted slate-teal with the same waves and froth as Painted, the frame dissolves into the page at the top and margins, and a drafting layer adds a title block, scale bar, north arrow, a datum through the apex, landing labels, and move orders drawn as dimension lines in metres.
 - **Procedural atoll**: a seeded, deterministic heightfield (Int32 hashing, so every platform generates the same island) with a wobbly reef ring broken into islets, a shallow lagoon, and a raised apex where the flag stands.
 - **Units**: Captain, Swordsmen, and Archers for blue and red, built from low-poly primitives.
@@ -28,13 +28,13 @@ The goal of this spike is to answer one question: does Heaps give the Northgard-
   - *Rotate*: Q/E or the on-screen buttons. *Re-centre*: Space or the target button.
   - *Minimap* (bottom left): click or drag to fly there, right-click to send the selected units. It shows your view and both squads.
   - Touch box-select: press and hold, then drag.
-- **Ink rendering**: a screen-space edge pass that inks every silhouette at a constant line weight, plus topo-map contour lines, a bold coastline and slope hatching painted on the terrain. Press I to toggle the ink pass.
+- **Ink rendering**: a screen-space edge pass that inks every silhouette at a constant line weight (Ink map and Sketch). Press I to toggle it. (The old contour lines, inked coastline and slope hatching were retired.)
 - **Line-art units**: rounded, faceless figures with a paper-white fill and a restrained walk cycle.
 - **Sun shadows**: soft, cool-tinted directional shadows from trees, rocks, units and hills onto terrain and water.
 - **3D procedural trees** (default): oak, ash, aspen and pine grown by a Haxe port of [EZ-Tree](https://github.com/dgreenheck/ez-tree) (MIT; see THIRD_PARTY.md): recursive branches with taper, gnarl and twist, crossed leaf cards with a sprig texture painted in code, rounded crown shading, sway and leafy shadows. P cycles 3D / sprite / low-poly trees.
 - **Sprite trees** (P): painted top-down canopies and bushes from the WildCurrent asset bank, mapped onto shallow domes with alpha-cut silhouettes that cast leaf-shaped shadows. Reeds and cattails stand in the shallows.
 - **Coast** (from WildCurrent's art): a wooden dock with pilings at each landing beach, and floating-log driftwood.
-- **More foliage**: weeping vine-draped canopies (commoner near water), creeping vine mats along forest edges, tall dune grass on the beaches. All foliage sways subtly in the breeze, shadows included.
+- **More foliage**: weeping vine-draped canopies (commoner near water), tall dune grass on the beaches. All foliage sways subtly in the breeze, shadows included.
 - **3D rocks**: boulders and loose stones are procedural meshes (a noise-deformed icosphere with fracture planes, sunk into the ground, darkened at the base, with the painted rock texture projected from three sides) lit by the scene's sun, so they agree with the light and cast real shadows.
 - **Wind waves**: an FFT ocean (Tessendorf's method, Phillips spectrum) baked once at startup into a seamless looping texture, so on the GPU it's just texture lookups. The water is lit by the waves (light and shade, sun glints, lighter crests). Foam comes from the simulation itself (where crests fold over), lingering in patches: sparse whitecaps at sea, and in the shallows the swell breaks into froth that rolls in along the depth contours and runs up the sand as swash, leaving it wet. Only shores exposed to the open swell break; lagoons stay calm.
 - **Blast craters**: scorched pits with thrown soil, draped over the terrain where X blasts land.
@@ -80,7 +80,6 @@ res/                        art from WildCurrent (embedded into the build; see r
   render/InkShape.hx        rounded line-art shapes for units
   render/ink/InkRenderer.hx geometry pass + screen-space ink composite
   render/ink/InkEdge.hx     edge detection (normals + inverse-depth Laplacian)
-  render/ink/TerrainInk.hx  contours, coastline, slope hatching
   render/ink/GeoOut.hx      per-material normal/depth output
   render/ink/TiltShift.hx   miniature-style blur toward the top and bottom of the frame
   render/UnitView.hx        unit figures, selection rings, interpolation, rag doll hookup
@@ -157,7 +156,7 @@ Use VS Code with the **Haxe** extension (vshaxe) for completion and go-to-defini
 
 Everything in `res/` is embedded into the build (`hxd.Res.initEmbed()`), so the web version needs no asset server.
 
-- **A new tree, bush or rock sprite:** drop a top-down PNG with transparency into `res/props/`, then add its name to one of the lists at the top of `src/render/Props.hx` (`CANOPIES`, `VINE_CANOPIES`, `VINE_MATS`, `TALL_GRASS`, `BUSHES`, `REEDS`). Names containing `canopy`, `bush`, `vine-mat` or `waterline` sway automatically. Placement, size variation, shadows and edge clean-up are automatic.
+- **A new tree, bush or rock sprite:** drop a top-down PNG with transparency into `res/props/`, then add its name to one of the lists at the top of `src/render/Props.hx` (`CANOPIES`, `VINE_CANOPIES`, `TALL_GRASS`, `BUSHES`, `REEDS`). Names containing `canopy`, `bush`, `vine-mat` or `waterline` sway automatically. Placement, size variation, shadows and edge clean-up are automatic.
 - **3D models (later):** Heaps loads FBX. Put `res/models/x.fbx` in and load it with `hxd.Res.load("models/x.fbx").toHmd().makeObject()`. That's the route for rigged characters.
 
 ## Snapshots (for you or an agent)

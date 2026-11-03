@@ -147,25 +147,6 @@ class Island {
 			}
 	}
 
-	/**
-		The original shader's "relief" highlight at a normalized position:
-		direction of the fbm gradient, lit from one side, in 0.7..1.1.
-	**/
-	public function classicRelief(nx:Float, ny:Float, n:Noise, lx:Float, ly:Float):Float {
-		var so = (seed % 1000) * 0.01;
-		var eps = 0.008;
-		var hL = classicFbm(n, (nx - eps) / wavelength + so, ny / wavelength + so);
-		var hR = classicFbm(n, (nx + eps) / wavelength + so, ny / wavelength + so);
-		var hD = classicFbm(n, nx / wavelength + so, (ny - eps) / wavelength + so);
-		var hU = classicFbm(n, nx / wavelength + so, (ny + eps) / wavelength + so);
-		var gx = hL - hR, gy = hD - hU;
-		var len = Math.sqrt(gx * gx + gy * gy);
-		if (len < 1e-9) return 0.9;
-		var d = (gx * lx + gy * ly) / len;
-		var v = d * 0.4 + 0.7;
-		return v < 0.7 ? 0.7 : (v > 1.1 ? 1.1 : v);
-	}
-
 	/** Classic band thresholds converted from shader elevation to world height. **/
 	public static inline function classicHeight(e:Float):Float
 		return (e - CLASSIC_SHORE) * CLASSIC_SCALE;

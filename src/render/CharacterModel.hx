@@ -122,8 +122,8 @@ class CharacterModel extends h3d.scene.Object {
 		m.receiveShadows = false;
 	}
 
-	/** Switch take, blending from the current pose. `speed` scales playback. **/
-	public function play(name:String, speed = 1.0, blend = 0.0, ?loop:Bool) {
+	/** Switch take (a cut for now; see below). `speed` scales playback. **/
+	public function play(name:String, speed = 1.0, ?loop:Bool) {
 		var a = anims.get(name);
 		if (a == null) return;
 		if (name == current) {

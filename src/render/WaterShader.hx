@@ -189,13 +189,6 @@ class WaterShader extends hxsl.Shader {
 		TerrainStyle.setColor(deep, 0x235F86);
 	}
 
-	/** Muted, nautical-chart tones for the ink style. **/
-	public function setChartColors() {
-		TerrainStyle.setColor(shallow, 0xC9E3E2);
-		TerrainStyle.setColor(mid, 0x9CC6CF);
-		TerrainStyle.setColor(deep, 0x6E9FB5);
-	}
-
 	/** Sketch: dark, muted slate-teal water (no line work; the owner preferred it clean). **/
 	public function setSketchColors() {
 		// Like Painted's water, but darker and muted toward the earth palette.
