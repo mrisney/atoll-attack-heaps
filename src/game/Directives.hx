@@ -37,6 +37,13 @@ class Directives {
 	public var flagRange = 2.5;
 	public var flagTime = 5.0;
 	public var flagContest = 6.0;
+	public var marchOnLanding = true;
+	public var flockPerception = 6.0;
+	public var flockSeparation = 1.7;
+	public var flockWeights = {goal: 1.0, separation: 1.8, alignment: 0.4, cohesion: 0.5};
+	public var marchArrive = 8.0;
+	public var marchCaptainBack = 12.0;
+	public var marchCaptainHalt = 22.0;
 	public var flagLowerTime = 5.0;
 	public var flagHoldTime = 60.0;
 
@@ -88,6 +95,23 @@ class Directives {
 			if (c.advantage != null)
 				for (f in Reflect.fields(c.advantage))
 					d.advantage.set(f, Reflect.field(c.advantage, f));
+		}
+		var m:Dynamic = j.march;
+		if (m != null) {
+			if (Reflect.hasField(m, "onLanding")) d.marchOnLanding = m.onLanding == true;
+			d.flockPerception = num(m, "perception", d.flockPerception);
+			d.flockSeparation = num(m, "separation", d.flockSeparation);
+			d.marchArrive = num(m, "arriveRadius", d.marchArrive);
+			d.marchCaptainBack = num(m, "captainBack", d.marchCaptainBack);
+			d.marchCaptainHalt = num(m, "captainHalt", d.marchCaptainHalt);
+			var w:Dynamic = m.weights;
+			if (w != null)
+				d.flockWeights = {
+					goal: num(w, "goal", d.flockWeights.goal),
+					separation: num(w, "separation", d.flockWeights.separation),
+					alignment: num(w, "alignment", d.flockWeights.alignment),
+					cohesion: num(w, "cohesion", d.flockWeights.cohesion)
+				};
 		}
 		var f:Dynamic = j.flag;
 		if (f != null) {

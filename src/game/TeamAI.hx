@@ -51,7 +51,8 @@ class TeamAI {
 		if (captain == null) return;
 
 		// Soldiers: attack-move on the apex (re-issued only to those not already fighting).
-		var idle = [for (u in soldiers) if (u.targetId < 0 && !u.ordered) u.id];
+		// (Marchers are already on their way: the flock takes them to the summit.)
+		var idle = [for (u in soldiers) if (u.targetId < 0 && !u.ordered && !u.marching) u.id];
 		var dgx = 0.0, dgy = 0.0;
 		if (idle.length > 0) {
 			var u0 = sim.getUnit(idle[0]);
@@ -71,11 +72,13 @@ class TeamAI {
 			if (u.team != team && u.alive && u.aboard < 0 && near(u.x, u.y, ax, ay, u.kind == Archer ? clear : 10)) enemyNear = true;
 		// Sent up but under fire and hurt: call him back behind the band.
 		// (Alone, there's no one to hide behind: then he fights it out.)
-		if (captainSent && soldiers.length > 0 && captain.hp < captain.maxHp * 0.6) {
-			var shot = false;
+		if (captainSent && soldiers.length > 0 && captain.flagProgress == 0) {
+			// Recall him as soon as an enemy is within arrow range of him (waiting until
+			// he was hurt was too late: focused archers kill him in about 4 s).
+			var danger = false;
 			for (u in sim.units)
-				if (u.alive && u.team != team && u.targetId == captain.id) shot = true;
-			if (shot) {
+				if (u.alive && u.team != team && u.aboard < 0 && near(u.x, u.y, captain.x, captain.y, Directives.current.marchCaptainHalt)) danger = true;
+			if (danger) {
 				captainSent = false;
 				sim.queue(Stop([captain.id]));
 			}
@@ -102,7 +105,8 @@ class TeamAI {
 			var dx = cx - ax, dy = cy - ay;
 			var d = Math.max(Math.sqrt(dx * dx + dy * dy), 0.01);
 			var bx = cx + dx / d * 9, by = cy + dy / d * 9;
-			if (sim.island.isWalkable(bx, by) && !near(captain.guardX, captain.guardY, bx, by, 3)) sim.queue(AttackMove([captain.id], bx, by));
+			if (!captain.marching && sim.island.isWalkable(bx, by) && !near(captain.guardX, captain.guardY, bx, by, 3))
+				sim.queue(AttackMove([captain.id], bx, by));
 		}
 		// If the captain got pushed off the apex, try again later.
 		if (captainSent && captain.targetId < 0 && !captain.ordered && !near(captain.x, captain.y, ax, ay, Rules.FLAG_RANGE)) captainSent = false;

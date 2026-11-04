@@ -50,6 +50,21 @@
 		"_leash": "A unit gives up a chase (unless ordered) when its target gets this far away."
 	},
 
+	"march": {
+		"_rule": "Once the captain (who lands last) is ashore, the band marches on the summit as a flock (boids: separation, alignment, cohesion, plus a pull along a walking path round water), captain at the rear. Units still fight anything they meet, then rejoin. Any order you give a unit takes it out of the march. It ends when the band is within arriveRadius of the summit.",
+		"onLanding": true,
+		"perception": 6.0,
+		"_perception": "How far (m) a marcher sees its neighbours for alignment and cohesion.",
+		"separation": 1.7,
+		"_separation": "Marchers closer than this (m) push apart.",
+		"weights": { "goal": 1.0, "separation": 1.8, "alignment": 0.4, "cohesion": 0.5 },
+		"arriveRadius": 8.0,
+		"captainBack": 12.0,
+		"_captainBack": "How far (m) behind the band's centre the captain marches (4 m put him inside the melee when bands met).",
+		"captainHalt": 22.0,
+		"_captainHalt": "The captain stops marching and holds when an enemy comes this close; the band fights on. Just beyond arrow range: four archers focusing him kill him in seconds."
+	},
+
 	"flag": {
 		"_rule": "A captain standing within range of the summit for raiseTime seconds, with no enemy within contest, plants his flag. It must then stand for holdTime seconds to win. Meanwhile the enemy captain can reach the summit and lower it (lowerTime seconds, same range and contest rules), which resets the clock; then either side can raise theirs.",
 		"range": 2.5,

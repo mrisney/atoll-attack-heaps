@@ -55,6 +55,15 @@ class Unit {
 	public var pathGoalX = 1e9;
 	public var pathGoalY = 1e9;
 	public var pathTick = -1000;
+	/** On the march to the summit as a flock (Sim.flockStep); any order ends it. **/
+	public var marching = false;
+	/** Which waypoint of the team's march path it's heading for. **/
+	public var marchIdx = 0;
+	/** Flocking velocity (m/s), for alignment with its neighbours. **/
+	public var vx = 0.0;
+	public var vy = 0.0;
+	/** Top walking speed while marching (the band keeps to its slowest member). **/
+	public var speedCap = 1e9;
 	/** Who last hurt this unit (unit id, -1 = no one): for testing and future UI. **/
 	public var lastHitBy = -1;
 	/** Captain only: seconds spent raising the flag at the apex. **/

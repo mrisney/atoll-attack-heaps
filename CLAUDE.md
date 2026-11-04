@@ -116,8 +116,28 @@ to the flag); player orders always override it.
   enemy near him **or aiming at him from range**; he steps back from close
   enemies and takes cover from archers aiming at him (`Sim.evade`, not while
   ordered). The commander sends him to the apex only when it's clear out to
-  arrow range, and calls him back if he's hurt under fire. Archers had been
+  arrow range, and calls him back as soon as an enemy is within arrow range
+  of him (waiting until he was hurt was too late: focused archers kill him
+  in about 4 s). Archers had been
   sniping captains in every test; now the captain is the last to fall.
+- **The march** (owner's idea: a flocking algorithm as they leave the boat,
+  heading straight for the high point, captain at the rear; he pasted a JS
+  boids class): once the captain (who lands last) is ashore, the band
+  marches on the summit as a flock (`Sim.flockStep`): Reynolds' separation,
+  alignment and cohesion among marching teammates, plus a pull along the
+  team's march path (`Sim.marchPath`, NavGrid round water). Deterministic:
+  starting headings from unit ids, not `Math.random`. The band keeps to its
+  slowest member (`Unit.speedCap`). The flock sets a short walking goal and
+  the ordinary mover steps, so slopes and shorelines still apply; if a
+  marcher's straight line to its waypoint crosses water it walks the path
+  instead. The captain trails `captainBack` (12 m) behind the band's centre
+  and halts when an enemy is within `captainHalt` (22 m, beyond arrow range:
+  at 4 m he died in the first melee). Marchers still fight what they meet
+  and rejoin; any order ends a unit's march; it ends when the band reaches
+  the summit (`checkMarches`). All in directives.json `march`.
+- **Mover slides along shorelines**: a blocked step tries angles up to 90°
+  either way before re-planning (a unit wedged on a spit re-planned the same
+  route every tick and never moved).
 - **Computer commander** (`game/TeamAI.hx`, red): lands, attack-moves its band
   on the apex, keeps the captain ~9 m behind, sends him up once three hold the
   apex and no enemy is near. It only issues commands, like a player would.

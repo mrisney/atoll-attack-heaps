@@ -158,7 +158,7 @@ class Sim {
 			}
 			var dx = w.x - u.x, dy = w.y - u.y;
 			var dist = Math.max(Math.sqrt(dx * dx + dy * dy), 1e-4);
-			var stepLen = Math.min(dist, u.baseSpeed * TICK);
+			var stepLen = Math.min(dist, Math.min(u.baseSpeed, u.speedCap) * TICK);
 			var nx = u.x + dx / dist * stepLen;
 			var ny = u.y + dy / dist * stepLen;
 
@@ -169,11 +169,29 @@ class Sim {
 			ny = u.y + dy / dist * stepLen * slope;
 
 			if (!island.isWalkable(nx, ny)) {
-				// Clipped the shoreline: find a way round next tick.
-				u.path = null;
-				u.pathTick = -1000;
-				u.pathGoalX = 1e9;
-				continue;
+				// Clipped the shoreline: slide along it (try steps turned up to 90° either
+				// way). A unit wedged on a spit, with water straight ahead, used to re-plan
+				// the same route every tick and never move.
+				var len = Math.sqrt((nx - u.x) * (nx - u.x) + (ny - u.y) * (ny - u.y));
+				var base = Math.atan2(ny - u.y, nx - u.x);
+				var slid = false;
+				for (k in 1...7) {
+					var a = base + (k % 2 == 1 ? 1 : -1) * Std.int((k + 1) / 2) * Math.PI / 6;
+					var sx = u.x + Math.cos(a) * len, sy = u.y + Math.sin(a) * len;
+					if (island.isWalkable(sx, sy)) {
+						nx = sx;
+						ny = sy;
+						slid = true;
+						break;
+					}
+				}
+				if (!slid) {
+					// Truly boxed in: find a way round next tick.
+					u.path = null;
+					u.pathTick = -1000;
+					u.pathGoalX = 1e9;
+					continue;
+				}
 			}
 			u.facing = Math.atan2(dy, dx);
 			u.x = nx;
@@ -181,6 +199,7 @@ class Sim {
 		}
 
 		stepArrows();
+		checkMarches();
 		separate();
 		for (u in units)
 			if (u.alive && u.aboard < 0) u.z = island.heightAt(u.x, u.y);
@@ -235,6 +254,7 @@ class Sim {
 					u.ty = y + o.y;
 					u.hasTarget = true;
 					u.ordered = true;
+					endMarch(u);
 					u.targetId = -1;
 					u.forcedTarget = false;
 					u.guardX = u.tx;
@@ -250,6 +270,7 @@ class Sim {
 					u.guardX = x + o.x;
 					u.guardY = y + o.y;
 					u.ordered = false;
+					endMarch(u);
 				}
 			case Attack(ids, target):
 				var t = getUnit(target);
@@ -260,6 +281,7 @@ class Sim {
 					u.targetId = target;
 					u.forcedTarget = true;
 					u.ordered = false;
+					endMarch(u);
 				}
 			case Kill(ids, fx, fy):
 				for (id in ids) {
@@ -274,12 +296,212 @@ class Sim {
 				for (id in ids) {
 					var u = getUnit(id);
 					if (u == null) continue;
+					endMarch(u);
 					u.hasTarget = false;
 					u.ordered = false;
 					u.targetId = -1;
 					u.forcedTarget = false;
 					u.guardX = u.x;
 					u.guardY = u.y;
+				}
+		}
+	}
+
+	// --- the march: a flock heading for the summit ------------------------------
+
+	/** Each team's march path (waypoints x0, y0, ...) from its landing to the summit. **/
+	public final marchPath:Array<Null<Array<Float>>> = [null, null];
+
+	/**
+		The last of the crew (the captain) is wading ashore: everyone of this
+		team ashore and not already busy with an order sets off for the summit.
+	**/
+	function startMarch(s:Ship, last:Unit) {
+		var path = nav.find(s.inlandX, s.inlandY, island.apexX, island.apexY);
+		if (path == null) path = [island.apexX, island.apexY];
+		marchPath[s.team] = path;
+		// The band keeps to its slowest member.
+		var slowest = 1e9;
+		for (u in units)
+			if (u.team == s.team && u.alive) slowest = Math.min(slowest, u.baseSpeed);
+		for (u in units)
+			if (u.team == s.team && u.alive && !u.ordered && !u.forcedTarget) {
+				u.marching = true;
+				u.marchIdx = 0;
+				u.speedCap = slowest;
+				// Start heading inland (deterministic: from the unit's id, not a random angle).
+				var a = Math.atan2(s.inlandY - s.shoreY, s.inlandX - s.shoreX) + ((u.id * 37) % 11 - 5) * 0.06;
+				u.vx = Math.cos(a) * slowest * 0.5;
+				u.vy = Math.sin(a) * slowest * 0.5;
+			}
+		last.marching = Directives.current.marchOnLanding;
+	}
+
+	function endMarch(u:Unit) {
+		if (!u.marching) return;
+		u.marching = false;
+		u.speedCap = 1e9;
+		u.vx = u.vy = 0;
+	}
+
+	/**
+		One marcher, one tick: Reynolds' boids (separation, alignment, cohesion
+		among marching teammates within `perception`) plus a pull toward the next
+		waypoint of the march path. The captain is pulled instead toward a point
+		`standBack` metres behind the band's centre, on the side away from the
+		summit. The result sets a short-range walking goal, so the ordinary mover
+		(slopes, shorelines) still does the stepping. Weights: directives.json
+		"march".
+	**/
+	function flockStep(u:Unit) {
+		var d = Directives.current;
+		var w = d.flockWeights;
+		var speed = Math.min(u.baseSpeed, u.speedCap);
+		// Neighbours.
+		var sx = 0.0, sy = 0.0, ax = 0.0, ay = 0.0, cx = 0.0, cy = 0.0, n = 0;
+		var bx = 0.0, by = 0.0, bandN = 0;
+		for (o in units) {
+			if (o == u || !o.alive || o.aboard >= 0 || o.team != u.team || !o.marching) continue;
+			if (o.kind != Captain) {
+				bx += o.x;
+				by += o.y;
+				bandN++;
+			}
+			var dx = u.x - o.x, dy = u.y - o.y;
+			var dd = Math.sqrt(dx * dx + dy * dy);
+			if (dd >= d.flockPerception || dd < 1e-4) continue;
+			if (dd < d.flockSeparation) {
+				// Push apart, harder the closer they are.
+				sx += dx / dd / dd;
+				sy += dy / dd / dd;
+			}
+			ax += o.vx;
+			ay += o.vy;
+			cx += o.x;
+			cy += o.y;
+			n++;
+		}
+		// Goal.
+		var gx = 0.0, gy = 0.0;
+		if (u.kind == Captain && nearestEnemy(u, d.marchCaptainHalt, false) != null) {
+			// Enemies close: he halts and holds (the band fights on; evade() takes over).
+			endMarch(u);
+			u.guardX = u.x;
+			u.guardY = u.y;
+			u.hasTarget = false;
+			return;
+		}
+		if (u.kind == Captain) {
+			if (bandN == 0) {
+				// No band left marching: he stops where he is.
+				endMarch(u);
+				u.guardX = u.x;
+				u.guardY = u.y;
+				return;
+			}
+			bx /= bandN;
+			by /= bandN;
+			var ox = bx - island.apexX, oy = by - island.apexY;
+			var ol = Math.max(Math.sqrt(ox * ox + oy * oy), 0.01);
+			var px = bx + ox / ol * d.marchCaptainBack, py = by + oy / ol * d.marchCaptainBack;
+			if (!island.isWalkable(px, py) || !nav.clearLine(u.x, u.y, px, py)) {
+				px = bx;
+				py = by;
+			}
+			gx = px - u.x;
+			gy = py - u.y;
+			// Ease in: no need to rush when he's already in his place.
+			var gl = Math.sqrt(gx * gx + gy * gy);
+			if (gl < 1.2) {
+				gx *= gl / 1.2;
+				gy *= gl / 1.2;
+			}
+		} else {
+			var path = marchPath[u.team];
+			if (path == null) path = [island.apexX, island.apexY];
+			var last = Std.int(path.length / 2) - 1;
+			if (u.marchIdx > last) u.marchIdx = last;
+			var wx = path[u.marchIdx * 2], wy = path[u.marchIdx * 2 + 1];
+			if (u.marchIdx < last && (wx - u.x) * (wx - u.x) + (wy - u.y) * (wy - u.y) < 3 * 3) {
+				u.marchIdx++;
+				wx = path[u.marchIdx * 2];
+				wy = path[u.marchIdx * 2 + 1];
+			}
+			// Drifted so the straight line to the waypoint crosses water: walk the
+			// ordinary path round it this tick (two marchers froze on an inlet).
+			if (!nav.clearLine(u.x, u.y, wx, wy)) {
+				u.tx = wx;
+				u.ty = wy;
+				u.hasTarget = true;
+				u.vx = unitX(wx - u.x, wy - u.y) * speed;
+				u.vy = unitY(wx - u.x, wy - u.y) * speed;
+				return;
+			}
+			gx = wx - u.x;
+			gy = wy - u.y;
+		}
+		var fx = unitX(gx, gy) * w.goal, fy = unitY(gx, gy) * w.goal;
+		if (u.kind == Captain) {
+			var gl = Math.sqrt(gx * gx + gy * gy);
+			var ease = Math.min(1, gl / 1.2);
+			fx *= ease;
+			fy *= ease;
+		}
+		fx += unitX(sx, sy) * w.separation;
+		fy += unitY(sx, sy) * w.separation;
+		if (n > 0) {
+			fx += unitX(ax, ay) * w.alignment;
+			fy += unitY(ax, ay) * w.alignment;
+			fx += unitX(cx / n - u.x, cy / n - u.y) * w.cohesion;
+			fy += unitY(cx / n - u.x, cy / n - u.y) * w.cohesion;
+		}
+		// Steer: velocity turns toward the combined force, capped at the band's pace.
+		var fl = Math.sqrt(fx * fx + fy * fy);
+		var want = fl > 1e-4 ? speed * Math.min(1, fl) : 0.0;
+		var dvx = (fl > 1e-4 ? fx / fl * want : 0) - u.vx, dvy = (fl > 1e-4 ? fy / fl * want : 0) - u.vy;
+		u.vx += dvx * 0.15;
+		u.vy += dvy * 0.15;
+		var vl = Math.sqrt(u.vx * u.vx + u.vy * u.vy);
+		if (vl < 0.05) {
+			u.hasTarget = false;
+			return;
+		}
+		u.tx = u.x + u.vx * 0.6;
+		u.ty = u.y + u.vy * 0.6;
+		u.hasTarget = true;
+	}
+
+	static inline function unitX(x:Float, y:Float):Float {
+		var l = Math.sqrt(x * x + y * y);
+		return l > 1e-6 ? x / l : 0;
+	}
+
+	static inline function unitY(x:Float, y:Float):Float {
+		var l = Math.sqrt(x * x + y * y);
+		return l > 1e-6 ? y / l : 0;
+	}
+
+	/** The march ends for a team when its band's centre reaches the summit: they hold there. **/
+	function checkMarches() {
+		for (team in 0...2) {
+			var cx = 0.0, cy = 0.0, n = 0;
+			for (u in units)
+				if (u.team == team && u.alive && u.marching && u.kind != Captain) {
+					cx += u.x;
+					cy += u.y;
+					n++;
+				}
+			if (n == 0) continue;
+			cx /= n;
+			cy /= n;
+			var dx = cx - island.apexX, dy = cy - island.apexY;
+			if (dx * dx + dy * dy > Directives.current.marchArrive * Directives.current.marchArrive) continue;
+			for (u in units)
+				if (u.team == team && u.marching) {
+					endMarch(u);
+					u.guardX = u.x;
+					u.guardY = u.y;
+					u.hasTarget = false;
 				}
 		}
 	}
@@ -363,6 +585,10 @@ class Sim {
 			if (rival != null && dist(u, rival) < Rules.FLAG_CONTEST + 2) t = rival;
 		}
 		u.targetId = t == null ? -1 : t.id;
+		if (t == null && u.marching) {
+			flockStep(u);
+			return;
+		}
 		if (t == null) {
 			// Nothing to fight: go back to (or stay at) the rally point.
 			var gx = u.guardX - u.x, gy = u.guardY - u.y;
@@ -531,10 +757,12 @@ class Sim {
 		var al = Math.max(Math.sqrt(ax * ax + ay * ay), 0.01);
 		var mx = ax / al, my = ay / al;
 		if (n > 0) {
+			// A little toward his band, but mostly away: the band's centre is often the
+			// fight itself, and flankers caught him walking into it.
 			var bx = cx / n - u.x, by = cy / n - u.y;
 			var bl = Math.max(Math.sqrt(bx * bx + by * by), 0.01);
-			mx += bx / bl;
-			my += by / bl;
+			mx += bx / bl * 0.35;
+			my += by / bl * 0.35;
 		}
 		var ml = Math.max(Math.sqrt(mx * mx + my * my), 0.01);
 		var ex = u.x + mx / ml * 3, ey = u.y + my / ml * 3;
@@ -558,7 +786,9 @@ class Sim {
 			u.flagProgress = 0;
 			return;
 		}
-		if (u.hasTarget) return;
+		// Not while chasing someone. (He used not to work it while still walking, but
+		// with a soldier standing on the exact summit he never "arrived".)
+		if (u.targetId >= 0) return;
 		for (e in units)
 			if (e.alive && e.aboard < 0 && e.team != u.team) {
 				var ex = island.apexX - e.x, ey = island.apexY - e.y;
@@ -824,6 +1054,7 @@ class Sim {
 		s.disembarkTimer = Ship.DISEMBARK_INTERVAL;
 		var u = getUnit(s.crew.shift());
 		if (u == null) return;
+		if (s.crew.length == 0 && Directives.current.marchOnLanding) startMarch(s, u);
 		var k = s.landed++;
 		// Spread along the waterline a little, then gather in formation inland.
 		var o = formationOffset(k % 5, 0.8);
