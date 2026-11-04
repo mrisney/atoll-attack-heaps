@@ -7,8 +7,12 @@ import world.Island;
 	Fixed-timestep simulation. Rendering interpolates on top of it; input
 	only ever reaches it through `queue()`.
 **/
+private typedef CannonTarget = {x:Float, y:Float, vx:Float, vy:Float, score:Float};
+
 class Sim {
 	public static inline var TICK = 1 / 30;
+	/** `Unit.lastHitBy` when a cannonball did it. **/
+	public static inline var CANNON = -2;
 	/**
 		Most simulated time one update may catch up (s). Small, so a stalled frame
 		doesn't fast-forward the battle; automation raises it (`?catchup=`).
@@ -21,6 +25,10 @@ class Sim {
 	public final ships:Array<Ship> = [];
 	/** Arrows in flight. **/
 	public final arrows:Array<Arrow> = [];
+	/** Cannonballs in flight, and where recent ones came down (for the view). **/
+	public final cannonballs:Array<Cannonball> = [];
+	public final impacts:Array<Cannonball.Impact> = [];
+	var nextBallId = 1;
 	/** -1 while the battle is on; then the winning team. **/
 	public var winner(default, null) = -1;
 	/** Whose flag stands on the summit (-1 = none, the neutral banner). **/
@@ -254,6 +262,7 @@ class Sim {
 					u.ty = y + o.y;
 					u.hasTarget = true;
 					u.ordered = true;
+					u.boarding = -1;
 					endMarch(u);
 					u.targetId = -1;
 					u.forcedTarget = false;
@@ -270,6 +279,7 @@ class Sim {
 					u.guardX = x + o.x;
 					u.guardY = y + o.y;
 					u.ordered = false;
+					u.boarding = -1;
 					endMarch(u);
 				}
 			case Attack(ids, target):
@@ -281,6 +291,7 @@ class Sim {
 					u.targetId = target;
 					u.forcedTarget = true;
 					u.ordered = false;
+					u.boarding = -1;
 					endMarch(u);
 				}
 			case Kill(ids, fx, fy):
@@ -297,12 +308,25 @@ class Sim {
 					var u = getUnit(id);
 					if (u == null) continue;
 					endMarch(u);
+					u.boarding = -1;
 					u.hasTarget = false;
 					u.ordered = false;
 					u.targetId = -1;
 					u.forcedTarget = false;
 					u.guardX = u.x;
 					u.guardY = u.y;
+				}
+			case Board(ids, shipId):
+				var s = getShip(shipId);
+				if (s == null || s.sunk) return;
+				for (id in ids) {
+					var u = getUnit(id);
+					if (u == null || !u.alive || u.aboard >= 0 || u.team != s.team) continue;
+					endMarch(u);
+					u.boarding = s.id;
+					u.targetId = -1;
+					u.forcedTarget = false;
+					walkToShip(u, s);
 				}
 		}
 	}
@@ -313,8 +337,9 @@ class Sim {
 	public final marchPath:Array<Null<Array<Float>>> = [null, null];
 
 	/**
-		The last of the crew (the captain) is wading ashore: everyone of this
-		team ashore and not already busy with an order sets off for the summit.
+		The last of the crew (usually the captain) is wading ashore: the party
+		that came ashore in this landing, unless busy with an order, sets off
+		for the summit.
 	**/
 	function startMarch(s:Ship, last:Unit) {
 		var path = nav.find(s.inlandX, s.inlandY, island.apexX, island.apexY);
@@ -322,10 +347,12 @@ class Sim {
 		marchPath[s.team] = path;
 		// The band keeps to its slowest member.
 		var slowest = 1e9;
-		for (u in units)
-			if (u.team == s.team && u.alive) slowest = Math.min(slowest, u.baseSpeed);
-		for (u in units)
-			if (u.team == s.team && u.alive && !u.ordered && !u.forcedTarget) {
+		// Only this landing's party: anyone already ashore keeps doing what they were.
+		var party = [for (id in s.landedIds) getUnit(id)].concat([last]);
+		for (u in party)
+			if (u != null && u.alive) slowest = Math.min(slowest, u.baseSpeed);
+		for (u in party)
+			if (u != null && u.alive && u.aboard < 0 && !u.ordered && !u.forcedTarget && u != last) {
 				u.marching = true;
 				u.marchIdx = 0;
 				u.speedCap = slowest;
@@ -879,12 +906,14 @@ class Sim {
 		out, and send the crew a little inland from there. At sea: just go.
 	**/
 	function orderShip(s:Ship, x:Float, y:Float) {
+		if (s.sunk) return;
 		if (s.crew.length == 0 && s.state == Landing) return;
 		if (deep(x, y)) {
 			s.tx = x;
 			s.ty = y;
 			s.state = Sailing;
 			s.landOnArrival = false;
+			s.route = seaRoute(s.x, s.y, x, y);
 			return;
 		}
 		// Nearest deep water around the spot: rings outward, 24 bearings each.
@@ -899,6 +928,7 @@ class Sim {
 				// water left ships stuck in the shallows on the approach.
 				var spare = Ship.DRAFT - 0.35;
 				if (island.heightAt(ax, ay) > spare || island.heightAt(ax + Math.cos(a) * 2, ay + Math.sin(a) * 2) > spare) continue;
+				if (shipNear(s, ax, ay, SHIP_GAP)) continue;
 				var d = (ax - s.x) * (ax - s.x) + (ay - s.y) * (ay - s.y);
 				if (d < bestD) {
 					bestD = d;
@@ -938,10 +968,79 @@ class Sim {
 		s.inlandY = iy;
 		s.state = Sailing;
 		s.landOnArrival = true;
+		s.route = seaRoute(s.x, s.y, s.tx, s.ty);
+	}
+
+	/** Ships keep at least this far apart (m): about a hull length. **/
+	static inline var SHIP_GAP = 8.0;
+
+	/** Another ship (afloat) within r of (x, y)? **/
+	function shipNear(s:Ship, x:Float, y:Float, r:Float):Bool {
+		for (o in ships)
+			if (o != s && !o.sunk && (o.x - x) * (o.x - x) + (o.y - y) * (o.y - y) < r * r) return true;
+		return false;
+	}
+
+	/** Radius of a circle round the island that's deep water all the way (-1: none). **/
+	var seaRingR = 0.0;
+
+	function seaRing():Float {
+		if (seaRingR != 0) return seaRingR;
+		seaRingR = -1;
+		var r = 8.0;
+		while (r < island.halfExtent * 0.97) {
+			var ok = true;
+			for (k in 0...72) {
+				var a = k / 72 * Math.PI * 2;
+				if (!deep(Math.cos(a) * r, Math.sin(a) * r) || !deep(Math.cos(a) * (r - 2), Math.sin(a) * (r - 2))) {
+					ok = false;
+					break;
+				}
+			}
+			if (ok) {
+				seaRingR = r;
+				break;
+			}
+			r += 1;
+		}
+		return seaRingR;
+	}
+
+	/** Deep water all along a straight line (sampled every metre and a half). **/
+	function clearSea(x0:Float, y0:Float, x1:Float, y1:Float):Bool {
+		var dx = x1 - x0, dy = y1 - y0;
+		var len = Math.sqrt(dx * dx + dy * dy);
+		var n = Std.int(len / 1.5) + 1;
+		for (k in 1...n)
+			if (!deep(x0 + dx * k / n, y0 + dy * k / n)) return false;
+		return true;
+	}
+
+	/**
+		A way round the island when the target isn't in plain sight: out to a
+		circle of open water, round it the shorter way in 30° steps, then in.
+		(The steering in `sail` only looks a few hull-lengths ahead, so on its
+		own it ran into the far side of the island and gave up.)
+	**/
+	function seaRoute(x0:Float, y0:Float, x1:Float, y1:Float):Array<Float> {
+		if (clearSea(x0, y0, x1, y1)) return [];
+		var r = seaRing();
+		if (r < 0) return [];
+		var a0 = Math.atan2(y0, x0), a1 = Math.atan2(y1, x1);
+		var delta = wrapAngle(a1 - a0);
+		var steps = Std.int(Math.ceil(Math.abs(delta) / (Math.PI / 6)));
+		var route = [];
+		for (k in 0...steps + 1) {
+			var a = a0 + delta * k / steps;
+			route.push(Math.cos(a) * r);
+			route.push(Math.sin(a) * r);
+		}
+		return route;
 	}
 
 	function stepShips() {
 		for (s in ships) {
+			if (s.sunk) continue;
 			switch s.state {
 				case Idle:
 					s.speed = 0;
@@ -951,15 +1050,240 @@ class Sim {
 					s.speed = 0;
 					disembark(s);
 			}
-			// Crew aboard ride along.
+			// Crew aboard ride along, and mend.
+			var heal = Directives.current.healPerSecond * TICK;
 			for (id in s.crew) {
 				var u = getUnit(id);
 				if (u != null) {
 					u.x = s.x;
 					u.y = s.y;
+					if (u.alive) u.hp = Math.min(u.maxHp, u.hp + heal);
 				}
 			}
+			if (winner < 0) fireCannons(s);
 		}
+		stepBoarding();
+		stepCannonballs();
+	}
+
+	// --- going back aboard ---------------------------------------------------
+
+	/**
+		The point ashore nearest the ship, on the way from the ship to (fx, fy):
+		where someone waits to be taken off.
+	**/
+	function shoreToward(s:Ship, fx:Float, fy:Float):{x:Float, y:Float} {
+		var dx = fx - s.x, dy = fy - s.y;
+		var len = Math.max(Math.sqrt(dx * dx + dy * dy), 1e-4);
+		var t = 0.0;
+		while (t <= len) {
+			var px = s.x + dx / len * t, py = s.y + dy / len * t;
+			if (island.isWalkable(px, py)) return {x: px, y: py};
+			t += 0.5;
+		}
+		return {x: fx, y: fy};
+	}
+
+	function walkToShip(u:Unit, s:Ship) {
+		var p = shoreToward(s, u.x, u.y);
+		// A little up the beach, spread out so they don't queue on one spot.
+		var o = formationOffset((u.id * 7) % 9, 1.0);
+		var gx = p.x + o.x, gy = p.y + o.y;
+		if (!island.isWalkable(gx, gy)) {
+			gx = p.x;
+			gy = p.y;
+		}
+		u.tx = u.guardX = gx;
+		u.ty = u.guardY = gy;
+		u.hasTarget = true;
+		u.ordered = true;
+	}
+
+	/**
+		Units on their way back aboard climb on once their ship lies still
+		within boardRange (they wade out to it, like landing in reverse). The
+		captain stays last in the landing order, so he still comes ashore last.
+		If the ship sails off, they head for the shore nearest its new spot.
+	**/
+	function stepBoarding() {
+		var range = Directives.current.boardRange;
+		for (u in units) {
+			if (u.boarding < 0) continue;
+			var s = getShip(u.boarding);
+			if (!u.alive || u.aboard >= 0 || s == null || s.sunk) {
+				u.boarding = -1;
+				continue;
+			}
+			var dx = s.x - u.x, dy = s.y - u.y;
+			var still = s.state == Idle && s.speed < 0.3;
+			if (still && dx * dx + dy * dy < range * range) {
+				u.boarding = -1;
+				u.aboard = s.id;
+				u.hasTarget = false;
+				u.ordered = false;
+				u.targetId = -1;
+				u.flagProgress = 0;
+				u.path = null;
+				// Anyone who goes ashore after the captain has to go before him.
+				var capAt = -1;
+				for (k in 0...s.crew.length) {
+					var c = getUnit(s.crew[k]);
+					if (c != null && c.kind == Captain) capAt = k;
+				}
+				if (u.kind != Captain && capAt >= 0 && Directives.current.captainLandsLast) s.crew.insert(capAt, u.id) else s.crew.push(u.id);
+				u.x = s.x;
+				u.y = s.y;
+				continue;
+			}
+			// Keep making for the shore nearest the ship (it may have moved).
+			if ((tick + u.id) % 30 == 0 && !u.hasTarget) {
+				var p = shoreToward(s, u.x, u.y);
+				if ((p.x - u.guardX) * (p.x - u.guardX) + (p.y - u.guardY) * (p.y - u.guardY) > 4 * 4) walkToShip(u, s);
+			}
+		}
+	}
+
+	// --- cannons -------------------------------------------------------------
+
+	/** Deterministic value in [-1, 1] for a ship's n-th shot (no Math.random in the sim). **/
+	static function shotNoise(shipId:Int, n:Int, salt:Int):Float {
+		var h:haxe.Int32 = (shipId : haxe.Int32) * (374761393 : haxe.Int32) + (n : haxe.Int32) * (668265263 : haxe.Int32) + (salt : haxe.Int32) * (1274126177 : haxe.Int32);
+		h = (h ^ (h >>> 13)) * (1274126177 : haxe.Int32);
+		h = h ^ (h >>> 16);
+		return (h & 0x7fffffff) / 2147483647.0 * 2 - 1;
+	}
+
+	/**
+		A ship's guns, every tick. It picks the best target in range (enemy
+		characters ashore, scored up where several stand together, or the enemy
+		ship), turns to bring a broadside to bear when it's lying still, and
+		fires one ball when loaded and the target is off one side.
+	**/
+	function fireCannons(s:Ship) {
+		var d = Directives.current;
+		if (s.reload > 0) s.reload--;
+		// Look around a few times a second, not every tick.
+		if ((tick + s.id) % 5 != 0) return;
+		var arc = d.cannonBroadside * Math.PI / 180;
+		var best:Null<CannonTarget> = null;
+		var bestInArc:Null<CannonTarget> = null;
+		inline function consider(c:CannonTarget) {
+			if (best == null || c.score > best.score) best = c;
+			if (offBeam(s, c.x, c.y) <= arc && (bestInArc == null || c.score > bestInArc.score)) bestInArc = c;
+		}
+		var splash2 = d.cannonSplash * d.cannonSplash;
+		for (u in units) {
+			if (!u.alive || u.aboard >= 0 || u.team == s.team) continue;
+			var r = Math.sqrt((u.x - s.x) * (u.x - s.x) + (u.y - s.y) * (u.y - s.y));
+			if (r > d.cannonRange || r < d.cannonMinRange) continue;
+			// Where they bunch up is worth more than the nearest one.
+			var crowd = 0;
+			for (v in units)
+				if (v.alive && v.aboard < 0 && v.team != s.team && (v.x - u.x) * (v.x - u.x) + (v.y - u.y) * (v.y - u.y) < splash2) crowd++;
+			consider({x: u.x, y: u.y, vx: 0, vy: 0, score: crowd * 8 - r * 0.3});
+		}
+		for (o in ships) {
+			if (o.team == s.team || o.sunk) continue;
+			var r = Math.sqrt((o.x - s.x) * (o.x - s.x) + (o.y - s.y) * (o.y - s.y));
+			if (r > d.cannonRange) continue;
+			// The enemy ship first: it's big, and it may carry their wounded.
+			consider({x: o.x, y: o.y, vx: Math.cos(o.heading) * o.speed, vy: Math.sin(o.heading) * o.speed, score: 30 - r * 0.3});
+		}
+		if (best == null) return;
+		// Lying still: swing round so a broadside faces the best target.
+		if (s.state != Sailing && offBeam(s, best.x, best.y) > arc * 0.5) {
+			var a = wrapAngle(Math.atan2(best.y - s.y, best.x - s.x) - s.heading);
+			var want = s.heading + (a > 0 ? a - Math.PI / 2 : a + Math.PI / 2);
+			var turn = Ship.TURN * 0.4 * TICK * 5; // looked at every 5 ticks
+			s.heading += clamp(wrapAngle(want - s.heading), -turn, turn);
+		}
+		var t = bestInArc;
+		if (t == null || s.reload > 0) return;
+		var r = Math.sqrt((t.x - s.x) * (t.x - s.x) + (t.y - s.y) * (t.y - s.y));
+		var flight = 0.6 + r / d.cannonBallSpeed;
+		// Lead a moving ship; then scatter, wider the further it is.
+		var ax = t.x + t.vx * flight, ay = t.y + t.vy * flight;
+		var spread = d.cannonScatter + d.cannonScatterPerMetre * r;
+		var n = s.shots++;
+		var ang = shotNoise(s.id, n, 1) * Math.PI;
+		var rad = Math.abs(shotNoise(s.id, n, 2)) * spread;
+		ax += Math.cos(ang) * rad;
+		ay += Math.sin(ang) * rad;
+		cannonballs.push(new Cannonball(nextBallId++, s, ax, ay, flight));
+		s.reload = Math.round(d.cannonCooldown / TICK);
+		s.lastShotTick = tick;
+		s.lastShotSide = wrapAngle(Math.atan2(t.y - s.y, t.x - s.x) - s.heading) > 0 ? 1 : -1;
+	}
+
+	/** How far (radians) a point lies off the ship's beam: 0 abeam, PI/2 dead ahead or astern. **/
+	static function offBeam(s:Ship, x:Float, y:Float):Float {
+		var a = Math.abs(wrapAngle(Math.atan2(y - s.y, x - s.x) - s.heading));
+		return Math.abs(a - Math.PI / 2);
+	}
+
+	static function wrapAngle(a:Float):Float {
+		while (a > Math.PI) a -= Math.PI * 2;
+		while (a < -Math.PI) a += Math.PI * 2;
+		return a;
+	}
+
+	function stepCannonballs() {
+		var k = cannonballs.length;
+		while (k-- > 0) {
+			var b = cannonballs[k];
+			b.t += TICK;
+			if (b.t < b.duration) continue;
+			cannonballs.splice(k, 1);
+			cannonImpact(b);
+		}
+		// Forget impacts after a few seconds (the view has drawn them by then).
+		while (impacts.length > 0 && tick - impacts[0].tick > 90) impacts.shift();
+	}
+
+	/** A ball comes down: on a hull it lands on, or on the enemy characters round it. **/
+	function cannonImpact(b:Cannonball) {
+		var d = Directives.current;
+		var hitShip = false;
+		for (o in ships) {
+			if (o.team == b.team || o.sunk) continue;
+			if ((o.x - b.toX) * (o.x - b.toX) + (o.y - b.toY) * (o.y - b.toY) < d.cannonHull * d.cannonHull) {
+				hitShip = true;
+				o.hp -= d.cannonShipDamage;
+				if (o.hp <= 0) sink(o);
+			}
+		}
+		if (!hitShip)
+			for (u in units) {
+				if (!u.alive || u.aboard >= 0 || u.team == b.team) continue;
+				var r = Math.sqrt((u.x - b.toX) * (u.x - b.toX) + (u.y - b.toY) * (u.y - b.toY));
+				if (r > d.cannonSplash) continue;
+				// Full at the centre, half at the edge; armour takes off half its usual share.
+				var amount = d.cannonDamage * (1 - 0.5 * r / d.cannonSplash) * (1 - Math.min(Rules.stats(u.kind).defense / 100, 0.5) * 0.5);
+				u.hp -= amount;
+				u.lastHitBy = CANNON;
+				if (u.hp <= 0) kill(u, b.toX, b.toY);
+			}
+		impacts.push({
+			id: b.id,
+			x: b.toX,
+			y: b.toY,
+			water: island.heightAt(b.toX, b.toY) < 0,
+			hitShip: hitShip,
+			tick: tick
+		});
+	}
+
+	/** Holed below the waterline: down she goes, with everyone aboard. **/
+	function sink(s:Ship) {
+		s.sunk = true;
+		s.hp = 0;
+		s.speed = 0;
+		s.state = Idle;
+		for (id in s.crew) {
+			var u = getUnit(id);
+			if (u != null && u.alive) kill(u, s.x, s.y);
+		}
+		s.crew.resize(0);
 	}
 
 	/**
@@ -968,8 +1292,20 @@ class Sim {
 		water ahead. Ease off near the target.
 	**/
 	function sail(s:Ship) {
-		var dx = s.tx - s.x, dy = s.ty - s.y;
+		// Round the island: skip waypoints once the next one (or the target) is in sight.
+		while (s.route.length >= 2) {
+			var nx = s.route.length >= 4 ? s.route[2] : s.tx, ny = s.route.length >= 4 ? s.route[3] : s.ty;
+			var wx = s.route[0] - s.x, wy = s.route[1] - s.y;
+			if (wx * wx + wy * wy < 6 * 6 || ((tick + s.id) % 10 == 0 && clearSea(s.x, s.y, nx, ny))) {
+				s.route.shift();
+				s.route.shift();
+			} else
+				break;
+		}
+		var routed = s.route.length >= 2;
+		var dx = (routed ? s.route[0] : s.tx) - s.x, dy = (routed ? s.route[1] : s.ty) - s.y;
 		var dist = Math.sqrt(dx * dx + dy * dy);
+		if (routed) dist = Math.max(dist, 8); // no easing off at a waypoint
 		if (dist < 1.2) {
 			s.speed = 0;
 			if (s.landOnArrival && s.crew.length > 0) {
@@ -977,6 +1313,7 @@ class Sim {
 				s.state = Landing;
 				s.disembarkTimer = 0;
 				s.landed = 0;
+				s.landedIds.resize(0);
 			} else
 				s.state = Idle;
 			return;
@@ -1021,7 +1358,7 @@ class Sim {
 		s.speed += clamp(target - s.speed, -2.5 * TICK, 1.2 * TICK);
 		var nx = s.x + Math.cos(s.heading) * s.speed * TICK;
 		var ny = s.y + Math.sin(s.heading) * s.speed * TICK;
-		if (deep(nx, ny)) {
+		if (deep(nx, ny) && !shipNear(s, nx, ny, SHIP_GAP)) {
 			s.x = nx;
 			s.y = ny;
 		} else
@@ -1037,6 +1374,7 @@ class Sim {
 				s.state = Landing;
 				s.disembarkTimer = 0;
 				s.landed = 0;
+				s.landedIds.resize(0);
 			} else {
 				s.state = Idle;
 				s.landOnArrival = false;
@@ -1056,6 +1394,7 @@ class Sim {
 		if (u == null) return;
 		if (s.crew.length == 0 && Directives.current.marchOnLanding) startMarch(s, u);
 		var k = s.landed++;
+		s.landedIds.push(u.id);
 		// Spread along the waterline a little, then gather in formation inland.
 		var o = formationOffset(k % 5, 0.8);
 		var x = s.shoreX + o.x, y = s.shoreY + o.y;

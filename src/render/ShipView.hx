@@ -24,6 +24,11 @@ class ShipView extends h3d.scene.Object {
 	final ring:h3d.scene.Object;
 	var heading:Float;
 	var time = 0.0;
+	/** Seconds since it sank (it settles by the stern and goes under). **/
+	var sinkTime = 0.0;
+	/** A kick of heel from the last broadside, decaying. **/
+	var recoil = 0.0;
+	var seenShot = -1000;
 
 	public function new(ship:game.Ship, ?parent:h3d.scene.Object) {
 		super(parent);
@@ -124,6 +129,17 @@ class ShipView extends h3d.scene.Object {
 				b.twoSided(p00, p10, p11, col);
 				b.twoSided(p00, p11, p01, col);
 			}
+		// Cannons: two a side, iron barrels poking out over the gunwale.
+		for (side in [-1.0, 1.0])
+			for (cx in [-1.6, 1.3]) {
+				b.place(-side * Math.PI / 2, 0, 0, cx, side * BEAM * 0.36, 0.78);
+				b.cone(0, 0, 0, 0.12, 1.0, 7, Palette.IRON, 0.09);
+				b.unplace();
+				// The carriage.
+				b.place(0, 0, 0, cx, side * BEAM * 0.3, 0.48);
+				b.prism(0, 0, 0, 0.22, 0.24, 4, trim, Math.PI / 4);
+				b.unplace();
+			}
 		b.build(body, true, true, true);
 	}
 
@@ -142,6 +158,23 @@ class ShipView extends h3d.scene.Object {
 		var pitch = Math.sin(time * 0.9 + phase) * (0.025 + 0.02 * way);
 		// Heel a little into turns and roll gently on the swell.
 		var roll = Math.sin(time * 1.1 + phase * 0.5) * 0.035 + diff * 0.15 * way;
+		// A broadside fired: the ship heels away from the guns for a moment.
+		if (ship.lastShotTick != seenShot) {
+			if (seenShot > -1000) recoil = -ship.lastShotSide * 0.07;
+			seenShot = ship.lastShotTick;
+		}
+		recoil *= Math.exp(-dt * 2.5);
+		roll += recoil;
+		if (ship.sunk) {
+			// Holed: she settles by the stern, lists, and goes under in a few seconds.
+			sinkTime += dt;
+			selected = false;
+			var f = Math.min(1, sinkTime / 7);
+			bob -= f * f * 6.5;
+			pitch -= f * 0.35;
+			roll += f * 0.5;
+			if (sinkTime > 8) visible = false;
+		}
 		body.z = bob;
 		var q = new h3d.Quat();
 		q.initRotation(roll, pitch, heading);

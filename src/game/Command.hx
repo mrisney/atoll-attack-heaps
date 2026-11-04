@@ -13,6 +13,12 @@ enum Command {
 	**/
 	ShipTo(shipId:Int, x:Float, y:Float);
 	Stop(unitIds:Array<Int>);
+	/**
+		Units go back aboard their own ship: they walk to the shore nearest it
+		and climb aboard once it lies still close by. Aboard, they heal; they
+		land again with the ship's next landing order.
+	**/
+	Board(unitIds:Array<Int>, shipId:Int);
 	/** Units go after this enemy, wherever it goes. **/
 	Attack(unitIds:Array<Int>, targetId:Int);
 	/** Walk toward (x, y) but fight whatever comes near on the way, then hold there. **/

@@ -52,6 +52,22 @@ class Ship {
 	public var disembarkTimer = 0.0;
 	/** Ticks under way without making headway (shallows ahead): see Sim.sail. **/
 	public var stuckTicks = 0;
+	/** Waypoints (x0, y0, ...) round the island to the target, when it's not in plain sight. **/
+	public var route:Array<Float> = [];
+	/** Who came ashore in the current landing: they (and only they) march off together. **/
+	public final landedIds:Array<Int> = [];
+
+	public var hp:Float;
+	public var maxHp:Float;
+	/** Holed and gone: it takes everyone aboard with it. **/
+	public var sunk = false;
+	/** Ticks until the guns are loaded again. **/
+	public var reload = 0;
+	/** Shots fired: varies the scatter from shot to shot. **/
+	public var shots = 0;
+	/** The tick a gun last fired, and which side (+1 port, -1 starboard), for the view. **/
+	public var lastShotTick = -1000;
+	public var lastShotSide = 1;
 
 	public function new(id:Int, team:Int, x:Float, y:Float, heading:Float) {
 		this.id = id;
@@ -59,5 +75,6 @@ class Ship {
 		this.x = x;
 		this.y = y;
 		this.heading = heading;
+		hp = maxHp = Directives.current.shipHp;
 	}
 }

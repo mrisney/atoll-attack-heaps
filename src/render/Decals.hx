@@ -30,6 +30,8 @@ class Decals extends h3d.scene.Object {
 
 	public function crater(x:Float, y:Float, radius:Float) {
 		craters.push({x: x, y: y, r: radius, rot: (craters.length * 2.399) % (Math.PI * 2)});
+		// A long bombardment would pile them up: keep the latest.
+		if (craters.length > 80) craters.shift();
 		rebuild();
 	}
 

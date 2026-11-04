@@ -42,7 +42,8 @@ The goal of this spike is to answer one question: does Heaps give the Northgard-
 - **Grass parts as units walk through it**: a trample map stamped by every unit bends blades outward from their feet, leaving trails that spring back over a few seconds. Tree canopies open up over figures walking beneath them.
 - **Micro-scatter**: wildflowers in the meadows, shells on the beaches, loose pebbles in the uplands.
 - **Tilt-shift** (B to toggle; on by default in Painted).
-- **Ships and landings**: each side's crew (14 characters) starts aboard its ship. Click your ship, then click a stretch of coast: it sails round through deep water, anchors, and the crew wades ashore. Click open water to just sail.
+- **Ships and landings**: each side's crew (14 characters) starts aboard its ship. Click your ship, then click a stretch of coast: it sails round through deep water, anchors, and the crew wades ashore. Click open water to just sail; it finds its way round the island. With characters selected, click your ship to send them back aboard: they heal there and land again with the ship's next landing order (Esc clears the selection so you can select the ship itself).
+- **Cannons**: each ship fires by itself from its broadsides at enemy characters ashore (where they bunch up) and at the enemy ship, lobbing balls that land where they were aimed: the further the target, the wider they scatter, and nothing beyond 40 m. A ship that takes too many hits sinks with everyone aboard.
 - **Combat**: swordsmen, pikers and the captain fight hand to hand; archers shoot arrows from range and back away from blades. Every character has a little mind of its own: it holds where you left it, takes on enemies that come near, chases them a little way and hits back when hit. Your orders come first: right-click ground to move (ignoring enemies on the way), right-click an enemy to attack it. Fallen characters drop as rag dolls.
 - **The march**: once everyone is ashore, the band sets off for the summit as a flock (boids: separation, alignment, cohesion, plus a path round water), with the captain trailing at the rear. They fight whatever they meet and fall back in. Give any unit an order and it leaves the march. Tune it in the `"march"` section of `res/data/directives.json`.
 - **The captain is protected**: he lands last and stays at the back. Every soldier's first duty is to guard him, so they go for any enemy that comes near him or aims at him, and he pulls back from danger unless you order him forward. What every character does, and all the game's numbers, are in `res/data/directives.json`.
@@ -90,6 +91,8 @@ res/                        art from WildCurrent (embedded into the build; see r
   render/UnitView.hx        unit figures, selection rings, interpolation, rag doll hookup
   render/ShipView.hx        the ships: timber hull, team sail, bobbing on the swell
   game/Ship.hx              ships: deep-water sailing, anchoring, crew landing (sim side)
+  game/Cannonball.hx        a cannonball in flight, and where one came down
+  render/CannonView.hx      cannonballs, powder smoke, spray, dust and craters
   game/Rules.hx             damage, type advantages, target choice (numbers from res/data/directives.json)
   game/Directives.hx        loads res/data/directives.json: every stat, range and duty
   game/TeamAI.hx            the computer commander (red)

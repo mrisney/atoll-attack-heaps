@@ -19,6 +19,10 @@ class TeamAI {
 	final team:Int;
 	var captainSent = false;
 	var landingTries = 0;
+	/** Seconds both bands have faced each other near the summit without fighting. **/
+	var standoff = 0;
+	/** The first landing is done (after that, crew aboard are wounded resting). **/
+	var landed = false;
 
 	public function new(sim:Sim, team:Int) {
 		this.sim = sim;
@@ -31,28 +35,41 @@ class TeamAI {
 			if (s.team == team) ship = s;
 		// Wait until everyone is ashore. If the ship gave up on the way (shallows,
 		// a dead end), try the coast a little further round each time.
-		if (ship != null && ship.crew.length > 0) {
-			if (ship.state == Idle) {
-				landingTries++;
-				var b = sim.homeBeach[team];
-				var a = Math.atan2(b.y, b.x) + (landingTries % 2 == 0 ? 1 : -1) * Std.int((landingTries + 1) / 2) * 0.35;
-				var r = Math.sqrt(b.x * b.x + b.y * b.y);
-				sim.queue(ShipTo(ship.id, Math.cos(a) * r, Math.sin(a) * r));
-			}
+		if (ship != null && !ship.sunk && ship.crew.length > 0 && !landed) {
+			if (ship.state == Idle) land(ship, true);
 			return;
+		}
+		if (ship != null && ship.crew.length == 0) landed = true;
+		// Wounded resting aboard: land them again once they're whole.
+		if (ship != null && !ship.sunk && ship.crew.length > 0 && ship.state == Idle) {
+			var whole = true;
+			for (id in ship.crew) {
+				var u = sim.getUnit(id);
+				if (u != null && u.alive && u.hp < u.maxHp * 0.95) whole = false;
+			}
+			if (whole) land(ship, false);
 		}
 
 		var ax = sim.island.apexX, ay = sim.island.apexY;
 		var soldiers = [], captain:Null<Unit> = null;
+		var hurt = [];
 		for (u in sim.units)
 			if (u.team == team && u.alive && u.aboard < 0) {
 				if (u.kind == Captain) captain = u else soldiers.push(u);
 			}
 		if (captain == null) return;
 
+		// Badly hurt soldiers out of the fight, with the ship lying close: back aboard to mend.
+		if (ship != null && !ship.sunk && ship.state == Idle)
+			for (u in soldiers) {
+				var close = near(u.x, u.y, ship.x, ship.y, Directives.current.boardRange + 10);
+				if (close && u.boarding < 0 && u.targetId < 0 && u.hp < u.maxHp * 0.35) hurt.push(u.id);
+			}
+		if (hurt.length > 0) sim.queue(Board(hurt, ship.id));
+
 		// Soldiers: attack-move on the apex (re-issued only to those not already fighting).
 		// (Marchers are already on their way: the flock takes them to the summit.)
-		var idle = [for (u in soldiers) if (u.targetId < 0 && !u.ordered && !u.marching) u.id];
+		var idle = [for (u in soldiers) if (u.targetId < 0 && !u.ordered && !u.marching && u.boarding < 0) u.id];
 		var dgx = 0.0, dgy = 0.0;
 		if (idle.length > 0) {
 			var u0 = sim.getUnit(idle[0]);
@@ -60,6 +77,29 @@ class TeamAI {
 			dgy = u0.guardY - ay;
 		}
 		if (idle.length > 0 && dgx * dgx + dgy * dgy > 9 * 9) sim.queue(AttackMove(idle, ax, ay));
+		// Both bands holding the summit just out of each other's reach could face off for
+		// ever (neither captain can go up while the other band is there). After a few
+		// quiet seconds, go at them.
+		var fighting = false;
+		for (u in soldiers)
+			if (u.targetId >= 0) fighting = true;
+		var foe:Null<Unit> = null;
+		var foeD = 1e9;
+		for (u in sim.units)
+			if (u.team != team && u.alive && u.aboard < 0) {
+				var dx = u.x - ax, dy = u.y - ay;
+				var dd = dx * dx + dy * dy;
+				if (dd < foeD) {
+					foeD = dd;
+					foe = u;
+				}
+			}
+		standoff = (!fighting && foe != null && foeD < 30 * 30) ? standoff + 1 : 0;
+		if (standoff >= 6) {
+			standoff = 0;
+			var go = [for (u in soldiers) if (!u.ordered && u.boarding < 0) u.id];
+			if (go.length > 0) sim.queue(AttackMove(go, foe.x, foe.y));
+		}
 
 		// The captain: behind the band until the apex is held and clear, then up he goes.
 		var holding = 0, enemyNear = false;
@@ -110,6 +150,18 @@ class TeamAI {
 		}
 		// If the captain got pushed off the apex, try again later.
 		if (captainSent && captain.targetId < 0 && !captain.ordered && !near(captain.x, captain.y, ax, ay, Rules.FLAG_RANGE)) captainSent = false;
+	}
+
+	/**
+		Land at the home beach, or a little further round the coast after each
+		failed try (`retry`); without it, where the last landing worked.
+	**/
+	function land(ship:Ship, retry:Bool) {
+		if (retry) landingTries++;
+		var b = sim.homeBeach[team];
+		var a = Math.atan2(b.y, b.x) + (landingTries % 2 == 0 ? 1 : -1) * Std.int((landingTries + 1) / 2) * 0.35;
+		var r = Math.sqrt(b.x * b.x + b.y * b.y);
+		sim.queue(ShipTo(ship.id, Math.cos(a) * r, Math.sin(a) * r));
 	}
 
 	static inline function near(x:Float, y:Float, px:Float, py:Float, r:Float):Bool {

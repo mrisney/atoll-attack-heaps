@@ -76,6 +76,14 @@ class Palette {
 	/** Ships (ShipView): weathered planking, a paler deck, canvas sail. **/
 	public static inline var SHIP_HULL = 0x7A5A3E;
 	public static inline var SHIP_DECK = 0xB89B74;
+	/** Cannon barrels and balls (dark iron). **/
+	public static inline var IRON = 0x2B2A28;
+	/** Powder smoke, a splash's spray, and the dust a ball throws up ashore. **/
+	public static inline var SMOKE = 0xE6E2DA;
+	public static inline var SPRAY = 0xF2F7F5;
+	public static inline var DUST = 0xA08A6C;
+	/** Splinters off a struck hull. **/
+	public static inline var SPLINTER = 0x5E4630;
 	public static inline var SAIL = 0xEDE6D4;
 	/** The summit's unclaimed banner (FlagView). **/
 	public static inline var FLAG_NEUTRAL = 0xEFE8D8;

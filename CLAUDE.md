@@ -73,7 +73,35 @@ to the flag); player orders always override it.
   sails there (steering by sampling headings that keep deep water ahead),
   and the crew wades ashore one at a time and gathers inland. Click open
   water to just sail. Red's ship lands at its home beach on its own for
-  now. `?autoland=1` lands blue too (automation).
+  now. `?autoland=1` lands blue too (automation). When the target isn't in
+  plain sight the ship sails round the island on a ring of open water
+  (`Sim.seaRoute`; the look-ahead steering alone ran into the far shore and
+  gave up). Ships keep a hull length apart (`SHIP_GAP`).
+- **Back aboard to heal** (owner's idea): with characters selected, click
+  your own ship (`Command.Board`). They walk to the shore nearest it and
+  climb aboard once it lies still within `ship.boardRange`; aboard they mend
+  at `healPerSecond` and land with its next landing order (the captain is
+  kept last in the landing order). Only that landing's party marches off
+  (`Ship.landedIds`). Esc clears the selection, so a click on the ship then
+  selects it. The commander sends soldiers under 35% back aboard when the
+  ship is close and lands them again once whole.
+- **Ship cannons** (owner's idea: "lob onto the ground and aim for
+  characters... further away, less accuracy... aim for each other"):
+  `Sim.fireCannons`, all numbers in directives.json `ship`/`cannon`. Each
+  ship fires by itself, one ball per reload, from whichever broadside faces
+  the target (`broadside` degrees off the beam; at anchor it swings round).
+  Targets: enemy characters ashore within `range` (scored up where they
+  bunch) or the enemy ship (preferred, led for its speed). Scatter grows
+  with range (`scatter + scatterPerMetre * d`) from a deterministic Int32
+  hash of ship id and shot number (`shotNoise`), never `Math.random`. Balls
+  don't home: they land on the aimed spot, splash enemies only (full at the
+  centre, half at the edge) or hole a hull within `hullRadius`; a ship at
+  0 hp sinks with everyone aboard (`Sim.sink`). `Sim.impacts` is a short
+  log the view reads (by id) for spray, dust, craters and splinters
+  (`render/CannonView`). Ships usually lie off their own beaches, so the
+  guns cover landings rather than the summit. `?bombard=1` sends blue's
+  ship round to red's beach once its crew is ashore (SimTest `-D bombard`;
+  `-D heal` tests boarding).
 - **Combat** (`game/Rules.hx` for all numbers, `Sim.think` for the per-unit
   AI): stats ported from the Flutter game and rescaled from pixels to metres;
   health is 1.5x the original (skirmishes were over in seconds), and the
@@ -139,7 +167,9 @@ to the flag); player orders always override it.
   either way before re-planning (a unit wedged on a spit re-planned the same
   route every tick and never moved).
 - **Computer commander** (`game/TeamAI.hx`, red): lands, attack-moves its band
-  on the apex, keeps the captain ~9 m behind, sends him up once three hold the
+  on the apex (and at the enemy band if the two face off near the summit
+  for six quiet seconds: bands just out of each other's reach stood off
+  forever), keeps the captain ~9 m behind, sends him up once three hold the
   apex and no enemy is near. It only issues commands, like a player would.
   `?blueai=1` adds one for blue (watch AI vs AI).
 - **Walking** (`world/NavGrid.hx`): straight line when it's clear of water,

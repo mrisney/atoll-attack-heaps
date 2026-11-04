@@ -46,6 +46,21 @@ class Directives {
 	public var marchCaptainHalt = 22.0;
 	public var flagLowerTime = 5.0;
 	public var flagHoldTime = 60.0;
+	public var shipHp = 300.0;
+	public var boardRange = 20.0;
+	public var healPerSecond = 6.0;
+	public var cannonRange = 40.0;
+	public var cannonMinRange = 6.0;
+	public var cannonCooldown = 4.5;
+	public var cannonDamage = 45.0;
+	public var cannonSplash = 2.4;
+	public var cannonShipDamage = 40.0;
+	public var cannonHull = 2.6;
+	public var cannonScatter = 0.5;
+	public var cannonScatterPerMetre = 0.08;
+	public var cannonBallSpeed = 26.0;
+	/** Degrees either side of the beam. **/
+	public var cannonBroadside = 65.0;
 
 	public function new() {}
 
@@ -120,6 +135,26 @@ class Directives {
 			d.flagContest = num(f, "contest", d.flagContest);
 			d.flagLowerTime = num(f, "lowerTime", d.flagLowerTime);
 			d.flagHoldTime = num(f, "holdTime", d.flagHoldTime);
+		}
+		var sh:Dynamic = j.ship;
+		if (sh != null) {
+			d.shipHp = num(sh, "hp", d.shipHp);
+			d.boardRange = num(sh, "boardRange", d.boardRange);
+			d.healPerSecond = num(sh, "healPerSecond", d.healPerSecond);
+		}
+		var cn:Dynamic = j.cannon;
+		if (cn != null) {
+			d.cannonRange = num(cn, "range", d.cannonRange);
+			d.cannonMinRange = num(cn, "minRange", d.cannonMinRange);
+			d.cannonCooldown = num(cn, "cooldown", d.cannonCooldown);
+			d.cannonDamage = num(cn, "damage", d.cannonDamage);
+			d.cannonSplash = num(cn, "splash", d.cannonSplash);
+			d.cannonShipDamage = num(cn, "shipDamage", d.cannonShipDamage);
+			d.cannonHull = num(cn, "hullRadius", d.cannonHull);
+			d.cannonScatter = num(cn, "scatter", d.cannonScatter);
+			d.cannonScatterPerMetre = num(cn, "scatterPerMetre", d.cannonScatterPerMetre);
+			d.cannonBallSpeed = num(cn, "ballSpeed", d.cannonBallSpeed);
+			d.cannonBroadside = num(cn, "broadside", d.cannonBroadside);
 		}
 		current = d;
 	}

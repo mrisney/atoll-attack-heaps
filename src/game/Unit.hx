@@ -66,6 +66,8 @@ class Unit {
 	public var speedCap = 1e9;
 	/** Who last hurt this unit (unit id, -1 = no one): for testing and future UI. **/
 	public var lastHitBy = -1;
+	/** Heading back to this ship to board it (-1 = not). See Command.Board. **/
+	public var boarding = -1;
 	/** Captain only: seconds spent raising the flag at the apex. **/
 	public var flagProgress = 0.0;
 

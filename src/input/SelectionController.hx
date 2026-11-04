@@ -120,6 +120,8 @@ class SelectionController {
 
 	public function update(dt:Float) {
 		if (hxd.Key.isPressed(hxd.Key.X) && mouseX >= 0) blastAt(mouseX, mouseY);
+		// Esc drops the selection (so a click on your ship selects it rather than boarding).
+		if (hxd.Key.isPressed(hxd.Key.ESCAPE)) clearSelection();
 		// Touch: holding still turns the press into a box select.
 		if (mode == Pending && pressTouch) {
 			pressTime += dt;
@@ -229,6 +231,13 @@ class SelectionController {
 				clearSelection();
 				hit.selected = true;
 			}
+		} else if (shipHit != null && selectedIds().length > 0 && !additive) {
+			// Characters selected and you click your ship: back aboard (to heal).
+			sim.queue(Board(selectedIds(), shipHit.ship.id));
+			marker.setPosition(shipHit.x, shipHit.y, 0.5);
+			marker.setScale(2.2);
+			markerTime = 0;
+			marker.visible = true;
 		} else if (shipHit != null) {
 			if (!additive) clearSelection();
 			shipHit.selected = true;
@@ -310,7 +319,7 @@ class SelectionController {
 
 	public function selectedShip():Null<render.ShipView> {
 		for (s in ships)
-			if (s.selected) return s;
+			if (s.selected && !s.ship.sunk) return s;
 		return null;
 	}
 
@@ -322,7 +331,7 @@ class SelectionController {
 	/** Your own ship under the cursor (generous radius: it's a big target). **/
 	function pickShip(sx:Float, sy:Float):Null<render.ShipView> {
 		for (s in ships) {
-			if (s.ship.team != localTeam) continue;
+			if (s.ship.team != localTeam || s.ship.sunk) continue;
 			var p = s3d.camera.project(s.x, s.y, 1.5, s2d.width, s2d.height);
 			var dx = p.x - sx, dy = p.y - sy;
 			var r = PICK_RADIUS * 3;
@@ -367,7 +376,7 @@ class SelectionController {
 		// The ship only when the box caught no one on land (units are what you usually mean).
 		if (!any)
 			for (s in ships) {
-				if (s.ship.team != localTeam) continue;
+				if (s.ship.team != localTeam || s.ship.sunk) continue;
 				var p = s3d.camera.project(s.x, s.y, 1.5, s2d.width, s2d.height);
 				if (p.x >= minX && p.x <= maxX && p.y >= minY && p.y <= maxY) s.selected = true;
 			}

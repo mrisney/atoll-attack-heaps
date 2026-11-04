@@ -6,7 +6,7 @@ import render.Palette;
 	The battle's 2D layer, kept minimal like the rest of the game:
 
 	- a small health bar over a character once it's hurt (or when it's
-	  selected), in its team colour;
+	  selected), in its team colour, and a wider one over a holed ship;
 	- the flag going up: a progress bar over the apex while a captain raises it;
 	- the result: a banner when a side wins, with how.
 
@@ -75,6 +75,21 @@ class BattleOverlay extends h2d.Object {
 			g.endFill();
 			g.beginFill(u.team == 0 ? 0x6E9CDB : 0xDB7B6A, 1);
 			g.drawRect(p.x - bw / 2, p.y, bw * f, bh);
+			g.endFill();
+		}
+
+		// Ships: a wider bar over the mast once a ship is holed.
+		var sw = 54 * ui, sh = 5 * ui;
+		for (s in sim.ships) {
+			if (s.sunk || s.hp >= s.maxHp) continue;
+			var p = cam.project(s.x, s.y, 7.2, w, h);
+			if (p.z < 0 || p.z > 1) continue;
+			var f = Math.max(0, s.hp / s.maxHp);
+			g.beginFill(Palette.INK, 0.75);
+			g.drawRect(p.x - sw / 2 - ui, p.y - ui, sw + ui * 2, sh + ui * 2);
+			g.endFill();
+			g.beginFill(s.team == 0 ? 0x6E9CDB : 0xDB7B6A, 1);
+			g.drawRect(p.x - sw / 2, p.y, sw * f, sh);
 			g.endFill();
 		}
 

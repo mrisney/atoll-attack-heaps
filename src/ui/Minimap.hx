@@ -113,6 +113,7 @@ class Minimap extends h2d.Object {
 		// Ships: a small hull pointing along their heading.
 		overlay.lineStyle();
 		for (s in ships) {
+			if (s.sunk) continue;
 			var c = Math.cos(s.heading), sn = Math.sin(s.heading);
 			inline function pt(fx:Float, fy:Float) return toMap(s.x + c * fx - sn * fy, s.y + sn * fx + c * fy);
 			var a = pt(5, 0), b = pt(-4, 2), d = pt(-4, -2);
