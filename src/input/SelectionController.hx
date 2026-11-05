@@ -438,6 +438,19 @@ class SelectionController {
 		var ship = selectedShip();
 		if (ids.length == 0 && ship == null) return;
 		// Clicking an enemy is an attack order.
+		// A ship selected and an enemy clicked: the guns fire on him.
+		if (ship != null && ids.length == 0) {
+			var foe = pickUnit(sx, sy);
+			if (foe != null && foe.unit.team != ship.ship.team && foe.unit.alive && foe.unit.aboard < 0) {
+				for (s in ships)
+					if (s.selected && !s.ship.sunk) sim.queue(ShipFire(s.ship.id, foe.unit.id));
+				marker.setPosition(foe.x, foe.y, foe.z);
+				marker.setScale(2.4);
+				markerTime = 0;
+				marker.visible = true;
+				return;
+			}
+		}
 		if (ids.length > 0) {
 			var foe = pickUnit(sx, sy);
 			if (foe != null && foe.unit.team != localTeam) {

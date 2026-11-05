@@ -87,6 +87,8 @@
 	"cannon": {
 		"_rule": "Each ship fires one ball at a time from whichever broadside faces the target: enemy characters ashore (it prefers where they bunch up) or the enemy ship. Balls are lobbed, so they land where they were aimed: a character who walks on is missed. Accuracy falls with distance (scatter = scatter + scatterPerMetre x range), and nothing past range is fired at. At anchor a ship swings round to bring its guns to bear.",
 		"range": 40.0,
+		"orderedRange": 70.0,
+		"_orderedRange": "How far the guns reach when you pick the target (select the ship, click an enemy character). The scatter keeps growing with range, so at 70 m a ball lands up to about 6 m off: it's for breaking up a crowd or a captain at the flag, not picking off one man.",
 		"minRange": 6.0,
 		"_minRange": "Too close to depress the guns (and it would hit its own landing party).",
 		"cooldown": 4.5,

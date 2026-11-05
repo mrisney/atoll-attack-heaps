@@ -68,6 +68,8 @@ class Ship {
 	/** The tick a gun last fired, and which side (+1 port, -1 starboard), for the view. **/
 	public var lastShotTick = -1000;
 	public var lastShotSide = 1;
+	/** An enemy character the player told the guns to fire on (-1: they choose). **/
+	public var fireTarget = -1;
 
 	public function new(id:Int, team:Int, x:Float, y:Float, heading:Float) {
 		this.id = id;

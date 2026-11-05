@@ -19,6 +19,12 @@ enum Command {
 		land again with the ship's next landing order.
 	**/
 	Board(unitIds:Array<Int>, shipId:Int);
+	/**
+		The ship's guns take this enemy character as their target (out to
+		cannon.orderedRange), until it falls, goes aboard, or another target is
+		given. targetId -1 hands the guns back to their own choice.
+	**/
+	ShipFire(shipId:Int, targetId:Int);
 	/** Units go after this enemy, wherever it goes. **/
 	Attack(unitIds:Array<Int>, targetId:Int);
 	/** Walk toward (x, y) but fight whatever comes near on the way, then hold there. **/

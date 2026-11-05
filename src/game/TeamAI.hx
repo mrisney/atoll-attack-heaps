@@ -59,6 +59,12 @@ class TeamAI {
 			}
 		if (captain == null) return;
 
+		// The guns on an enemy captain working the flag, if he's within their reach.
+		if (ship != null && !ship.sunk && ship.fireTarget < 0)
+			for (u in sim.units)
+				if (u.alive && u.team != team && u.kind == Captain && u.aboard < 0 && u.flagProgress > 0
+					&& near(u.x, u.y, ship.x, ship.y, Directives.current.cannonOrderedRange)) sim.queue(ShipFire(ship.id, u.id));
+
 		// Badly hurt soldiers out of the fight, with the ship lying close: back aboard to mend.
 		if (ship != null && !ship.sunk && ship.state == Idle)
 			for (u in soldiers) {

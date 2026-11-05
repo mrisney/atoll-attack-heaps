@@ -18,6 +18,7 @@
 //   --autoland          the blue ship lands its crew at its home beach at once
 //   --blueai            a computer commander for blue too (watch AI vs AI)
 //   --bombard           once blue is ashore, its ship sails round to shell red's beach
+//   --key=Digit1        hold a key (Playwright key name), then a shot
 //   --naval             naval test: both ships out at sea, both selectable, nobody lands
 //   --gallery           line up one rigged figure per kind and take at the view centre
 //   --untiltick=750,1200   wait for these sim ticks (30/s) and take a shot at each
@@ -125,6 +126,15 @@ if (args.fly) {
     await page.waitForTimeout(2500);
     await shot(`-fly${k + 1}`);
   }
+}
+
+if (args.key) {
+  // --key=Digit1: hold a key long enough for a slow software-rendered frame to see it.
+  await page.keyboard.down(String(args.key));
+  await page.waitForTimeout(1500);
+  await page.keyboard.up(String(args.key));
+  await page.waitForTimeout(2000);
+  await shot("-key");
 }
 
 if (args.walk) {

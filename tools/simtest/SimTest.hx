@@ -35,6 +35,18 @@ class SimTest {
 				sim.queue(ShipTo(a.id, b.x, b.y + 6));
 				sim.queue(ShipTo(b.id, a.x, a.y - 6));
 			}
+			// -D shipfire: blue's ship fires on the nearest red character within its ordered range.
+			if (haxe.macro.Compiler.getDefine("shipfire") != null && sec >= 20 && sec % 5 == 0 && sim.winner < 0) {
+				var sh = sim.ships[0];
+				var best = null, bd = 1e9;
+				for (u in sim.units)
+					if (u.team == 1 && u.alive && u.aboard < 0) {
+						var d = Math.sqrt((u.x - sh.x) * (u.x - sh.x) + (u.y - sh.y) * (u.y - sh.y));
+						if (d < bd) { bd = d; best = u; }
+					}
+				if (best != null && sh.fireTarget < 0) sim.queue(ShipFire(sh.id, best.id));
+				Sys.println('  shipfire: target=${sh.fireTarget} nearest red ${r(bd)} m, shots=${sh.shots}, balls=${sim.cannonballs.length}');
+			}
 			if (naval && sec % 5 == 0 && sim.winner < 0)
 				Sys.println('  t=${sec}s ' + [for (s in sim.ships) 'ship${s.team} ${s.sunk ? "SUNK" : Std.string(s.state)}@(${r(s.x)},${r(s.y)}) hp=${Math.round(s.hp)} shots=${s.shots}'].join("  ") + '  gap=${r(Math.sqrt(Math.pow(sim.ships[0].x - sim.ships[1].x, 2) + Math.pow(sim.ships[0].y - sim.ships[1].y, 2)))}');
 			if (bombard && sec == 15) sim.queue(ShipTo(sim.ships[0].id, sim.homeBeach[1].x, sim.homeBeach[1].y));

@@ -15,6 +15,8 @@ import render.Palette;
 **/
 class BattleOverlay extends h2d.Object {
 	public var ui = 1.0;
+	/** The ship the player has selected (its gun ranges are drawn), or null. **/
+	public var selectedShip:Null<game.Ship> = null;
 
 	final g:h2d.Graphics;
 	final banner:h2d.Text;
@@ -76,6 +78,44 @@ class BattleOverlay extends h2d.Object {
 			g.beginFill(u.team == 0 ? 0x6E9CDB : 0xDB7B6A, 1);
 			g.drawRect(p.x - bw / 2, p.y, bw * f, bh);
 			g.endFill();
+		}
+
+		// A selected ship: the reach of its guns (its own choice inside, yours out to
+		// the outer ring), and a cross-hair on the character you told it to fire on.
+		if (selectedShip != null && !selectedShip.sunk) {
+			var dd = game.Directives.current;
+			for (ring in [dd.cannonRange, dd.cannonOrderedRange]) {
+				g.lineStyle(1.6 * ui, 0xF2E6B0, ring == dd.cannonRange ? 0.55 : 0.3);
+				var first = true;
+				for (k in 0...73) {
+					var a = k / 72 * Math.PI * 2;
+					var wx = selectedShip.x + Math.cos(a) * ring, wy = selectedShip.y + Math.sin(a) * ring;
+					var p = cam.project(wx, wy, Math.max(sim.island.heightAt(wx, wy), 0) + 0.3, w, h);
+					if (p.z < 0 || p.z > 1) {
+						first = true;
+						continue;
+					}
+					if (first) g.moveTo(p.x, p.y) else g.lineTo(p.x, p.y);
+					first = false;
+				}
+			}
+			g.lineStyle();
+		}
+		for (s in sim.ships) {
+			if (s.sunk || s.fireTarget < 0) continue;
+			var t = sim.getUnit(s.fireTarget);
+			if (t == null || !t.alive) continue;
+			var p = cam.project(t.x, t.y, sim.island.heightAt(t.x, t.y) + 0.9, w, h);
+			if (p.z < 0 || p.z > 1) continue;
+			var r = 11 * ui;
+			g.lineStyle(2 * ui, s.team == 0 ? 0x9CC2F0 : 0xF0A898, 0.95);
+			arc(p.x, p.y, r, 0, Math.PI * 2);
+			for (k in 0...4) {
+				var a = k * Math.PI / 2;
+				g.moveTo(p.x + Math.cos(a) * r * 0.6, p.y + Math.sin(a) * r * 0.6);
+				g.lineTo(p.x + Math.cos(a) * r * 1.5, p.y + Math.sin(a) * r * 1.5);
+			}
+			g.lineStyle();
 		}
 
 		// Ships: a wider bar over the mast once a ship is holed.

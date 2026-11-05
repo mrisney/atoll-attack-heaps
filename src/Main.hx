@@ -405,6 +405,8 @@ class Main extends hxd.App {
 		arrowsView.syncFromSim();
 		cannonView.syncFromSim(dt);
 		flagView.syncFromSim(dt);
+		var ss = selection.selectedShip();
+		battle.selectedShip = ss == null ? null : ss.ship;
 		battle.update(sim, unitViews, s3d.camera, s2d.width, s2d.height);
 		selection.update(dt);
 		controls.update(dt, s2d.width, s2d.height);

@@ -50,6 +50,7 @@ class Directives {
 	public var boardRange = 20.0;
 	public var healPerSecond = 6.0;
 	public var cannonRange = 40.0;
+	public var cannonOrderedRange = 70.0;
 	public var cannonMinRange = 6.0;
 	public var cannonCooldown = 4.5;
 	public var cannonDamage = 45.0;
@@ -145,6 +146,7 @@ class Directives {
 		var cn:Dynamic = j.cannon;
 		if (cn != null) {
 			d.cannonRange = num(cn, "range", d.cannonRange);
+			d.cannonOrderedRange = num(cn, "orderedRange", d.cannonOrderedRange);
 			d.cannonMinRange = num(cn, "minRange", d.cannonMinRange);
 			d.cannonCooldown = num(cn, "cooldown", d.cannonCooldown);
 			d.cannonDamage = num(cn, "damage", d.cannonDamage);

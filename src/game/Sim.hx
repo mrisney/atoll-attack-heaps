@@ -340,6 +340,10 @@ class Sim {
 					u.guardX = u.x;
 					u.guardY = u.y;
 				}
+			case ShipFire(shipId, targetId):
+				var s = getShip(shipId);
+				var t = getUnit(targetId);
+				if (s != null && !s.sunk) s.fireTarget = (t != null && t.team != s.team) ? t.id : -1;
 			case Board(ids, shipId):
 				var s = getShip(shipId);
 				if (s == null || s.sunk) return;
@@ -1211,7 +1215,17 @@ class Sim {
 			if (offBeam(s, c.x, c.y) <= arc && (bestInArc == null || c.score > bestInArc.score)) bestInArc = c;
 		}
 		var splash2 = d.cannonSplash * d.cannonSplash;
-		for (u in units) {
+		// The player's pick comes first, out to the longer ordered range.
+		var ft = s.fireTarget >= 0 ? getUnit(s.fireTarget) : null;
+		if (ft != null && (!ft.alive || ft.aboard >= 0)) {
+			s.fireTarget = -1;
+			ft = null;
+		}
+		if (ft != null) {
+			var r = Math.sqrt((ft.x - s.x) * (ft.x - s.x) + (ft.y - s.y) * (ft.y - s.y));
+			if (r <= d.cannonOrderedRange && r >= d.cannonMinRange) consider({x: ft.x, y: ft.y, vx: 0, vy: 0, score: 1000});
+		}
+		if (ft == null) for (u in units) {
 			if (!u.alive || u.aboard >= 0 || u.team == s.team) continue;
 			var r = Math.sqrt((u.x - s.x) * (u.x - s.x) + (u.y - s.y) * (u.y - s.y));
 			if (r > d.cannonRange || r < d.cannonMinRange) continue;
@@ -1221,7 +1235,7 @@ class Sim {
 				if (v.alive && v.aboard < 0 && v.team != s.team && (v.x - u.x) * (v.x - u.x) + (v.y - u.y) * (v.y - u.y) < splash2) crowd++;
 			consider({x: u.x, y: u.y, vx: 0, vy: 0, score: crowd * 8 - r * 0.3});
 		}
-		for (o in ships) {
+		if (ft == null) for (o in ships) {
 			if (o.team == s.team || o.sunk) continue;
 			var r = Math.sqrt((o.x - s.x) * (o.x - s.x) + (o.y - s.y) * (o.y - s.y));
 			if (r > d.cannonRange) continue;

@@ -103,6 +103,13 @@ to the flag); player orders always override it.
   other (`closingOn`: moves that close inside `SHIP_GAP` are refused, moves
   apart never are, or two ships meeting bow to bow locked together). A ship
   sunk with its captain aboard loses the match ("sunk").
+  **Aimed fire** (owner: "the ship should be able to fire upon the
+  characters"; its own choice only reached 40 m, short of the summit):
+  select your ship and click an enemy character (`Command.ShipFire`); the
+  guns take him as their target out to `cannon.orderedRange` (70 m, scatter
+  ~6 m there) until he falls or goes aboard. A selected ship shows both
+  ranges as rings and a cross-hair on its target (`BattleOverlay`). The
+  commander fires on an enemy captain working the flag.
   **Naval test** (`?naval=1`, owner wanted to try ship battles): both ships
   start out past the island's edge on the same side, ~50 m apart, crews
   aboard; no landing, no computer commander; either ship can be selected
