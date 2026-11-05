@@ -99,7 +99,16 @@ to the flag); player orders always override it.
   0 hp sinks with everyone aboard (`Sim.sink`). `Sim.impacts` is a short
   log the view reads (by id) for spray, dust, craters and splinters
   (`render/CannonView`). Ships usually lie off their own beaches, so the
-  guns cover landings rather than the summit. `?bombard=1` sends blue's
+  guns cover landings rather than the summit. Ships steer round each
+  other (`closingOn`: moves that close inside `SHIP_GAP` are refused, moves
+  apart never are, or two ships meeting bow to bow locked together). A ship
+  sunk with its captain aboard loses the match ("sunk").
+  **Naval test** (`?naval=1`, owner wanted to try ship battles): both ships
+  start out past the island's edge on the same side, ~50 m apart, crews
+  aboard; no landing, no computer commander; either ship can be selected
+  (click, Shift-click, or keys 1/2) and sailed; several selected ships sail
+  side by side. SimTest `-D naval` has them pass broadside every 20 s.
+  `?bombard=1` sends blue's
   ship round to red's beach once its crew is ashore (SimTest `-D bombard`;
   `-D heal` tests boarding).
 - **Combat** (`game/Rules.hx` for all numbers, `Sim.think` for the per-unit

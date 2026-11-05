@@ -13,15 +13,30 @@ class SimTest {
 		var seed = Std.parseInt(haxe.macro.Compiler.getDefine("seed") ?? "5095");
 		game.Directives.load(sys.io.File.getContent("res/data/directives.json"));
 		var island = new world.Island(seed, Single);
-		var sim = new game.Sim(island);
-		sim.teamAIs.push(new game.TeamAI(sim, 0));
-		sim.queue(ShipTo(sim.ships[0].id, sim.homeBeach[0].x, sim.homeBeach[0].y));
+		var naval = haxe.macro.Compiler.getDefine("naval") != null;
+		var sim = new game.Sim(island, naval);
+		if (!naval) sim.teamAIs.push(new game.TeamAI(sim, 0));
+		if (naval) {
+			// Sail at each other, a little apart, so they pass broadside to broadside.
+			var a = sim.ships[0], b = sim.ships[1];
+			sim.queue(ShipTo(a.id, b.x, b.y + 6));
+			sim.queue(ShipTo(b.id, a.x, a.y - 6));
+		} else
+			sim.queue(ShipTo(sim.ships[0].id, sim.homeBeach[0].x, sim.homeBeach[0].y));
 		// Scenarios: -D bombard sends blue's ship round to red's beach once its crew is
 		// ashore (ship duel, shelling the landing); -D heal sends blue's wounded back aboard.
 		var bombard = haxe.macro.Compiler.getDefine("bombard") != null;
 		var healTest = haxe.macro.Compiler.getDefine("heal") != null;
 		var cannonKills = 0;
 		for (sec in 0...241) {
+			// Naval: come about and pass again every 20 s, like a player would.
+			if (naval && sec > 0 && sec % 20 == 0) {
+				var a = sim.ships[0], b = sim.ships[1];
+				sim.queue(ShipTo(a.id, b.x, b.y + 6));
+				sim.queue(ShipTo(b.id, a.x, a.y - 6));
+			}
+			if (naval && sec % 5 == 0 && sim.winner < 0)
+				Sys.println('  t=${sec}s ' + [for (s in sim.ships) 'ship${s.team} ${s.sunk ? "SUNK" : Std.string(s.state)}@(${r(s.x)},${r(s.y)}) hp=${Math.round(s.hp)} shots=${s.shots}'].join("  ") + '  gap=${r(Math.sqrt(Math.pow(sim.ships[0].x - sim.ships[1].x, 2) + Math.pow(sim.ships[0].y - sim.ships[1].y, 2)))}');
 			if (bombard && sec == 15) sim.queue(ShipTo(sim.ships[0].id, sim.homeBeach[1].x, sim.homeBeach[1].y));
 			if (healTest && sec == 12) {
 				// Wound four soldiers (test harness only) and send them back aboard.

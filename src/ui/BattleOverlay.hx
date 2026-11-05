@@ -154,6 +154,7 @@ class BattleOverlay extends h2d.Object {
 			var how = switch sim.winReason {
 				case "flag": "Their flag held the summit for " + Std.int(game.Rules.FLAG_HOLD_TIME) + " seconds.";
 				case "captain": "The enemy captain has fallen.";
+				case "sunk": "Their ship went down with the captain aboard.";
 				default: "The enemy crew is gone.";
 			};
 			sub.text = how + "   R: new island";

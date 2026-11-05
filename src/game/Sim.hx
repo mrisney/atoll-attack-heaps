@@ -59,11 +59,35 @@ class Sim {
 	var accumulator = 0.0;
 	var nextId = 1;
 
-	public function new(island:Island) {
+	/**
+		`naval`: a test of ships alone. Both ships start well out at sea on the
+		same side of the island, a little out of gun range of each other, with
+		their crews aboard; nobody lands by themselves and there's no computer
+		commander (the player sails both: `?naval=1`).
+	**/
+	public function new(island:Island, naval = false) {
 		this.island = island;
 		nav = new world.NavGrid(island);
 		spawnTeam(0, Math.PI * 0.25);
 		spawnTeam(1, Math.PI * 1.25);
+		if (naval) {
+			// Out past the island's edge (the map, and the minimap, end just beyond).
+			var r = island.halfExtent * 1.08;
+			for (k in 0...2) {
+				var s = ships[k];
+				var a = Math.PI * 0.25 + (k == 0 ? -0.36 : 0.36);
+				s.x = Math.cos(a) * r;
+				s.y = Math.sin(a) * r;
+				// Bow pointing along the coast, toward the other ship.
+				s.heading = a + (k == 0 ? Math.PI / 2 : -Math.PI / 2);
+				for (id in s.crew) {
+					var u = getUnit(id);
+					u.x = s.x;
+					u.y = s.y;
+				}
+			}
+			return;
+		}
 		// The red side's ship heads straight for its beach. (A real computer
 		// opponent comes with combat; for now it just lands.)
 		var red = ships[1];
@@ -981,6 +1005,21 @@ class Sim {
 		return false;
 	}
 
+	/**
+		Would moving to (nx, ny) bring the ship closer to another inside SHIP_GAP?
+		Moving away (or past) is always allowed, or two ships that met bow to bow
+		would be stuck together.
+	**/
+	function closingOn(s:Ship, nx:Float, ny:Float):Bool {
+		for (o in ships) {
+			if (o == s || o.sunk) continue;
+			var d1 = (o.x - nx) * (o.x - nx) + (o.y - ny) * (o.y - ny);
+			var d0 = (o.x - s.x) * (o.x - s.x) + (o.y - s.y) * (o.y - s.y);
+			if (d1 < SHIP_GAP * SHIP_GAP && d1 < d0) return true;
+		}
+		return false;
+	}
+
 	/** Radius of a circle round the island that's deep water all the way (-1: none). **/
 	var seaRingR = 0.0;
 
@@ -1279,11 +1318,17 @@ class Sim {
 		s.hp = 0;
 		s.speed = 0;
 		s.state = Idle;
+		var captain = false;
 		for (id in s.crew) {
 			var u = getUnit(id);
-			if (u != null && u.alive) kill(u, s.x, s.y);
+			if (u != null && u.alive) {
+				u.lastHitBy = CANNON;
+				if (u.kind == Captain) captain = true;
+				kill(u, s.x, s.y);
+			}
 		}
 		s.crew.resize(0);
+		if (captain) win(1 - s.team, "sunk");
 	}
 
 	/**
@@ -1318,6 +1363,12 @@ class Sim {
 				s.state = Idle;
 			return;
 		}
+		// Sent to where another ship lies: as close as it can get is close enough.
+		if (!routed && dist < SHIP_GAP + 3 && shipNear(s, s.x + dx, s.y + dy, SHIP_GAP)) {
+			s.state = Idle;
+			s.landOnArrival = false;
+			return;
+		}
 		var want = Math.atan2(dy, dx);
 		var chosen:Null<Float> = null;
 		for (k in 0...13) {
@@ -1329,7 +1380,9 @@ class Sim {
 			var step = 1.5;
 			var t = step;
 			while (t <= look) {
-				if (!deep(s.x + Math.cos(h) * t, s.y + Math.sin(h) * t)) {
+				var px = s.x + Math.cos(h) * t, py = s.y + Math.sin(h) * t;
+				// Shallows, or another ship in the way: steer round both.
+				if (!deep(px, py) || closingOn(s, px, py)) {
 					ok = false;
 					break;
 				}
@@ -1358,7 +1411,7 @@ class Sim {
 		s.speed += clamp(target - s.speed, -2.5 * TICK, 1.2 * TICK);
 		var nx = s.x + Math.cos(s.heading) * s.speed * TICK;
 		var ny = s.y + Math.sin(s.heading) * s.speed * TICK;
-		if (deep(nx, ny) && !shipNear(s, nx, ny, SHIP_GAP)) {
+		if (deep(nx, ny) && !closingOn(s, nx, ny)) {
 			s.x = nx;
 			s.y = ny;
 		} else

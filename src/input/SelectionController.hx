@@ -41,6 +41,8 @@ class SelectionController {
 	final box:h2d.Graphics;
 
 	public var localTeam = 0;
+	/** Naval test: either side's ship can be selected and sailed (1 / 2 pick them). **/
+	public var anyTeamShips = false;
 	/** Ships (set by Main): click your ship to select it, then click a beach to land there. **/
 	public var ships:Array<render.ShipView> = [];
 	/** Returns true when a point is over on-screen UI, so taps there aren't orders. **/
@@ -122,6 +124,15 @@ class SelectionController {
 		if (hxd.Key.isPressed(hxd.Key.X) && mouseX >= 0) blastAt(mouseX, mouseY);
 		// Esc drops the selection (so a click on your ship selects it rather than boarding).
 		if (hxd.Key.isPressed(hxd.Key.ESCAPE)) clearSelection();
+		// Naval test: 1 selects the blue ship, 2 the red one (Shift adds).
+		if (anyTeamShips)
+			for (k in 0...2)
+				if (hxd.Key.isPressed(hxd.Key.NUMBER_1 + k))
+					for (s in ships)
+						if (s.ship.team == k && !s.ship.sunk) {
+							if (!hxd.Key.isDown(hxd.Key.SHIFT)) clearSelection();
+							s.selected = true;
+						}
 		// Touch: holding still turns the press into a box select.
 		if (mode == Pending && pressTouch) {
 			pressTime += dt;
@@ -323,6 +334,22 @@ class SelectionController {
 		return null;
 	}
 
+	/** Sail every selected ship there (two in the naval test, side by side). **/
+	function orderShips(x:Float, y:Float) {
+		var sel = [for (s in ships) if (s.selected && !s.ship.sunk) s];
+		for (k in 0...sel.length) {
+			// More than one: spread them across the line of travel so they don't collide.
+			var off = (k - (sel.length - 1) / 2) * 12;
+			var s = sel[k].ship;
+			var dx = x - s.x, dy = y - s.y;
+			var l = Math.max(Math.sqrt(dx * dx + dy * dy), 0.01);
+			sim.queue(ShipTo(s.id, x - dy / l * off, y + dx / l * off));
+		}
+	}
+
+	inline function shipSelectable(s:render.ShipView):Bool
+		return !s.ship.sunk && (s.ship.team == localTeam || anyTeamShips);
+
 	function clearSelection() {
 		for (v in views) v.selected = false;
 		for (s in ships) s.selected = false;
@@ -331,7 +358,7 @@ class SelectionController {
 	/** Your own ship under the cursor (generous radius: it's a big target). **/
 	function pickShip(sx:Float, sy:Float):Null<render.ShipView> {
 		for (s in ships) {
-			if (s.ship.team != localTeam || s.ship.sunk) continue;
+			if (!shipSelectable(s)) continue;
 			var p = s3d.camera.project(s.x, s.y, 1.5, s2d.width, s2d.height);
 			var dx = p.x - sx, dy = p.y - sy;
 			var r = PICK_RADIUS * 3;
@@ -376,7 +403,7 @@ class SelectionController {
 		// The ship only when the box caught no one on land (units are what you usually mean).
 		if (!any)
 			for (s in ships) {
-				if (s.ship.team != localTeam || s.ship.sunk) continue;
+				if (!shipSelectable(s)) continue;
 				var p = s3d.camera.project(s.x, s.y, 1.5, s2d.width, s2d.height);
 				if (p.x >= minX && p.x <= maxX && p.y >= minY && p.y <= maxY) s.selected = true;
 			}
@@ -396,7 +423,7 @@ class SelectionController {
 	public function orderMoveWorld(x:Float, y:Float) {
 		var ids = selectedIds();
 		var ship = selectedShip();
-		if (ship != null) sim.queue(ShipTo(ship.ship.id, x, y));
+		if (ship != null) orderShips(x, y);
 		if (ids.length == 0 && ship == null) return;
 		if (ids.length > 0) sim.queue(Move(ids, x, y));
 		notifyOrder(x, y);
@@ -425,7 +452,7 @@ class SelectionController {
 		var hit = groundAt(sx, sy);
 		if (hit == null) return;
 		// The ship sails there (or lands its crew there, if it's land).
-		if (ship != null) sim.queue(ShipTo(ship.ship.id, hit.x, hit.y));
+		if (ship != null) orderShips(hit.x, hit.y);
 		if (ids.length > 0) sim.queue(Move(ids, hit.x, hit.y));
 		notifyOrder(hit.x, hit.y);
 		marker.setPosition(hit.x, hit.y, Math.max(hit.z, 0));

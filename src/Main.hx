@@ -106,7 +106,7 @@ class Main extends hxd.App {
 		island = new Island(seed, shape);
 		// The characters' directives and numbers (res/data/directives.json).
 		game.Directives.load(hxd.Res.load("data/directives.json").toText());
-		sim = new Sim(island);
+		sim = new Sim(island, navalTest);
 		islandView = new IslandView(island, s3d);
 		applyStyle();
 		for (u in sim.units) unitViews.push(new UnitView(u, island.heightAt, s3d));
@@ -118,6 +118,7 @@ class Main extends hxd.App {
 		var docks = islandView.addLandings(sim.homeBeach);
 		selection = new SelectionController(sim, unitViews, s3d, s2d, rtsCam);
 		selection.ships = shipViews;
+		selection.anyTeamShips = navalTest;
 		// Debug (?autoland=1): land the blue crew at its home beach straight away.
 		if (autoLand) sim.queue(ShipTo(sim.ships[0].id, sim.homeBeach[0].x, sim.homeBeach[0].y));
 		// Debug (?blueai=1): a computer commander for blue too, to watch AI vs AI.
@@ -150,6 +151,14 @@ class Main extends hxd.App {
 		rtsCam.targetX = blue.x * 0.7 + sim.homeBeach[0].x * 0.3;
 		rtsCam.targetY = blue.y * 0.7 + sim.homeBeach[0].y * 0.3;
 		rtsCam.bounds = island.halfExtent;
+		if (navalTest) {
+			// Between the two ships, out at sea, with room to sail about.
+			var red = sim.ships[1];
+			rtsCam.targetX = (blue.x + red.x) / 2;
+			rtsCam.targetY = (blue.y + red.y) / 2;
+			rtsCam.bounds = island.halfExtent * 1.6;
+			rtsCam.distance = Math.max(rtsCam.distance, 85);
+		}
 		rtsCam.snap();
 
 		// Again now that the 2D UI exists (the minimap filter and overlay depend on the style).
@@ -210,7 +219,8 @@ class Main extends hxd.App {
 		hud.text = 'ATOLL ATTACK  ·  seed $seed  ·  ${shape} island  ·  ${style} style  ${currentWeather() == null ? "" : "  ·  " + currentWeather()}\n'
 			+ 'Drag: select   Click/RMB: move   Shift: add   Minimap: click to fly, right-click to send units\n'
 			+ 'Pan: right/middle-drag, trackpad swipe, WASD (Shift = fast), edges   Zoom: wheel/pinch/+ -   Q/E: rotate   Space: recentre\n'
-			+ 'R: new island   G: island shape   T: visual style   I: ink lines   B: tilt-shift   P: trees (3D / sprite / low-poly)   C: weather   X: blast at cursor (test)';
+			+ 'R: new island   G: island shape   T: visual style   I: ink lines   B: tilt-shift   P: trees (3D / sprite / low-poly)   C: weather   X: blast at cursor (test)'
+			+ (navalTest ? '\nNAVAL TEST   1: blue ship   2: red ship   (or click a ship; Shift adds)   click the sea to sail   guns fire by themselves off the broadsides' : '');
 	}
 
 	var frames = 0;
@@ -223,6 +233,8 @@ class Main extends hxd.App {
 	/** Debug (?bombard=1): once blue is ashore its ship sails round to shell red's beach. **/
 	var bombard = false;
 	var bombardSent = false;
+	/** Test (?naval=1): both ships out at sea, both yours to sail, nobody lands. **/
+	var navalTest = false;
 	var lastStamp = -1.0;
 
 	/**
@@ -252,6 +264,7 @@ class Main extends hxd.App {
 		autoLand = q.has("autoland");
 		blueAI = q.has("blueai");
 		bombard = q.has("bombard");
+		navalTest = q.has("naval");
 		if (q.has("catchup")) Sim.maxCatchUp = Std.parseFloat(q.get("catchup"));
 		if (q.has("blades")) GrassField.defaultBlades = Std.parseInt(q.get("blades"));
 		if (q.has("depth")) GrassField.defaultDepth = Std.parseFloat(q.get("depth"));

@@ -18,6 +18,7 @@
 //   --autoland          the blue ship lands its crew at its home beach at once
 //   --blueai            a computer commander for blue too (watch AI vs AI)
 //   --bombard           once blue is ashore, its ship sails round to shell red's beach
+//   --naval             naval test: both ships out at sea, both selectable, nobody lands
 //   --gallery           line up one rigged figure per kind and take at the view centre
 //   --untiltick=750,1200   wait for these sim ticks (30/s) and take a shot at each
 //   --after=12          after everything else, wait this many seconds and take one more shot
@@ -74,6 +75,7 @@ if (args.weather) params.set("weather", args.weather);
 if (args.autoland) params.set("autoland", "1");
 if (args.blueai) params.set("blueai", "1");
 if (args.bombard) params.set("bombard", "1");
+if (args.naval) params.set("naval", "1");
 // Software rendering is slow (seconds per frame); let the sim catch up to real time.
 params.set("catchup", args.catchup ?? "10");
 const url = `file://${join(root, "bin", "index.html")}?${params}`;
