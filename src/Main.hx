@@ -135,6 +135,8 @@ class Main extends hxd.App {
 			battle = new ui.BattleOverlay(s2d);
 			battle.ui = uiScale;
 		}
+		// The naval test shows more sea round the island (the ships start out past its edge).
+		minimap.range = navalTest ? 1.4 : 1.0;
 		minimap.setIsland(island, sim.units, sim.ships);
 		drafting.setIsland(island, [
 			for (k in 0...docks.length)
@@ -143,6 +145,7 @@ class Main extends hxd.App {
 		drafting.visible = style == Sketch;
 		selection.onOrder = drafting.addDimension;
 		minimap.onCommand = selection.orderMoveWorld;
+		minimap.shipsOnly = () -> selection.selectedShip() != null && selection.selectedIds().length == 0;
 		selection.uiHitTest = (x, y) -> controls.hitTest(x, y) || minimap.hitTest(x, y);
 		selection.onBlast = (x, y) -> islandView.decals.crater(x, y, 2.6);
 
@@ -220,7 +223,7 @@ class Main extends hxd.App {
 			+ 'Drag: select   Click/RMB: move   Shift: add   Minimap: click to fly, right-click to send units\n'
 			+ 'Pan: right/middle-drag, trackpad swipe, WASD (Shift = fast), edges   Zoom: wheel/pinch/+ -   Q/E: rotate   Space: recentre\n'
 			+ 'R: new island   G: island shape   T: visual style   I: ink lines   B: tilt-shift   P: trees (3D / sprite / low-poly)   C: weather   X: blast at cursor (test)'
-			+ (navalTest ? '\nNAVAL TEST   1: blue ship   2: red ship   (or click a ship; Shift adds)   click the sea to sail   guns fire by themselves off the broadsides' : '');
+			+ (navalTest ? '\nNAVAL TEST   1: blue ship   2: red ship   (or click a ship; Shift adds)   click the sea or the minimap to sail   guns fire by themselves off the broadsides' : '');
 	}
 
 	var frames = 0;

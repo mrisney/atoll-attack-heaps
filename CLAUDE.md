@@ -108,6 +108,11 @@ to the flag); player orders always override it.
   aboard; no landing, no computer commander; either ship can be selected
   (click, Shift-click, or keys 1/2) and sailed; several selected ships sail
   side by side. SimTest `-D naval` has them pass broadside every 20 s.
+  The minimap shows more sea there (`Minimap.range` 1.4). With only ships
+  selected, a left click on the minimap sails them there (otherwise it
+  flies the camera; right-click always orders); a cross marks where each
+  ship is heading. The camera zooms out to 170 m (`RtsCamera.maxDistance`,
+  was 95; the owner asked to zoom out further).
   `?bombard=1` sends blue's
   ship round to red's beach once its crew is ashore (SimTest `-D bombard`;
   `-D heal` tests boarding).

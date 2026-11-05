@@ -21,7 +21,8 @@ class RtsCamera {
 	public var pitch = 0.95; // radians above the horizon
 
 	public var minDistance = 14.0;
-	public var maxDistance = 95.0;
+	/** Far enough to see both ships and the island together (the owner asked to zoom out further). **/
+	public var maxDistance = 170.0;
 	public var bounds = 80.0;
 	public var edgeScroll = true;
 	/** Higher = snappier easing. **/

@@ -7,7 +7,9 @@ import render.Palette;
 	camera's current view as an outline.
 
 	- Click or drag (left button / one finger) to fly the camera there.
-	- Right-click to send the selected units there.
+	- Right-click to send the selected units (or ship) there.
+	- With a ship selected (and no one ashore selected), a left click sails
+	  it there too; its destination shows as a small cross.
 
 	North-up: world +X is right, world +Y is up.
 **/
@@ -27,6 +29,10 @@ class Minimap extends h2d.Object {
 
 	/** Called with a world position on right-click. **/
 	public var onCommand:Null<(Float, Float) -> Void> = null;
+	/** True when only ships are selected: then a left click orders them too. **/
+	public var shipsOnly:Null<() -> Bool> = null;
+	/** How much sea round the island it shows, in island half-extents (1 = the map's edge). **/
+	public var range = 1.0;
 
 	public function new(camera:input.RtsCamera, ?parent:h2d.Object) {
 		super(parent);
@@ -46,7 +52,7 @@ class Minimap extends h2d.Object {
 		hit = new h2d.Interactive(SIZE, SIZE, this);
 		hit.cursor = Default;
 		hit.onPush = function(e) {
-			if (e.button == 1) {
+			if (e.button == 1 || (e.button == 0 && shipsOnly != null && shipsOnly())) {
 				var w = toWorld(e.relX, e.relY);
 				if (onCommand != null) onCommand(w.x, w.y);
 				return;
@@ -68,7 +74,7 @@ class Minimap extends h2d.Object {
 		this.units = units;
 		var res = 128;
 		var px = hxd.Pixels.alloc(res, res, RGBA);
-		var he = island.halfExtent;
+		var he = island.halfExtent * range;
 		var tSand = world.Island.classicHeight(0.39), tLow = world.Island.classicHeight(0.54), tUp = world.Island.classicHeight(0.70);
 		for (j in 0...res)
 			for (i in 0...res) {
@@ -110,6 +116,16 @@ class Minimap extends h2d.Object {
 				overlay.lineTo(p.x, p.y);
 			}
 		}
+		// Where ships are sailing to: a small cross in their colour.
+		for (s in ships) {
+			if (s.sunk || s.state != Sailing) continue;
+			var t = toMap(s.tx, s.ty);
+			overlay.lineStyle(1.6, s.team == 0 ? 0x5B8FD6 : 0xD66A5B, 0.95);
+			overlay.moveTo(t.x - 3.5, t.y - 3.5);
+			overlay.lineTo(t.x + 3.5, t.y + 3.5);
+			overlay.moveTo(t.x - 3.5, t.y + 3.5);
+			overlay.lineTo(t.x + 3.5, t.y - 3.5);
+		}
 		// Ships: a small hull pointing along their heading.
 		overlay.lineStyle();
 		for (s in ships) {
@@ -147,7 +163,7 @@ class Minimap extends h2d.Object {
 	}
 
 	inline function extent()
-		return island == null ? 60.0 : island.halfExtent;
+		return island == null ? 60.0 : island.halfExtent * range;
 
 	function toMap(wx:Float, wy:Float):{x:Float, y:Float} {
 		var he = extent();
