@@ -25,6 +25,7 @@ class Main extends hxd.App {
 	var cannonView:Null<render.CannonView>;
 	var flagView:Null<render.FlagView>;
 	var battle:Null<ui.BattleOverlay>;
+	var unitCard:Null<ui.UnitCard>;
 	var rtsCam:RtsCamera;
 	var selection:SelectionController;
 	var hud:h2d.Text;
@@ -134,6 +135,8 @@ class Main extends hxd.App {
 			minimap.setScale(uiScale);
 			battle = new ui.BattleOverlay(s2d);
 			battle.ui = uiScale;
+			unitCard = new ui.UnitCard(s2d);
+			unitCard.ui = uiScale;
 		}
 		// The naval test shows more sea round the island (the ships start out past its edge).
 		minimap.range = navalTest ? 1.4 : 1.0;
@@ -391,6 +394,14 @@ class Main extends hxd.App {
 		// For automation (scripts/snapshot.mjs): where the ships are and what they're doing.
 		js.Syntax.code("window.atollSim = {0}", 'tick=${sim.tick} winner=${sim.winner}@${sim.winTick} firstflag=${sim.firstFlagTick} flag=${sim.flagTeam}:${Math.round(sim.flagHeld)} ' + [for (sh in sim.ships) 'ship${sh.team}:${sh.sunk ? "SUNK" : Std.string(sh.state)}@${Math.round(sh.x)},${Math.round(sh.y)} crew=${sh.crew.length} hp=${Math.round(sh.hp)} shots=${sh.shots}'].join(" ")
 			+ ' red:' + [for (u in sim.units) if (u.team == 1 && u.alive) '${Math.round(u.x)},${Math.round(u.y)}${u.ordered ? "o" : ""}${u.targetId >= 0 ? "t" : ""}'].join(" "));
+		// Automation: select the first N blue characters ashore (snapshot.mjs --select=N),
+		// to see the unit card (1) or the group panel (several).
+		var pick:Null<Int> = js.Syntax.code("window.atollSelect");
+		if (pick != null) {
+			js.Syntax.code("window.atollSelect = undefined");
+			var n = 0;
+			for (v in unitViews) v.selected = v.unit.team == 0 && v.unit.alive && v.unit.aboard < 0 && n++ < pick;
+		}
 		#end
 		if (bombard && !bombardSent && sim.tick > 90 && sim.ships[0].crew.length == 0) {
 			bombardSent = true;
@@ -411,6 +422,11 @@ class Main extends hxd.App {
 		selection.update(dt);
 		controls.update(dt, s2d.width, s2d.height);
 		minimap.update(s2d.width, s2d.height);
+		// The unit card / group panel, beside the minimap.
+		var hv = selection.hoveredUnit(), hs = selection.hoveredShip();
+		var sel = [for (v in unitViews) if (v.selected && v.unit.alive) v.unit];
+		unitCard.update(dt, hv == null ? null : hv.unit, hs == null ? null : hs.ship, sel, ss == null ? null : ss.ship,
+			(18 + ui.Minimap.SIZE + 14) * uiScale, s2d.height - 15 * uiScale);
 		drafting.update(dt, s2d.width, s2d.height);
 	}
 

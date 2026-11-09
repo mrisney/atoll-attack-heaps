@@ -18,6 +18,7 @@
 //   --autoland          the blue ship lands its crew at its home beach at once
 //   --blueai            a computer commander for blue too (watch AI vs AI)
 //   --bombard           once blue is ashore, its ship sails round to shell red's beach
+//   --select=1,8        select the first N blue characters ashore, a shot for each
 //   --key=Digit1        hold a key (Playwright key name), then a shot
 //   --naval             naval test: both ships out at sea, both selectable, nobody lands
 //   --gallery           line up one rigged figure per kind and take at the view centre
@@ -137,18 +138,6 @@ if (args.key) {
   await shot("-key");
 }
 
-if (args.walk) {
-  // The camera starts on the blue squad: box-select around the centre, then
-  // right-click further up the screen to send them walking.
-  await page.mouse.move(width * 0.3, height * 0.25);
-  await page.mouse.down();
-  await page.mouse.move(width * 0.7, height * 0.75, { steps: 8 });
-  await page.mouse.up();
-  await page.mouse.click(width * 0.5, height * 0.2, { button: "right" });
-  await page.waitForTimeout(1500);
-  await shot("-walk");
-}
-
 if (args.untiltick) {
   // Wait for the sim to reach a tick (30 per second), then take a shot.
   for (const t of String(args.untiltick).split(",")) {
@@ -157,7 +146,30 @@ if (args.untiltick) {
     await page.waitForTimeout(3000); // a couple of frames at the held tick
     await shot("-t" + t);
   }
+  // (--select keeps the hold, so the selection is shot at that same moment.)
+  if (!args.select) await page.evaluate(() => (window.atollHoldTick = undefined));
+}
+
+if (args.select) {
+  // --select=N[,M…]: select the first N blue characters ashore, then a shot (-selN).
+  for (const n of String(args.select).split(",")) {
+    await page.evaluate((k) => (window.atollSelect = k), Number(n));
+    await page.waitForTimeout(3500);
+    await shot("-sel" + n);
+  }
   await page.evaluate(() => (window.atollHoldTick = undefined));
+}
+
+if (args.walk) {
+  // (After any --untiltick, so a landed crew is there to select.) The camera starts on the blue squad: box-select around the centre, then
+  // right-click further up the screen to send them walking.
+  await page.mouse.move(width * 0.3, height * 0.25);
+  await page.mouse.down();
+  await page.mouse.move(width * 0.7, height * 0.75, { steps: 8 });
+  await page.mouse.up();
+  await page.mouse.click(width * 0.5, height * 0.2, { button: "right" });
+  await page.waitForTimeout(1500);
+  await shot("-walk");
 }
 
 if (args.after) {

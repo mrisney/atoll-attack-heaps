@@ -216,6 +216,21 @@ to the flag); player orders always override it.
   `tools/simtest/SimTest.hx` runs a match headless (`haxe -cp src -cp
   tools/simtest -main SimTest --interp`): use it to check sim logic fast.
 
+- **HUD is sparse** (owner: "introduce it sparingly... this game stresses
+  minimalism", but players must tell a swordsman from a piker, archer or
+  captain; he showed Defilade's unit card as the far end, "I don't think
+  we need as much"). The only standing HUD is `ui/UnitCard`, bottom-left
+  beside the minimap: hover or select one character (either side) and a
+  small dark card fades in (a glyph for the kind: sword, pike, bow, the
+  captain's flag; kind, team, what it's doing, health); ships get one
+  (state, who's aboard, reloading, hull). Several selected show a group
+  panel instead: count per kind with one health pip each, and the group's
+  health overall; a hovered character's card sits above it. Fades in fast,
+  out slowly. Don't add more standing HUD without asking.
+  The default font has no "·": separate with "/".
+  Snapshots: `--select=1,8` selects the first N blue characters ashore
+  (`window.atollSelect`), holding any `--untiltick`.
+
 ## Art direction (decided — keep consistent)
 
 **Signed off (Nov 2026):** the owner called the scenes (terrain, grass, water,

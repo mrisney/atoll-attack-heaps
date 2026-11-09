@@ -72,6 +72,17 @@ class Palette {
 
 	public static inline var TEAM_BLUE = 0x3B5F8E;
 	public static inline var TEAM_RED = 0x9C4436;
+	/** The unit card / group panel (ui/UnitCard): dark ink panel, warm pale text. **/
+	public static inline var HUD_PANEL = 0x1F1A15;
+	public static inline var HUD_TEXT = 0xEDE6D6;
+	public static inline var HUD_DIM = 0xBDB4A3;
+	/** Team colours light enough to read on the panel. **/
+	public static inline var HUD_BLUE = 0x9CC2F0;
+	public static inline var HUD_RED = 0xF0A898;
+	/** Health, by how much is left. **/
+	public static inline var HEALTH_OK = 0xA8C47A;
+	public static inline var HEALTH_LOW = 0xD9A441;
+	public static inline var HEALTH_CRIT = 0xD8664F;
 	public static inline var WOOD = 0x8A6440;
 	/** Ships (ShipView): weathered planking, a paler deck, canvas sail. **/
 	public static inline var SHIP_HULL = 0x7A5A3E;

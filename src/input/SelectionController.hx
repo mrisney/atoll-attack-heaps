@@ -367,6 +367,25 @@ class SelectionController {
 		return null;
 	}
 
+	/** The character under the cursor (either side), for the unit card; null over the UI. **/
+	public function hoveredUnit():Null<UnitView> {
+		if (mouseX < 0 || (uiHitTest != null && uiHitTest(mouseX, mouseY))) return null;
+		return pickUnit(mouseX, mouseY);
+	}
+
+	/** The ship under the cursor (either side), for the unit card. **/
+	public function hoveredShip():Null<render.ShipView> {
+		if (mouseX < 0 || (uiHitTest != null && uiHitTest(mouseX, mouseY))) return null;
+		for (s in ships) {
+			if (s.ship.sunk) continue;
+			var p = s3d.camera.project(s.x, s.y, 1.5, s2d.width, s2d.height);
+			var dx = p.x - mouseX, dy = p.y - mouseY;
+			var r = PICK_RADIUS * 3;
+			if (dx * dx + dy * dy < r * r) return s;
+		}
+		return null;
+	}
+
 	function screenPos(v:UnitView):h3d.Vector {
 		return s3d.camera.project(v.x, v.y, v.z + 0.6, s2d.width, s2d.height);
 	}
