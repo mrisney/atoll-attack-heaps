@@ -23,8 +23,8 @@ class Palette {
 	public static inline var TRUNK = 0x8C6A4E;
 	public static inline var STONE = 0xC4BCAE;
 	/** The summit's quarried limestone (render/QuarryView): walls, the worn top, streaks, the dark slots at its foot. **/
-	public static inline var QUARRY = 0xB2AC9F;
-	public static inline var QUARRY_TOP = 0xB3AC9E;
+	public static inline var QUARRY = 0xBEBAB1;
+	public static inline var QUARRY_TOP = 0xCAC7BF;
 	public static inline var QUARRY_STAIN = 0x5C5850;
 	public static inline var QUARRY_LICHEN = 0x8C8A6A;
 	/** The dome's fissures (QuarryView): dark, a touch warm. **/

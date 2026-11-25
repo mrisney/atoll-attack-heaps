@@ -213,7 +213,15 @@ to the flag); player orders always override it.
   repeats), exfoliation ledges stepping the flanks, broad weathering
   patches, fissures as thin ribbons laid on the surface (crown joints,
   curved sheeting joints, hairlines; seeded LCG, render-side only) and
-  about 11 grass tufts rooted in them. `?yaw=` turns the camera for shots of
+  about 11 grass tufts rooted in them. Weathering after the owner's Stone
+  Mountain (Georgia) photos: pale whitish granite (`Palette.QUARRY*`), a
+  512² map baked once per island over the dome's footprint in world xy
+  (`Granite.paintWeather`, `GraniteShader.weather`, stored halved so paler
+  fits): ragged brown lichen-crust patches, dark streaks down the fall line
+  only where it steepens (across the crown they read as brush strokes),
+  paler fresh sheets, thin dark sheet-edge lines, weathering pits; the xy
+  projection smears straight down the sheer face, which suits its streaks.
+  `?yaw=` turns the camera for shots of
   the face. Known: the face's top edge is a little saw-toothed (the folded
   rings).
   High ground (directives `highGround`): `rise` 2 m above the target gives

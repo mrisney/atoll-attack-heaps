@@ -84,6 +84,84 @@ class Granite {
 		return toTexture(n, buf);
 	}
 
+	/**
+		The dome's weathering, painted once per island over its footprint (after
+		the owner's photos of Stone Mountain, Georgia): big ragged patches of dark
+		lichen crust on pale granite, long dark streaks running down the fall
+		line where water drains off the shoulders, paler freshly-peeled sheets,
+		thin dark lines where exfoliation sheets end, and a few weathering pits
+		on the crown. One texture in world xy (`GraniteShader.weather`), so the
+		patches are crisp and never repeat; on the sheer face the xy projection
+		smears each texel straight down, which is just what its streaks want.
+	**/
+	public static function paintWeather(q:world.Quarry, seed:Int, n:Int, half:Float):h3d.mat.Texture {
+		var nz = new world.Noise(seed + 909);
+		state = 7001 + seed % 1000;
+		var buf = [for (_ in 0...n * n * 3) 1.0];
+		inline function smooth(e0:Float, e1:Float, x:Float):Float {
+			var t = (x - e0) / (e1 - e0);
+			t = t < 0 ? 0 : t > 1 ? 1 : t;
+			return t * t * (3 - 2 * t);
+		}
+		for (j in 0...n)
+			for (i in 0...n) {
+				var x = q.cx - half + (i + 0.5) / n * half * 2, y = q.cy - half + (j + 0.5) / n * half * 2;
+				var u = q.localU(x, y), v = q.localV(x, y);
+				var r = q.radius(u, v);
+				var k = 1.0, kr = 1.0, kb = 1.0;
+				// Lichen crust: big patches with ragged, fairly sharp edges, brownish.
+				var crust = smooth(0.49, 0.53, nz.fbm(x * 0.075 + 3, y * 0.075 + 7, 4) + (nz.fbm(x * 0.9, y * 0.9, 2) - 0.5) * 0.12);
+				// More of it low on the shoulders, where it's damp.
+				crust *= 0.55 + 0.45 * smooth(0.3, 0.8, r);
+				k *= 1 - crust * 0.38;
+				kr *= 1 + crust * 0.03;
+				kb *= 1 - crust * 0.1;
+				// Fall-line streaks: stretched along the radius, darker where it's steep.
+				var th = Math.atan2(v / world.Quarry.W, u / world.Quarry.L);
+				var st = nz.fbm(th * 22 + 11, r * 1.3 + 5, 3);
+				// Only where it steepens: across the crown they read as brush strokes.
+				var streak = smooth(0.5, 0.72, st) * smooth(0.72, 0.95, r);
+				k *= 1 - streak * 0.4;
+				// Freshly peeled sheets: paler, clean.
+				var fresh = smooth(0.6, 0.66, nz.fbm(x * 0.21 + 50, y * 0.21 + 20, 3)) * (1 - crust);
+				k *= 1 + fresh * 0.16;
+				// Where sheets end: thin dark curving lines.
+				var e = nz.fbm(x * 0.06 + 20, y * 0.06 + 30, 3) * 6;
+				var f = e - Math.floor(e);
+				var line = smooth(0.955, 0.985, Math.abs(f - 0.5) * 2) * (1 - smooth(0.85, 0.95, r));
+				k *= 1 - line * 0.35;
+				var p = (j * n + i) * 3;
+				buf[p] = k * kr;
+				buf[p + 1] = k;
+				buf[p + 2] = k * kb;
+			}
+		// Weathering pits on the crown: shallow pale hollows with a dark rim.
+		var px = n / (half * 2);
+		for (_ in 0...26) {
+			var u = (rnd() - 0.6) * world.Quarry.L * 1.1, v = (rnd() - 0.5) * world.Quarry.W * 1.1;
+			if (q.radius(u, v) > 0.6) continue;
+			var cx = (q.worldX(u, v) - q.cx + half) * px, cy = (q.worldY(u, v) - q.cy + half) * px;
+			var rad = (0.25 + rnd() * 0.6) * px;
+			stamp(buf, n, cx, cy, rad * 1.25, [0.62, 0.6, 0.57], 0.6);
+			stamp(buf, n, cx, cy, rad, [1.12, 1.12, 1.1], 0.8);
+		}
+		var pxs = hxd.Pixels.alloc(n, n, RGBA);
+		inline function b(v:Float)
+			return v < 0 ? 0 : (v > 1 ? 255 : Std.int(v * 255));
+		// Stored halved, so the paler-than-plain parts fit (the shader doubles it).
+		for (j in 0...n)
+			for (i in 0...n) {
+				var p = (j * n + i) * 3;
+				pxs.setPixel(i, j, (255 << 24) | (b(buf[p] * 0.5) << 16) | (b(buf[p + 1] * 0.5) << 8) | b(buf[p + 2] * 0.5));
+			}
+		var t = new h3d.mat.Texture(n, n, [MipMapped]);
+		t.uploadPixels(pxs);
+		t.wrap = Clamp;
+		t.filter = Linear;
+		t.mipMap = Linear;
+		return t;
+	}
+
 	static function paintMottle(n:Int):h3d.mat.Texture {
 		state = 3301;
 		var buf = [for (_ in 0...n * n * 3) 0.6];
@@ -109,6 +187,10 @@ class GraniteShader extends hxsl.Shader {
 		@param var grainScale:Float;
 		@param var mottleScale:Float;
 		@param var strength:Float;
+		/** The dome's weathering (paintWeather), over world xy: origin and size. **/
+		@param var weather:Sampler2D;
+		@param var weatherOrigin:Vec2;
+		@param var weatherSize:Float;
 		var transformedPosition:Vec3;
 		var transformedNormal:Vec3;
 		var pixelColor:Vec4;
@@ -123,6 +205,7 @@ class GraniteShader extends hxsl.Shader {
 			var m = mottle.get(q.yz).rgb * w.x + mottle.get(q.xz).rgb * w.y + mottle.get(q.xy).rgb * w.z;
 			// Both average about 0.6: normalise so the vertex tint stays the tint.
 			pixelColor.rgb *= mix(vec3(1.0), g * m * 2.78, strength);
+			pixelColor.rgb *= weather.get((transformedPosition.xy - weatherOrigin) / weatherSize).rgb * 2.0;
 		}
 	};
 

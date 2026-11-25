@@ -39,8 +39,11 @@ class QuarryView {
 	final idx:Array<Int> = [];
 	final chunks:Array<h3d.prim.Polygon> = [];
 
+	final seed:Int;
+
 	public function new(q:Quarry, seed:Int) {
 		this.q = q;
+		this.seed = seed;
 		noise = new world.Noise(seed + 717);
 	}
 
@@ -345,6 +348,8 @@ class QuarryView {
 	function finish(parent:h3d.scene.Object):Array<h3d.mat.Material> {
 		flush();
 		var granite = Granite.get();
+		var half = Quarry.L * 1.45 + PROUD;
+		var weather = Granite.paintWeather(q, seed, 512, half);
 		var mats = [];
 		for (p in chunks) {
 			var m = new h3d.scene.Mesh(p, parent);
@@ -353,6 +358,9 @@ class QuarryView {
 			var sh = new Granite.GraniteShader();
 			sh.grain = granite.grain;
 			sh.mottle = granite.mottle;
+			sh.weather = weather;
+			sh.weatherOrigin.set(q.cx - half, q.cy - half);
+			sh.weatherSize = half * 2;
 			m.material.mainPass.addShader(sh);
 			FlatMeshBuilder.shadows(m.material, true, true);
 			mats.push(m.material);
