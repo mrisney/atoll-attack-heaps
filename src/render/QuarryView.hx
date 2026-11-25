@@ -14,7 +14,12 @@ import world.Quarry;
 	- the face: wherever the sheet runs past the cut it's folded down onto it,
 	  which makes a sheer wall from the rock's own heights; fluted and lumpy
 	  like the Yangshan walls, with long dark stains;
-	- the gullies: cut into the flanks, floored with rough stone.
+	- the gullies: cut into the flanks, floored with rough stone;
+	- granite grain (render/Granite: crystal speckle and a slow mottle at
+	  unrelated scales; the shared rock texture's crack network repeated
+	  "like a peanut shell"), real fissures as thin dark ribbons laid on the
+	  surface (branching cracks on the crown, curved sheeting joints on the
+	  shoulders), and a few tufts of grass rooted in the cracks.
 
 	The sheet sits a little outside the sim's outline (and the face a little
 	in front of the cut), so the height map's smeared steps (0.75 m cells)
@@ -43,7 +48,10 @@ class QuarryView {
 		if (island.quarry == null) return [];
 		var v = new QuarryView(island.quarry, island.seed);
 		v.dome();
-		return v.finish(parent);
+		v.fissures();
+		var mats = v.finish(parent);
+		v.tufts(parent);
+		return mats;
 	}
 
 	/** Chisel flutes and lumps on a steep face, metres outward, by (along, up). **/
@@ -69,6 +77,8 @@ class QuarryView {
 		var lichen = smooth(0.6, 0.8, noise.fbm(u * 0.4 + 70, v * 0.4 + 70, 3)) * (1 - steep) * 0.35;
 		c = mixColor(c, Palette.QUARRY_LICHEN, lichen);
 		var shade = 0.96 + (noise.fbm(u * 0.9 + 3, v * 0.9 + z * 0.5 + 5, 2) - 0.5) * 0.3;
+		// Broad weathering: some sheets fresher and paler, some older and darker.
+		shade *= 1 + (noise.fbm(u * 0.18 + 90, v * 0.18 + z * 0.1 + 40, 3) - 0.5) * 0.4;
 		var damp = 1 - 0.22 * (1 - smooth(0.0, 0.25, up));
 		// The gullies are the way up: worn paler by feet, so they read as paths.
 		if (inGully) c = mixColor(c, Palette.TRACK_DUST, 0.45);
@@ -120,6 +130,13 @@ class QuarryView {
 				// Flutes and lumps where it's steep: pushed outward (along u on the face).
 				var s = onFace ? sv : th * Quarry.W * 1.2;
 				var rel = (relief(s, z) - Math.sin(s * Math.PI * 2 / 0.45 + noise.value(s * 0.5, z * 0.25) * 5) * 0.06 * (1 - fluted)) * slope;
+				if (!onFace) {
+					// Exfoliation sheets: the flanks step out in shells, ledge over ledge,
+					// rather than hanging in soft folds (half the lumps, plus the steps).
+					var sh = (z - q.floor) / 1.3 + noise.fbm(th * 1.7 + 5, z * 0.08, 2) * 1.6;
+					var step = sh - Math.floor(sh);
+					rel = rel * 0.5 + (step * step) * 0.28 * smooth(0.15, 0.6, slope);
+				}
 				if (onFace) u += rel + 0.05;
 				else if (!skirt) {
 					var nx = Math.cos(th), ny = Math.sin(th) * Quarry.L / Quarry.W;
@@ -136,6 +153,137 @@ class QuarryView {
 			colours.push(cc);
 		}
 		sheet(grid, colours, true, true);
+	}
+
+	// --- fissures and tufts -------------------------------------------------------
+
+	static var rngState = 1;
+
+	static inline function rnd():Float {
+		rngState = (rngState * 1103515 + 12345) & 0x7fffffff;
+		return rngState / 0x7fffffff;
+	}
+
+	/**
+		The drawn surface at local (u, v) (the grown frame dome() uses): its
+		height and steepness, or null off the open rock (face, gullies, foot).
+	**/
+	function surfaceAt(u:Float, v:Float):Null<{z:Float, slope:Float}> {
+		var grow = 1 + PROUD / Quarry.W;
+		var su = u / grow, sv = v / grow;
+		var r = q.radius(su, sv);
+		if (r >= 0.95 || u > q.cutAt(sv) + PROUD - 0.4) return null;
+		var g = q.gully(su, sv);
+		if (g.t > -0.1 && g.t < 1.05 && g.across < g.half + 0.6) return null;
+		var slope = Math.min(1, Math.abs(q.profile(Math.min(r + 0.02, 0.9999)) - q.profile(Math.max(r - 0.02, 0))) / (0.04 * Quarry.W) / 2.5);
+		var z = q.shapeH(su, sv);
+		if (slope < 0.5) z += Math.abs(noise.fbm(u * 0.3 + 41, v * 0.3 + 9, 3) - 0.5) * 0.35 * (1 - slope * 2);
+		return {z: z, slope: slope};
+	}
+
+	final crackPts:Array<{u:Float, v:Float}> = [];
+
+	/** One crack: a wandering line from (u, v), heading `dir`, laid on the rock as a thin dark ribbon. **/
+	function crack(u:Float, v:Float, dir:Float, len:Float, width:Float, maxSlope:Float, turn:Float, depth:Int) {
+		var path:Array<{u:Float, v:Float, z:Float}> = [];
+		var step = 0.2, d = 0.0;
+		while (d < len) {
+			var s = surfaceAt(u, v);
+			if (s == null || s.slope > maxSlope) break;
+			path.push({u: u, v: v, z: s.z});
+			if (rnd() < 0.15) crackPts.push({u: u, v: v});
+			// Branches: shorter, finer, splaying off.
+			if (depth < 2 && rnd() < 0.05) crack(u, v, dir + (rnd() < 0.5 ? 1 : -1) * (0.5 + rnd() * 0.7), len * 0.45, width * 0.65, maxSlope, turn, depth + 1);
+			dir += (rnd() - 0.5) * turn;
+			u += Math.cos(dir) * step;
+			v += Math.sin(dir) * step;
+			d += step;
+		}
+		if (path.length < 3) return;
+		var n = path.length;
+		var grid = [], cols = [];
+		for (i in 0...n) {
+			var a = path[i == 0 ? 0 : i - 1], b = path[i == n - 1 ? n - 1 : i + 1];
+			var du = b.u - a.u, dv = b.v - a.v;
+			var l = Math.max(Math.sqrt(du * du + dv * dv), 1e-4);
+			// Widest in the middle, closing to a hairline at the ends, a little uneven.
+			var t = i / (n - 1);
+			var w = width * Math.sin(Math.PI * t) * (0.7 + 0.6 * noise.value(i * 0.4 + depth * 9, 3)) * 0.5 + 0.004;
+			var p = path[i];
+			var su = -dv / l * w, sv = du / l * w;
+			grid.push([
+				new Point(q.worldX(p.u + su, p.v + sv), q.worldY(p.u + su, p.v + sv), p.z + 0.035),
+				new Point(q.worldX(p.u, p.v), q.worldY(p.u, p.v), p.z + 0.025),
+				new Point(q.worldX(p.u - su, p.v - sv), q.worldY(p.u - su, p.v - sv), p.z + 0.035)
+			]);
+			cols.push([colour(Palette.QUARRY_CRACK, 1.25), colour(Palette.QUARRY_CRACK, 0.8), colour(Palette.QUARRY_CRACK, 1.25)]);
+		}
+		sheet(grid, cols, false, true);
+	}
+
+	function fissures() {
+		rngState = q.cx < 0 ? 4711 : 4713;
+		var lf = Quarry.L_FRONT, lb = Quarry.L, w = Quarry.W;
+		// Joints across the crown: long, gently wandering, branching.
+		for (k in 0...9) {
+			var u = -lb * 0.55 + rnd() * (lb * 0.55 + lf * 0.5), v = (rnd() - 0.5) * w * 1.1;
+			crack(u, v, rnd() * Math.PI * 2, 3 + rnd() * 5, 0.06 + rnd() * 0.05, 0.55, 0.35, 0);
+		}
+		// Sheeting joints on the shoulders: curving round the dome, roughly level.
+		for (k in 0...8) {
+			var th = rnd() * Math.PI * 2;
+			var r = 0.62 + rnd() * 0.18;
+			var u = Math.cos(th) * r * (Math.cos(th) > 0 ? lf : lb), v = Math.sin(th) * r * w;
+			crack(u, v, th + Math.PI / 2, 2 + rnd() * 4, 0.05 + rnd() * 0.04, 0.85, 0.15, 1);
+		}
+		// Short hairline cracks scattered about.
+		for (k in 0...22) {
+			var u = -lb * 0.7 + rnd() * (lb * 0.7 + lf * 0.6), v = (rnd() - 0.5) * w * 1.4;
+			crack(u, v, rnd() * Math.PI * 2, 0.6 + rnd() * 1.4, 0.03 + rnd() * 0.02, 0.7, 0.6, 2);
+		}
+	}
+
+	/** A few tufts of grass rooted in the cracks: not many (owner: "a few grass shoots"). **/
+	function tufts(parent:h3d.scene.Object) {
+		var tp:Array<Point> = [], tn:Array<Point> = [], tc:Array<Point> = [];
+		var count = 0;
+		var k = 0;
+		while (count < 11 && k < crackPts.length) {
+			var c = crackPts[(k * 7) % crackPts.length];
+			k++;
+			if (rnd() > 0.5) continue;
+			var s = surfaceAt(c.u, c.v);
+			if (s == null || s.slope > 0.5) continue;
+			count++;
+			var blades = 5 + Std.int(rnd() * 5);
+			var dry = rnd() < 0.4;
+			for (b in 0...blades) {
+				var a = rnd() * Math.PI * 2;
+				var bu = c.u + Math.cos(a) * 0.05, bv = c.v + Math.sin(a) * 0.05;
+				var h = 0.14 + rnd() * 0.26;
+				// Lean outward from the clump and a little downwind.
+				var lu = Math.cos(a) * h * 0.4 + 0.05, lv = Math.sin(a) * h * 0.4;
+				var wu = -Math.sin(a) * 0.012, wv = Math.cos(a) * 0.012;
+				var z = s.z + 0.02;
+				tp.push(new Point(q.worldX(bu + wu, bv + wv), q.worldY(bu + wu, bv + wv), z));
+				tp.push(new Point(q.worldX(bu - wu, bv - wv), q.worldY(bu - wu, bv - wv), z));
+				tp.push(new Point(q.worldX(bu + lu, bv + lv), q.worldY(bu + lu, bv + lv), z + h));
+				for (_ in 0...3) tn.push(new Point(0, 0, 1));
+				var base = colour(Palette.GRASS_BLADE_BASE, 1.0), tip = colour(dry ? Palette.GRASS_BLADE_DRY : Palette.GRASS_BLADE_TIP, 1.0);
+				tc.push(base);
+				tc.push(base);
+				tc.push(tip);
+			}
+		}
+		if (tp.length == 0) return;
+		var ib = new hxd.IndexBuffer();
+		for (i in 0...tp.length) ib.push(i);
+		var p = new h3d.prim.Polygon(tp, ib);
+		p.normals = tn;
+		p.colors = tc;
+		var m = new h3d.scene.Mesh(p, parent);
+		FlatMeshBuilder.setupMaterial(m.material, true);
+		m.material.mainPass.culling = None;
 	}
 
 	// --- mesh plumbing -----------------------------------------------------------
@@ -196,16 +344,15 @@ class QuarryView {
 
 	function finish(parent:h3d.scene.Object):Array<h3d.mat.Material> {
 		flush();
-		var tex = GroundTextures.get().rock;
+		var granite = Granite.get();
 		var mats = [];
 		for (p in chunks) {
 			var m = new h3d.scene.Mesh(p, parent);
 			FlatMeshBuilder.setupMaterial(m.material, true);
 			m.material.mainPass.culling = None;
-			var sh = new Rocks.RockShader();
-			sh.tex = tex;
-			sh.scale = 2.2;
-			sh.strength = 0.6;
+			var sh = new Granite.GraniteShader();
+			sh.grain = granite.grain;
+			sh.mottle = granite.mottle;
 			m.material.mainPass.addShader(sh);
 			FlatMeshBuilder.shadows(m.material, true, true);
 			mats.push(m.material);

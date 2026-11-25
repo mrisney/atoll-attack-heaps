@@ -205,7 +205,15 @@ to the flag); player orders always override it.
   steps), folded onto the cut plane to make the face (Yangshan flutes and
   stains there; the dome's flanks smoother, with exfoliation shells and
   lichen; gullies worn pale). Props and grass keep off (`covers`); fallen
-  rock lies round the foot (`talus`). `?yaw=` turns the camera for shots of
+  rock lies round the foot (`talus`). Surface (owner: too patterned, "a
+  WebGL amorphous grey blob... like a peanut shell"; wants granite, small
+  fissures, a few grass tufts "but not many"): `render/Granite` (crystal
+  speckle and a slow mottle painted in code, triplanar at unrelated scales
+  1.37 m / 11.3 m; never the shared rock texture, whose crack network
+  repeats), exfoliation ledges stepping the flanks, broad weathering
+  patches, fissures as thin ribbons laid on the surface (crown joints,
+  curved sheeting joints, hairlines; seeded LCG, render-side only) and
+  about 11 grass tufts rooted in them. `?yaw=` turns the camera for shots of
   the face. Known: the face's top edge is a little saw-toothed (the folded
   rings).
   High ground (directives `highGround`): `rise` 2 m above the target gives
