@@ -83,6 +83,10 @@ class Main extends hxd.App {
 			rtsCam.distance = startDistance;
 			rtsCam.snap();
 		}
+		if (startYaw != null) {
+			rtsCam.yaw = startYaw;
+			rtsCam.snap();
+		}
 	}
 
 	function setupLighting() {
@@ -231,6 +235,8 @@ class Main extends hxd.App {
 
 	var frames = 0;
 	var startDistance = 0.0;
+	/** ?yaw=radians: the camera's starting heading (for snapshots from another side). **/
+	var startYaw:Null<Float> = null;
 	/** `?at=x,y`: start the camera looking at this world point (for reproducible shots). **/
 	var startAt:Null<{x:Float, y:Float}> = null;
 	var galleryWanted = false;
@@ -264,6 +270,7 @@ class Main extends hxd.App {
 		if (q.get("props") == "sprites" || q.get("trees") == "sprites") treeMode = 1;
 		if (q.get("props") == "lowpoly" || q.get("trees") == "lowpoly") treeMode = 2;
 		if (q.has("dist")) startDistance = Std.parseFloat(q.get("dist"));
+		if (q.has("yaw")) startYaw = Std.parseFloat(q.get("yaw"));
 		// Grass budget, like terra's BLADES / DEPTH settings.
 		if (q.get("figures") == "rigged") UnitView.rigged = true;
 		galleryWanted = q.has("gallery");

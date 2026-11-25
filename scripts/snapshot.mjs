@@ -71,6 +71,7 @@ mkdirSync(outDir, { recursive: true });
 const params = new URLSearchParams({ seed, style, shape });
 if (args.dist) params.set("dist", args.dist);
 if (args.at) params.set("at", args.at);
+if (args.yaw) params.set("yaw", args.yaw);
 if (args.figures) params.set("figures", args.figures);
 if (args.gallery) params.set("gallery", "1");
 if (args.weather) params.set("weather", args.weather);

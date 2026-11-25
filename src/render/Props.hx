@@ -131,8 +131,16 @@ class Props {
 				var x = i * step - he + (r() - 0.5) * step;
 				var y = j * step - he + (r() - 0.5) * step;
 				var h = island.heightAt(x, y);
-				// Nothing grows on the quarried summit or its cut floor.
-				if (island.quarry != null && island.quarry.covers(x, y, world.Quarry.APRON + 1.0)) continue;
+				if (island.quarry != null) {
+					// Rock fallen from the dome lies round its foot (never in the gullies).
+					var tal = island.quarry.talus(x, y);
+					if (tal > 0.52 && r() < 0.55) {
+						rocks.add(x, y, h, 0.5 + r() * 1.3 * tal, salt * 13 + 77, tint(Palette.QUARRY, 0.16));
+						continue;
+					}
+					// Nothing grows on the summit's rock or its cut floor.
+					if (island.quarry.covers(x, y, world.Quarry.APRON + 1.0)) continue;
+				}
 				// Rare rock outcrops along the coast, running out into the shallows.
 				if (h > -0.9 && h < 0.45 && outcropSpot(x, y)) {
 					outcrop(x, y, h);

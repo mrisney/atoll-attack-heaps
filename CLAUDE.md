@@ -184,26 +184,35 @@ to the flag); player orders always override it.
   at 4 m he died in the first melee). Marchers still fight what they meet
   and rejoin; any order ends a unit's march; it ends when the band reaches
   the summit (`checkMarches`). All in directives.json `march`.
-- **The summit is a quarried monolith** (owner, after photos of the
-  Yangshan Quarry near Nanjing: "something the characters could walk or
-  climb to the top and plant a flag, like Northgard... pikers with shields
-  can charge up"; then "slightly more irregular"). `world/Quarry` (sim):
-  a 16 x 8 m block, 6.5 m above a cut floor, a ramp up each long side facing
-  each landing beach (half-turn symmetric), its outline wandering by up to
-  `WOBBLE` (noise, deliberately not mirrored: walls only), a ragged apron
-  blending back to the hillside. It carves the height map after
-  `roughenCoast` (`Island.quarry`, apex = its top) and `isWall` makes the
-  walls unwalkable inside `Island.isWalkable`, so NavGrid paths go up the
-  ramps. The map's 0.75 m cells smear the step, so heights step down
-  inside the outline and the drawn wall leans out to `WALL_OUT` to hide the
-  slope. `render/QuarryView`: fluted, streaked, leaning walls, a worn
-  rounded top edge, dark slots between posts at the foot, scored ramps; it
-  must use the same `wobble`. Props and grass keep off (`covers`).
+- **The summit is a half dome** (owner, after photos of the Yangshan
+  Quarry: "something the characters could walk or climb to the top and
+  plant a flag, like Northgard... pikers with shields can charge up"; a
+  first squared-off block "looked like a structure": he wants "a more
+  Yosemite Half Dome look, more irregular, but obviously very influenced
+  by the visuals of Yangshan quarry"). `world/Quarry` (sim, the name
+  stayed): a granite dome 8 m over a cut floor on an irregular elliptical
+  base (`outlineAt`), leaning up toward a sheer face cut across its +u end
+  (`cutAt`), broad swells (`shapeH`), and a gully climbing diagonally into
+  each long flank (mirror images, one facing each landing beach: the only
+  ways up). The flag stands on the crown (`peakX/Y`, 3 m back from the
+  face; it becomes the island's apex). It carves the height map after
+  `roughenCoast`; walls are wherever the height map itself is steeper than
+  `MAX_SLOPE` **and** drops more than 0.9 m (`isWall`, inside
+  `Island.isWalkable`; knee-high steps at a gully's mouth made thin wall
+  pockets that trapped units walking between them). The mover lets a unit
+  standing on a wall step off it. `render/QuarryView`: one polar sheet over
+  the same outline, 0.8 m proud of the sim's (the 0.75 m height map smears
+  steps), folded onto the cut plane to make the face (Yangshan flutes and
+  stains there; the dome's flanks smoother, with exfoliation shells and
+  lichen; gullies worn pale). Props and grass keep off (`covers`); fallen
+  rock lies round the foot (`talus`). `?yaw=` turns the camera for shots of
+  the face. Known: the face's top edge is a little saw-toothed (the folded
+  rings).
   High ground (directives `highGround`): `rise` 2 m above the target gives
   `downBonus`, below gives `upPenalty` except pikers (`pikerCharge`), whose
-  shields blunt arrows from above (`pikerShield`); archers on top reach
-  `archerReach` further; no melee across a wall (`meleeStep`). Atolls lay
-  the block along the reef. Debug: SimTest prints who's `onTop`.
+  shields blunt arrows from above (`pikerShield`); archers on the dome's
+  upper part reach `archerReach` further; no melee across a wall
+  (`meleeStep`). Atolls lay it along the reef. SimTest prints who's `onTop`.
 - **Mover slides along shorelines**: a blocked step tries angles up to 90°
   either way before re-planning (a unit wedged on a spit re-planned the same
   route every tick and never moved).

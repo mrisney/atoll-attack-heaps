@@ -26,7 +26,7 @@ class Palette {
 	public static inline var QUARRY = 0xB2AC9F;
 	public static inline var QUARRY_TOP = 0xB3AC9E;
 	public static inline var QUARRY_STAIN = 0x5C5850;
-	public static inline var QUARRY_SLOT = 0x2A2724;
+	public static inline var QUARRY_LICHEN = 0x8C8A6A;
 
 	// Prop variety: each instance picks from a list, then gets a small tint.
 	public static final LEAF = [0x5C8A3C, 0x6A9A45, 0x77A64D, 0x86B055, 0x9AB352];

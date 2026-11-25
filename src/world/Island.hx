@@ -56,6 +56,8 @@ class Island {
 			var axis = shape == Atoll ? Math.atan2(apexY, apexX) + Math.PI / 2 : Math.PI * 0.75;
 			quarry = new Quarry(apexX, apexY, apexH, axis, seed);
 			quarry.carve(this);
+			apexX = quarry.peakX;
+			apexY = quarry.peakY;
 			apexH = quarry.top;
 		}
 	}

@@ -1,51 +1,46 @@
 package world;
 
 /**
-	The summit is a quarried monolith, after the Yangshan Quarry near Nanjing
-	(owner: "could we incorporate visual aspects of the quarry into the high
-	point... something the characters could walk or climb to the top and
-	plant a flag, like Northgard"). A huge block left standing in the cut
-	bedrock: sheer, chisel-fluted walls, a flat top with the flag on it, and
-	a cut-stone ramp up each long side, one facing each landing beach. Round
-	it the hilltop is cut down to a level quarry floor.
+	The summit: a granite dome sheared off on one side, like Yosemite's Half
+	Dome, with the sheer face cut and fluted like the walls of the Yangshan
+	Quarry (owner: "a more Yosemite Half Dome look, more irregular, but
+	obviously very influenced by the visuals of Yangshan quarry"; a first,
+	block-shaped version "looked like a structure").
 
-	This is the simulation's half (no rendering here): it shapes the height
-	map, so the top, the ramps and the floor are real ground, and it says
-	where the walls are, which nobody can walk on (`isWall`), so the only
-	way up is a ramp. `render/QuarryView` draws it over the same numbers.
+	- The dome rises `RISE` metres over a cut-down floor, on an irregular,
+	  roughly elliptical base, its flanks steepening to cliffs near the foot.
+	- At the +u end it's sheared off: a vertical face, the dome's high side.
+	- Each long flank (one facing each landing beach) has a gully climbing
+	  diagonally into the rock from the back of the dome to the crown: the
+	  only ways up. The flag stands on the crown, near the edge of the face.
 
-	Local frame: `u` along the block's long axis, `v` across it. The layout is
-	symmetric under a half turn ((u, v) -> (-u, -v)), so both sides get the
-	same climb. All deterministic (plain arithmetic on the island's heights).
+	This is the simulation's half: it shapes the height map (the dome, the
+	face, the gullies and a ragged floor round it), and anything too steep to
+	stand on is a wall nobody can walk (`isWall`, by the slope of the height
+	map itself), so NavGrid paths go up the gullies. `render/QuarryView`
+	draws the rock over the same numbers. Local frame: `u` along the long
+	axis, `v` across; the gullies are mirror images (v -> -v), so both sides
+	climb the same way. Deterministic: plain arithmetic and seeded Noise.
 **/
 class Quarry {
-	/** Half length and half width of the block (m), and its corner radius. **/
-	public static inline var L = 8.0;
-	public static inline var W = 4.0;
-	public static inline var CORNER = 1.6;
-	/** How far the outline wanders in and out of a true rounded rectangle (m). **/
-	public static inline var WOBBLE = 0.55;
-	/** How high the walls stand above the quarry floor (m). **/
-	public static inline var RISE = 6.5;
-	/** A ramp's walkable width (m). **/
-	public static inline var RAMP_W = 3.0;
-	/** Where a ramp reaches the top (u): the last stretch is a landing at the top's height. **/
-	public static inline var RAMP_TOP_U = L - 4.5;
-	/**
-		Wall bands. The height map steps from the top down to the floor over
-		[-HEIGHT_IN, 0] past an edge; the drawn wall leans out to WALL_OUT, so
-		the terrain's slope stays hidden inside the stone (the map's 0.75 m
-		cells smear any step that wide). Nobody walks within BLOCK_IN inside
-		or BLOCK_OUT outside an edge.
-	**/
-	public static inline var HEIGHT_IN = 0.75;
-	public static inline var WALL_OUT = 0.85;
-	public static inline var BLOCK_IN = 1.0;
-	public static inline var BLOCK_OUT = 1.3;
-	/** The ramp runs beside the block, beyond its wall band. **/
-	public static inline var RAMP_V0 = W + BLOCK_OUT;
-	public static inline var RAMP_V1 = RAMP_V0 + RAMP_W;
-	/** Level floor round the structure, then a blend back to the hillside. **/
+	/** Semi-axes of the dome's base (m): along the long axis and across it. **/
+	public static inline var L = 12.0;
+	/** The front semi-axis (toward the face) is shorter: little is left beyond the cut. **/
+	public static inline var L_FRONT = 7.5;
+	public static inline var W = 9.0;
+	/** Height of the crown above the floor (m). **/
+	public static inline var RISE = 8.0;
+	/** Where the dome is sheared off (u, before its wander). **/
+	public static inline var CUT_U = 5.2;
+	/** Gullies: half width (m), and where they start (outside the foot) and reach the crown, in (u, |v|). **/
+	public static inline var GULLY_HALF = 2.0;
+	public static inline var GULLY_AU = -9.5;
+	public static inline var GULLY_AV = 9.6;
+	public static inline var GULLY_BU = -1.0;
+	public static inline var GULLY_BV = 3.6;
+	/** Steeper than this (rise over run) is a wall. **/
+	public static inline var MAX_SLOPE = 1.05;
+	/** Level floor round the foot, then a ragged blend back to the hillside. **/
 	public static inline var APRON = 2.0;
 	public static inline var APRON_BLEND = 5.0;
 
@@ -54,14 +49,20 @@ class Quarry {
 	/** Direction of the long axis (radians). **/
 	public final axis:Float;
 	public final floor:Float;
-	public final top:Float;
+	/** The crown: the highest ground, a few metres back from the face's edge (the flag goes here). **/
+	public var top(default, null):Float;
+	public var peakX(default, null):Float;
+	public var peakY(default, null):Float;
 	final ca:Float;
 	final sa:Float;
 	final noise:Noise;
+	var island:Null<Island> = null;
+	/** Height where each gully reaches the crown. **/
+	final gullyTop:Float;
 
 	/**
 		`axis`: the long axis. On a single island the landing beaches lie at 45°
-		and 225° (Sim.spawnTeam), so the long sides, and their ramps, face them
+		and 225° (Sim.spawnTeam), so the flanks with their gullies face them,
 		with the axis on the other diagonal; on an atoll it runs along the reef.
 	**/
 	public function new(cx:Float, cy:Float, groundH:Float, axis:Float, seed:Int) {
@@ -72,11 +73,30 @@ class Quarry {
 		ca = Math.cos(axis);
 		sa = Math.sin(axis);
 		floor = groundH - 0.6;
-		top = floor + RISE;
+		gullyTop = domeH(GULLY_BU, GULLY_BV);
+		// Find the crown (sampled every half metre), keeping back from the face.
+		top = -1e9;
+		var u = -L;
+		while (u < CUT_U) {
+			var v = -W;
+			while (v < W) {
+				if (u < cutAt(v) - 3.0) {
+					var h = rockH(u, v);
+					if (!Math.isNaN(h) && h > top) {
+						top = h;
+						peakX = worldX(u, v);
+						peakY = worldY(u, v);
+					}
+				}
+				v += 0.5;
+			}
+			u += 0.5;
+		}
 	}
 
 	/** Shape the island's height map (every vertex). **/
 	public function carve(island:Island) {
+		this.island = island;
 		var w = island.size + 1, he = island.halfExtent;
 		for (j in 0...w)
 			for (i in 0...w) {
@@ -92,110 +112,137 @@ class Quarry {
 	public inline function localV(x:Float, y:Float):Float
 		return -(x - cx) * sa + (y - cy) * ca;
 
-	/** Signed distance to the block's rounded outline (negative inside). **/
-	public static function blockSdf(u:Float, v:Float):Float {
-		var qx = Math.abs(u) - (L - CORNER), qy = Math.abs(v) - (W - CORNER);
-		var ox = Math.max(qx, 0), oy = Math.max(qy, 0);
-		return Math.sqrt(ox * ox + oy * oy) + Math.min(Math.max(qx, qy), 0) - CORNER;
+	/** World position of local (u, v). **/
+	public inline function worldX(u:Float, v:Float):Float
+		return cx + u * ca - v * sa;
+
+	public inline function worldY(u:Float, v:Float):Float
+		return cy + u * sa + v * ca;
+
+	/** How far the base's outline wanders, as a factor on its radius, by direction. **/
+	public function outlineAt(theta:Float):Float
+		return 1 + (noise.fbm(Math.cos(theta) * 1.6 + 5, Math.sin(theta) * 1.6 + 9, 3) - 0.5) * 0.5;
+
+	/** Normalised distance from the centre (1 = the foot), irregular outline. **/
+	public function radius(u:Float, v:Float):Float {
+		var nu = u / (u > 0 ? L_FRONT : L), nv = v / W;
+		return Math.sqrt(nu * nu + nv * nv) / outlineAt(Math.atan2(nv, nu));
+	}
+
+	/** The dome's profile: flat-ish crown, steepening to a cliff at the foot. **/
+	public function profile(r:Float):Float {
+		if (r >= 1) return floor;
+		var r4 = r * r * r * r;
+		return floor + RISE * Math.sqrt(1 - r4);
 	}
 
 	/**
-		The block isn't a perfect box (owner: "slightly more irregular"): its
-		outline bulges and dips by up to WOBBLE, from smooth noise along the
-		walls. Not mirrored between the two sides: a few tens of centimetres
-		of wall don't change the fight, and the ramps stay exactly symmetric.
+		The dome's height at (u, v): the profile, leaning up toward the face
+		(Half Dome is highest at its sheer edge and rolls down behind), with
+		broad swells and hollows so it isn't a smooth bun.
 	**/
-	public function wobble(u:Float, v:Float):Float
-		return (noise.fbm(u * 0.16 + 5.3, v * 0.16 + 9.1, 3) - 0.5) * 2 * WOBBLE;
-
-	/** Signed distance to the block's actual (irregular) outline, local coordinates. **/
-	public function sdf(u:Float, v:Float):Float
-		return blockSdf(u, v) - wobble(u, v);
-
-	/** The ramp's height at u (floor at the low end, top at the landing). **/
-	public function rampH(u:Float):Float {
-		var f = (u + L) / (RAMP_TOP_U + L);
-		f = f < 0 ? 0 : f > 1 ? 1 : f;
-		return floor + (top - floor) * f;
+	public function shapeH(u:Float, v:Float):Float {
+		var r = radius(u, v);
+		if (r >= 1) return floor;
+		var lean = 0.72 + 0.28 * Math.max(0, Math.min(1, (u / L + 1) / 1.45));
+		var swell = (noise.fbm(u * 0.11 + 21, v * 0.11 + 13, 3) - 0.5) * 2.4 * (1 - r * r);
+		return floor + (profile(r) - floor) * lean + swell;
 	}
 
-	/** Signed distance to the whole footprint (block and both ramps), as a box. **/
-	static function footprintSdf(u:Float, v:Float):Float {
-		var qx = Math.abs(u) - (L + WALL_OUT + WOBBLE), qy = Math.abs(v) - (RAMP_V1 + WALL_OUT);
-		var ox = Math.max(qx, 0), oy = Math.max(qy, 0);
-		return Math.sqrt(ox * ox + oy * oy) + Math.min(Math.max(qx, qy), 0);
+	/** Where the sheer face stands (u), wandering a little across it. **/
+	public function cutAt(v:Float):Float
+		return CUT_U + (noise.fbm(v * 0.17 + 3, 1.7, 2) - 0.5) * 1.6;
+
+	/** The dome alone (with the face cut), ignoring the gullies. **/
+	public function domeH(u:Float, v:Float):Float {
+		if (u > cutAt(v)) return floor;
+		return shapeH(u, v);
 	}
 
-	/** Inside the footprint plus a margin (props and grass keep off). **/
-	public function covers(x:Float, y:Float, margin:Float):Bool
-		return footprintSdf(localU(x, y), localV(x, y)) < margin;
-
-	/** Ground height under the ramp at (u, v >= 0), or the floor off it. **/
-	function besideH(u:Float, v:Float):Float {
-		// Off the long side (beyond the block's ends) it's just the floor.
-		if (u < -L - 0.5 || u > L + HEIGHT_IN || v < W - CORNER) return floor;
-		var h = rampH(u);
-		// The landing's end face (u past L) and the outer side drop to the floor.
-		if (u > L) h = lerp(h, floor, (u - L) / HEIGHT_IN);
-		if (v > RAMP_V1) h = lerp(h, floor, Math.min(1, (v - RAMP_V1) / HEIGHT_IN));
-		return h;
+	/** The gully nearest (u, v): along-ness t (0 at the foot, 1 at the crown) and distance across. **/
+	public function gully(u:Float, v:Float):{t:Float, across:Float, half:Float} {
+		var av = Math.abs(v);
+		var dx = GULLY_BU - GULLY_AU, dy = GULLY_BV - GULLY_AV;
+		var len2 = dx * dx + dy * dy;
+		var t = ((u - GULLY_AU) * dx + (av - GULLY_AV) * dy) / len2;
+		var px = GULLY_AU + dx * t, py = GULLY_AV + dy * t;
+		var across = Math.sqrt((u - px) * (u - px) + (av - py) * (av - py));
+		// It widens and narrows a little along its length.
+		var half = GULLY_HALF + (noise.value(t * 4 + (v < 0 ? 30 : 0), 7) - 0.5) * 0.7;
+		return {t: t, across: across, half: half};
 	}
+
+	public function gullyH(t:Float):Float
+		return floor + (gullyTop - floor) * (t < 0 ? 0 : t > 1 ? 1 : t);
+
+	/** The rock's height at local (u, v), or NaN off it (then it's floor and apron). **/
+	public function rockH(u:Float, v:Float):Float {
+		var g = gully(u, v);
+		if (g.t > -0.05 && g.t < 1 && g.across < g.half) return gullyH(g.t);
+		var r = radius(u, v);
+		if (r >= 1 || u > cutAt(v)) return Math.NaN;
+		return shapeH(u, v);
+	}
+
+	/** Metres outside the foot (roughly; negative inside). **/
+	function outside(u:Float, v:Float):Float
+		return (radius(u, v) - 1) * W;
 
 	/** The ground's height at (x, y), given the hillside's own height there. **/
 	public function heightOver(x:Float, y:Float, orig:Float):Float {
 		var u = localU(x, y), v = localV(x, y);
-		var fs = footprintSdf(u, v);
-		if (fs > 0) {
-			// The quarry floor round it, blending back to the hillside, its edge
-			// ragged rather than a neat rounded pad.
-			var t = (fs - APRON - (noise.fbm(x * 0.09 + 17, y * 0.09 + 3, 3) - 0.5) * 5) / APRON_BLEND;
-			t = t < 0 ? 0 : t > 1 ? 1 : t;
-			t = t * t * (3 - 2 * t);
-			return lerp(floor, orig, t);
-		}
-		// The block's own (irregular) outline, read where the point really is.
-		var d = sdf(u, v);
-		if (v < 0) {
-			// Half-turn symmetry for the ramps: the other side is the same, rotated.
-			u = -u;
-			v = -v;
-		}
-		var outside = besideH(u, v);
-		if (d <= -HEIGHT_IN) return top;
-		if (d >= 0) return outside;
-		// The step from the top down to whatever is beside the block.
-		return lerp(top, outside, (d + HEIGHT_IN) / HEIGHT_IN);
+		var h = rockH(u, v);
+		if (!Math.isNaN(h)) return h;
+		// The floor round the foot (and under the face), blending back to the
+		// hillside with a ragged edge rather than a neat pad.
+		var e = Math.max(0, outside(u, v));
+		var t = (e - APRON - (noise.fbm(x * 0.09 + 17, y * 0.09 + 3, 3) - 0.5) * 5) / APRON_BLEND;
+		t = t < 0 ? 0 : t > 1 ? 1 : t;
+		t = t * t * (3 - 2 * t);
+		return floor + (orig - floor) * t;
 	}
 
-	/** Where the ramp's landing opens onto the top (u range, on the long side). **/
-	static inline function inOpening(u:Float):Bool
-		return u > RAMP_TOP_U + 0.3 && u < L - CORNER - 0.3;
-
-	/** A wall: nobody stands or walks here (the only ways up are the ramps). **/
-	public function isWall(x:Float, y:Float):Bool {
+	/** Near the rock or its floor, plus a margin (props and grass keep off). **/
+	public function covers(x:Float, y:Float, margin:Float):Bool {
 		var u = localU(x, y), v = localV(x, y);
-		if (footprintSdf(u, v) > BLOCK_OUT) return false;
-		var d = sdf(u, v);
-		if (v < 0) {
-			u = -u;
-			v = -v;
-		}
-		if (d > -BLOCK_IN && d < BLOCK_OUT) {
-			// The landing joins the top through a gap in the long wall.
-			var longSide = Math.abs(u) < L - CORNER && v > 0;
-			if (!(longSide && inOpening(u))) return true;
-		}
-		// The ramp's outer side and its end face, wherever they're a drop.
-		var onRampU = u > -L - 0.5 && u < L + BLOCK_OUT;
-		if (onRampU && v > RAMP_V1 - 0.3 && v < RAMP_V1 + BLOCK_OUT && rampH(u) - floor > 0.8) return true;
-		if (v > RAMP_V0 - 0.5 && v < RAMP_V1 + BLOCK_OUT && u > L - 0.3 && u < L + BLOCK_OUT) return true;
-		return false;
+		if (outside(u, v) < margin) return true;
+		var g = gully(u, v);
+		return g.t > -0.2 && g.t < 1.1 && g.across < g.half + margin;
 	}
 
-	/** On the block's top (where archers see further). **/
-	public function onTop(x:Float, y:Float):Bool
-		return sdf(localU(x, y), localV(x, y)) < -BLOCK_IN + 0.2;
+	/** Loose rock fallen from the dome: how likely a boulder is here (0 = none). **/
+	public function talus(x:Float, y:Float):Float {
+		var u = localU(x, y), v = localV(x, y);
+		var e = outside(u, v);
+		if (e < 0.6 || e > 4.0) return 0;
+		var g = gully(u, v);
+		if (g.t > -0.5 && g.t < 1.1 && g.across < g.half + 2.0) return 0; // keep the way up clear
+		return noise.fbm(x * 0.3 + 61, y * 0.3 + 23, 2) * (1 - e / 4.0);
+	}
 
-	static inline function lerp(a:Float, b:Float, t:Float):Float
-		return a + (b - a) * t;
+	/**
+		Too steep to stand on: the face, the dome's lower flanks, the gullies'
+		sides. Read from the height map's own slope, so the sim's walls are
+		exactly where the ground is steep. The floor's gentle blend never is.
+	**/
+	public function isWall(x:Float, y:Float):Bool {
+		if (island == null) return false;
+		var u = localU(x, y), v = localV(x, y);
+		if (outside(u, v) > 2.0) return false;
+		var h = island.heightAt(x, y);
+		if (h < floor + 0.4) return false;
+		var s = 0.5;
+		var hx0 = island.heightAt(x - s, y), hx1 = island.heightAt(x + s, y);
+		var hy0 = island.heightAt(x, y - s), hy1 = island.heightAt(x, y + s);
+		var gx = (hx1 - hx0) / (2 * s), gy = (hy1 - hy0) / (2 * s);
+		if (gx * gx + gy * gy <= MAX_SLOPE * MAX_SLOPE) return false;
+		// Only a real drop: a knee-high step at a gully's mouth is just a step
+		// (thin pockets of "wall" there trapped units walking between them).
+		var hi = Math.max(Math.max(hx0, hx1), Math.max(hy0, hy1)), lo = Math.min(Math.min(hx0, hx1), Math.min(hy0, hy1));
+		return hi - lo > 0.9;
+	}
+
+	/** On the dome's upper part (where archers see further). **/
+	public function onTop(x:Float, y:Float):Bool
+		return island != null && island.heightAt(x, y) > floor + RISE * 0.6;
 }

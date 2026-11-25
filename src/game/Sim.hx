@@ -200,7 +200,10 @@ class Sim {
 			nx = u.x + dx / dist * stepLen * slope;
 			ny = u.y + dy / dist * stepLen * slope;
 
-			if (!island.isWalkable(nx, ny)) {
+			// Somehow standing on a wall (pushed onto a steep edge): any step onto land
+			// gets him off it, or he'd be boxed in for good.
+			var onWall = !island.isWalkable(u.x, u.y) && island.heightAt(u.x, u.y) > world.Island.WALKABLE_MIN;
+			if (!onWall && !island.isWalkable(nx, ny)) {
 				// Clipped the shoreline: slide along it (try steps turned up to 90° either
 				// way). A unit wedged on a spit, with water straight ahead, used to re-plan
 				// the same route every tick and never move.
