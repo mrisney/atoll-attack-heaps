@@ -75,6 +75,17 @@
 		"_contest": "Raising or lowering pauses while an enemy is this close to the summit."
 	},
 
+	"highGround": {
+		"_rule": "The summit is a quarried block with sheer walls and a ramp up each long side (world/Quarry): the only ways up. Like Northgard, height pays: whoever stands at least `rise` metres above the one they hit does `downBonus` damage (melee or arrow), and striking up at someone that far above does `upPenalty`. Pikers are the exception: shields up, they charge a slope at `pikerCharge` instead of the penalty, and arrows shot down at them do only `pikerShield`. Archers on top of the block see and shoot `archerReach` metres further. Nobody can strike across a wall (a height gap over `meleeStep`): they have to go round by a ramp.",
+		"rise": 2.0,
+		"downBonus": 1.2,
+		"upPenalty": 0.8,
+		"pikerCharge": 1.1,
+		"pikerShield": 0.6,
+		"archerReach": 4.0,
+		"meleeStep": 1.6
+	},
+
 	"ship": {
 		"_role": "One per side. It carries the band, heals anyone back aboard, and fires its cannons on its own (like the characters' AI). If it sinks, everyone aboard goes down with it.",
 		"hp": 300,

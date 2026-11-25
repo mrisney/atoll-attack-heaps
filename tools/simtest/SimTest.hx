@@ -83,6 +83,8 @@ class SimTest {
 				for (sh in sim.ships)
 					line += ' ship${sh.team}:${sh.sunk ? "SUNK" : Std.string(sh.state)}@(${Math.round(sh.x)},${Math.round(sh.y)}) hp=${Math.round(sh.hp)} shots=${sh.shots} crew=${sh.crew.length}';
 				for (u in sim.units) if (u.boarding >= 0) line += ' boarding#${u.id}@(${Math.round(u.x)},${Math.round(u.y)})hp${Math.round(u.hp)}';
+				if (sim.island.quarry != null)
+					line += ' onTop=' + [for (u in sim.units) if (u.alive && u.aboard < 0 && sim.island.quarry.onTop(u.x, u.y)) (u.team == 0 ? "b" : "r") + Std.string(u.kind).charAt(0)].join("");
 				line += ' arrows=${sim.arrows.length} flag=${sim.flagTeam < 0 ? "none" : (sim.flagTeam == 0 ? "blue" : "red")}${sim.flagTeam >= 0 ? " " + Math.round(sim.flagHeld) + "s" : ""}';
 				Sys.println(line);
 				if (haxe.macro.Compiler.getDefine("dump") != null && sec == 100)

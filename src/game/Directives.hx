@@ -46,6 +46,13 @@ class Directives {
 	public var marchCaptainHalt = 22.0;
 	public var flagLowerTime = 5.0;
 	public var flagHoldTime = 60.0;
+	public var highRise = 2.0;
+	public var highDownBonus = 1.2;
+	public var highUpPenalty = 0.8;
+	public var pikerCharge = 1.1;
+	public var pikerShield = 0.6;
+	public var highArcherReach = 4.0;
+	public var meleeStep = 1.6;
 	public var shipHp = 300.0;
 	public var boardRange = 20.0;
 	public var healPerSecond = 6.0;
@@ -136,6 +143,16 @@ class Directives {
 			d.flagContest = num(f, "contest", d.flagContest);
 			d.flagLowerTime = num(f, "lowerTime", d.flagLowerTime);
 			d.flagHoldTime = num(f, "holdTime", d.flagHoldTime);
+		}
+		var hg:Dynamic = j.highGround;
+		if (hg != null) {
+			d.highRise = num(hg, "rise", d.highRise);
+			d.highDownBonus = num(hg, "downBonus", d.highDownBonus);
+			d.highUpPenalty = num(hg, "upPenalty", d.highUpPenalty);
+			d.pikerCharge = num(hg, "pikerCharge", d.pikerCharge);
+			d.pikerShield = num(hg, "pikerShield", d.pikerShield);
+			d.highArcherReach = num(hg, "archerReach", d.highArcherReach);
+			d.meleeStep = num(hg, "meleeStep", d.meleeStep);
 		}
 		var sh:Dynamic = j.ship;
 		if (sh != null) {

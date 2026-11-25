@@ -131,6 +131,8 @@ class Props {
 				var x = i * step - he + (r() - 0.5) * step;
 				var y = j * step - he + (r() - 0.5) * step;
 				var h = island.heightAt(x, y);
+				// Nothing grows on the quarried summit or its cut floor.
+				if (island.quarry != null && island.quarry.covers(x, y, world.Quarry.APRON + 1.0)) continue;
 				// Rare rock outcrops along the coast, running out into the shallows.
 				if (h > -0.9 && h < 0.45 && outcropSpot(x, y)) {
 					outcrop(x, y, h);
@@ -218,7 +220,8 @@ class Props {
 		rocks.build(sprites);
 		pebbles.build(parent);
 		fields = new GrassField(island);
-		fields.build(parent, fieldAt, tracks.at);
+		var q = island.quarry;
+		fields.build(parent, q == null ? fieldAt : (x, y) -> q.covers(x, y, world.Quarry.APRON) ? 0.0 : fieldAt(x, y), tracks.at);
 		#if js
 		js.Syntax.code("window.grassBlades = {0}", fields.blades);
 		#end

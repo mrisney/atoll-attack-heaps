@@ -184,6 +184,26 @@ to the flag); player orders always override it.
   at 4 m he died in the first melee). Marchers still fight what they meet
   and rejoin; any order ends a unit's march; it ends when the band reaches
   the summit (`checkMarches`). All in directives.json `march`.
+- **The summit is a quarried monolith** (owner, after photos of the
+  Yangshan Quarry near Nanjing: "something the characters could walk or
+  climb to the top and plant a flag, like Northgard... pikers with shields
+  can charge up"; then "slightly more irregular"). `world/Quarry` (sim):
+  a 16 x 8 m block, 6.5 m above a cut floor, a ramp up each long side facing
+  each landing beach (half-turn symmetric), its outline wandering by up to
+  `WOBBLE` (noise, deliberately not mirrored: walls only), a ragged apron
+  blending back to the hillside. It carves the height map after
+  `roughenCoast` (`Island.quarry`, apex = its top) and `isWall` makes the
+  walls unwalkable inside `Island.isWalkable`, so NavGrid paths go up the
+  ramps. The map's 0.75 m cells smear the step, so heights step down
+  inside the outline and the drawn wall leans out to `WALL_OUT` to hide the
+  slope. `render/QuarryView`: fluted, streaked, leaning walls, a worn
+  rounded top edge, dark slots between posts at the foot, scored ramps; it
+  must use the same `wobble`. Props and grass keep off (`covers`).
+  High ground (directives `highGround`): `rise` 2 m above the target gives
+  `downBonus`, below gives `upPenalty` except pikers (`pikerCharge`), whose
+  shields blunt arrows from above (`pikerShield`); archers on top reach
+  `archerReach` further; no melee across a wall (`meleeStep`). Atolls lay
+  the block along the reef. Debug: SimTest prints who's `onTop`.
 - **Mover slides along shorelines**: a blocked step tries angles up to 90°
   either way before re-planning (a unit wedged on a spit re-planned the same
   route every tick and never moved).

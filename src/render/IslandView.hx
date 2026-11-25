@@ -28,6 +28,7 @@ class IslandView extends h3d.scene.Object {
 		this.island = island;
 		buildTerrain();
 		buildProps();
+		QuarryView.build(island, this);
 		buildApexFlag();
 		buildWater();
 		// The swash on the sand reads the water's exposure map (sheltered shores stay calm).

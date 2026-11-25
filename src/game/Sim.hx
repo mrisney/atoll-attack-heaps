@@ -616,6 +616,8 @@ class Sim {
 			u.guardY = u.y;
 		}
 		var s = Rules.stats(u.kind);
+		// Archers on top of the quarried block see and shoot further.
+		var reachBonus = (u.kind == Archer && island.quarry != null && island.quarry.onTop(u.x, u.y)) ? Directives.current.highArcherReach : 0.0;
 		if (u.kind == Captain && evade(u)) return;
 		var t = u.targetId >= 0 ? getUnit(u.targetId) : null;
 		// First duty: protect the captain. An enemy near him outranks whatever else this
@@ -630,7 +632,7 @@ class Sim {
 		}
 		// Look around now and then (staggered, so units don't all think at once).
 		if (!u.forcedTarget && (t == null || (tick + u.id) % 10 == 0)) {
-			var n = acquire(u, s.aggro);
+			var n = acquire(u, s.aggro + reachBonus);
 			if (n != null) t = n;
 		}
 		// Captains duel: one near the other blocks his flag work, and captains otherwise
@@ -669,7 +671,10 @@ class Sim {
 				}
 			}
 		}
-		if (d <= s.reach + 0.2) {
+		// No striking up or down a wall: go round by a ramp (the mover paths there).
+		var ranged = u.kind == Archer && d > 2.5;
+		var canReach = ranged || Math.abs(island.heightAt(u.x, u.y) - island.heightAt(t.x, t.y)) < Directives.current.meleeStep;
+		if (d <= s.reach + reachBonus + 0.2 && canReach) {
 			u.hasTarget = false;
 			u.facing = Math.atan2(t.y - u.y, t.x - u.x);
 			strike(u, t, d);
@@ -684,10 +689,28 @@ class Sim {
 		if (u.cooldown > 0) return;
 		u.cooldown = Math.round(Rules.stats(u.kind).cooldown / TICK);
 		u.lastAttackTick = tick;
+		var hg = heightFactor(u, t);
 		if (u.kind == Archer && d > 2.5) {
-			arrows.push(new Arrow(u, t, Rules.damage(u, t, false), d / Rules.ARROW_SPEED));
+			arrows.push(new Arrow(u, t, Rules.damage(u, t, false) * hg, d / Rules.ARROW_SPEED));
 		} else
-			hurt(t, Rules.damage(u, t, true), u);
+			hurt(t, Rules.damage(u, t, true) * hg, u);
+	}
+
+	/**
+		High ground (directives `highGround`): striking down from `rise` metres
+		or more above does more, striking up does less, except that pikers
+		charge up a slope, and their shields blunt arrows shot down at them.
+	**/
+	function heightFactor(a:Unit, t:Unit):Float {
+		var d = Directives.current;
+		var dh = island.heightAt(a.x, a.y) - island.heightAt(t.x, t.y);
+		if (dh >= d.highRise) {
+			var f = d.highDownBonus;
+			if (t.kind == Piker && a.kind == Archer) f *= d.pikerShield;
+			return f;
+		}
+		if (dh <= -d.highRise) return a.kind == Piker ? d.pikerCharge : d.highUpPenalty;
+		return 1.0;
 	}
 
 	/** Damage a unit; it fights back if it was minding its own business. **/

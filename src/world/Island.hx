@@ -28,13 +28,15 @@ class Island {
 	public var apexX(default, null) = 0.0;
 	public var apexY(default, null) = 0.0;
 	public var apexH(default, null) = -999.0;
+	/** The quarried monolith on the summit (world/Quarry), or null for a plain hilltop. **/
+	public var quarry(default, null):Null<Quarry> = null;
 
 	public var halfExtent(get, never):Float;
 
 	inline function get_halfExtent()
 		return size * cell * 0.5;
 
-	public function new(seed:Int, shape:IslandShape = Single, size = 160, cell = 0.75) {
+	public function new(seed:Int, shape:IslandShape = Single, size = 160, cell = 0.75, withQuarry = true) {
 		this.seed = seed;
 		this.shape = shape;
 		this.size = size;
@@ -49,6 +51,13 @@ class Island {
 				smooth(2);
 		}
 		roughenCoast();
+		if (withQuarry) {
+			// The summit becomes a quarried block: its top is the new apex.
+			var axis = shape == Atoll ? Math.atan2(apexY, apexX) + Math.PI / 2 : Math.PI * 0.75;
+			quarry = new Quarry(apexX, apexY, apexH, axis, seed);
+			quarry.carve(this);
+			apexH = quarry.top;
+		}
 	}
 
 	/**
@@ -248,7 +257,7 @@ class Island {
 	}
 
 	public inline function isWalkable(wx:Float, wy:Float):Bool {
-		return heightAt(wx, wy) > WALKABLE_MIN;
+		return heightAt(wx, wy) > WALKABLE_MIN && (quarry == null || !quarry.isWall(wx, wy));
 	}
 
 	/** Find a walkable spot near a preferred angle on the ring (for spawning). **/
