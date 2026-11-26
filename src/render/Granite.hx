@@ -94,8 +94,9 @@ class Granite {
 		viewer has no licence), so this bakes the same kind of picture from the
 		dome's own shape:
 
-		- fine relief: the rock's height plus eroded, ridged micro-relief, with
-		  drainage channels carved where water collects (D8 flow accumulation);
+		- fine relief: the rock's height plus a gentle swell and grit (never
+		  ridged noise: it read as brain coral), with drainage channels carved
+		  where water collects (multiple-flow-direction accumulation);
 		- shading from that relief under the game's fixed sun, relative to the
 		  mesh's own (so the mesh lights the big shape and this adds the small),
 		  and cavity darkening in hollows: stored in alpha;
@@ -117,8 +118,6 @@ class Granite {
 			t = t < 0 ? 0 : t > 1 ? 1 : t;
 			return t * t * (3 - 2 * t);
 		}
-		inline function ridge(f:Float):Float
-			return 1 - Math.abs(f * 2 - 1);
 		// The rock is read 0.8 m grown, where the drawn sheet stands.
 		var grow = 1 + 0.8 / world.Quarry.W;
 		var base = new haxe.ds.Vector<Float>(count);
@@ -142,12 +141,13 @@ class Granite {
 					h[k] = b;
 					continue;
 				}
-				// Eroded micro-relief: ridged noise over a warped domain (so the ridges
-				// meander like weathered rock, not a regular texture), fading at the foot.
-				var ox = (nz.fbm(x * 0.2 + 71, y * 0.2 + 3, 2) - 0.5) * 3, oy = (nz.fbm(x * 0.2 + 9, y * 0.2 + 55, 2) - 0.5) * 3;
-				var m = (ridge(nz.fbm((x + ox) * 0.33, (y + oy) * 0.33, 3)) - 0.5) * 0.22
-					+ (ridge(nz.fbm((x + ox) * 1.05 + 9, (y + oy) * 1.05, 2)) - 0.5) * 0.12
-					+ (nz.value(x * 3.1 + 2, y * 3.1) - 0.5) * 0.04;
+				// Fine relief, kept plain: a granite dome is broad, smooth sheets, not
+				// small sinuous ridges (ridged noise here read as "a human brain, or a
+				// piece of sea coral"). A gentle swell and a little grit; the
+				// exfoliation ledges live in the mesh (baked here, their edges
+				// aliased into stitched contour lines).
+				var swell = (nz.fbm(x * 0.07 + 71, y * 0.07 + 3, 3) - 0.5) * 0.5;
+				var m = swell + (nz.value(x * 2.7 + 2, y * 2.7) - 0.5) * 0.025;
 				var r = q.radius(u, v);
 				h[k] = b + m * (1 - Math.pow(Math.min(r, 1), 8));
 			}
@@ -266,7 +266,7 @@ class Granite {
 				var cl = Math.sqrt(cx * cx + cy * cy + 1);
 				var lf = Math.max(0.05, (fx * sx + fy * sy + sz) / fl) * 0.8 + 0.2;
 				var lc = Math.max(0.05, (cx * sx + cy * sy + sz) / cl) * 0.8 + 0.2;
-				var cavity = (h[k] - blur[k]) * 2.2;
+				var cavity = (h[k] - blur[k]) * 1.2;
 				cavity = cavity < -0.45 ? -0.45 : cavity > 0.25 ? 0.25 : cavity;
 				// Soft shadows the fine relief casts in this sun (march toward it over
 				// the baked heights), and how much sky each spot sees (horizon angles

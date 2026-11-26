@@ -231,7 +231,11 @@ to the flag); player orders always override it.
   and keaukraine/webgl-mountains, MIT, whose look comes from baked
   lightmaps read through a colour gradient: technique only, no code
   copied). The same weather map now bakes, from the rock's own heights:
-  ridged, domain-warped micro-relief; multiple-flow-direction drainage
+  only a gentle swell and grit as micro-relief (ridged noise there made
+  it look "like a human brain, or a piece of sea coral", owner; baked
+  periodic sheet steps aliased into stitched contour lines, so the
+  exfoliation ledges are only in the mesh: few, ~2.7 m apart, fading in
+  and out round the dome); multiple-flow-direction drainage
   (one-way D8 made straight zigzag scratches) that carves faint channels
   and places the streaks and damp lichen; cavity darkening against a
   blurred copy; soft shadows marched toward `TerrainStyle.SUN`; sky

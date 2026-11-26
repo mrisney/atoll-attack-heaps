@@ -136,9 +136,14 @@ class QuarryView {
 				if (!onFace) {
 					// Exfoliation sheets: the flanks step out in shells, ledge over ledge,
 					// rather than hanging in soft folds (half the lumps, plus the steps).
-					var sh = (z - q.floor) / 1.3 + noise.fbm(th * 1.7 + 5, z * 0.08, 2) * 1.6;
+					// Few and broken: evenly spaced rings all the way round read as
+					// contour lines. Wide spacing, soft risers, and each ledge fades
+					// in and out round the dome.
+					var sh = (z - q.floor) / 2.7 + noise.fbm(th * 1.3 + 5, z * 0.06, 2) * 2.2;
 					var step = sh - Math.floor(sh);
-					rel = rel * 0.5 + (step * step) * 0.28 * smooth(0.15, 0.6, slope);
+					var riser = smooth(0.0, 0.35, step) * (1 - step);
+					var patchy = smooth(0.45, 0.7, noise.fbm(th * 2.3 + 17, Math.floor(sh) * 3.1, 2));
+					rel = rel * 0.5 + riser * 0.22 * patchy * smooth(0.15, 0.6, slope);
 				}
 				if (onFace) u += rel + 0.05;
 				else if (!skirt) {
