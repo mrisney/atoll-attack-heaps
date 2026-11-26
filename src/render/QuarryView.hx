@@ -371,6 +371,7 @@ class QuarryView {
 			sh.weather = weather;
 			sh.weatherOrigin.set(q.cx - half, q.cy - half);
 			sh.weatherSize = half * 2;
+			sh.turf = GroundTextures.get().grass;
 			m.material.mainPass.addShader(sh);
 			FlatMeshBuilder.shadows(m.material, true, true);
 			mats.push(m.material);

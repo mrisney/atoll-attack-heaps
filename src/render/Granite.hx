@@ -339,6 +339,12 @@ class GraniteShader extends hxsl.Shader {
 		@param var weather:Sampler2D;
 		@param var weatherOrigin:Vec2;
 		@param var weatherSize:Float;
+		/** Grass grown onto the rock where it faces up (webgl-rock-pillars mixes
+			grass into its rock "based on vertex normal"): the island's painted
+			grass, so the dome sits in its meadow. 0 none .. 1 every flat. **/
+		@param var turf:Sampler2D;
+		@param var turfScale:Float;
+		@param var grassAmount:Float;
 		var transformedPosition:Vec3;
 		var transformedNormal:Vec3;
 		var pixelColor:Vec4;
@@ -363,6 +369,25 @@ class GraniteShader extends hxsl.Shader {
 			var sh = wt.a * 2.0;
 			var tint = mix(vec3(0.8, 0.86, 1.0), vec3(1.04, 1.0, 0.93), smoothstep(0.55, 1.15, sh));
 			pixelColor.rgb *= mix(vec3(1.0), tint * sh, up);
+			// Turf on the flats and ledges: by slope, with a ragged, patchy edge
+			// from the grass texture's own large-scale noise (alpha) at two
+			// unrelated scales, and none where the baked relief lies in shadow
+			// (soil gathers in hollows, so hollows keep it: cavity is dark AND
+			// damp, but deep shade on a slope is just steep).
+			var nz = normalize(transformedNormal).z;
+			var tp = transformedPosition.xy / turfScale;
+			var t = turf.get(tp);
+			var big = turf.get(tp * 0.173 + vec2(0.31, 0.77)).a;
+			var mid = turf.get(tp * 0.61 + vec2(0.57, 0.13)).a;
+			var flat = smoothstep(0.84, 0.96, nz);
+			// Patches, not a lawn: only where both noise scales agree, and less
+			// in sunlit, exposed spots than in the hollows (sh < 1 there).
+			var hollow = smoothstep(1.15, 0.8, sh);
+			var want = big * 0.6 + mid * 0.4 + hollow * 0.12 + grassAmount * 0.3;
+			var cover = flat * smoothstep(0.66, 0.74, want) * mix(0.55, 1.0, t.a);
+			// The meadow's olive, darker in shade: not the bright lawn green.
+			var turfCol = t.rgb * vec3(0.66, 0.68, 0.48) * mix(0.7, 1.0, smoothstep(0.4, 1.0, sh));
+			pixelColor.rgb = mix(pixelColor.rgb, turfCol, cover);
 		}
 	};
 
@@ -371,5 +396,7 @@ class GraniteShader extends hxsl.Shader {
 		grainScale = 1.37;
 		mottleScale = 11.3;
 		strength = 0.9;
+		turfScale = 2.9;
+		grassAmount = 0.3;
 	}
 }

@@ -242,6 +242,15 @@ to the flag); player orders always override it.
   own lighting, applied only on up-facing surfaces, through a cool-shade /
   warm-light tint. The map reads the rock 0.8 m grown (the drawn sheet is
   proud), or its edge shows as a seam. 448², baked once per island.
+  **Turf on the flats** (owner pointed at keaukraine's webgl-rock-pillars,
+  MIT, whose rocks mix grass in "based on vertex normal": idea only, no
+  code): `GraniteShader` blends the island's painted grass
+  (`GroundTextures.grass`, olive-dulled) onto surfaces facing up, in
+  ragged patches where two scales of the texture's alpha noise agree,
+  more in baked hollows than on sunlit swells (`grassAmount` 0.3). A
+  first pass at full strength turned the crown into a putting green:
+  keep it patchy. The article credits its mountains' realism to an
+  erosion-simulated mesh, deep baked shadows and fog.
   `?yaw=` turns the camera for shots of
   the face. Known: the face's top edge is a little saw-toothed (the folded
   rings).
