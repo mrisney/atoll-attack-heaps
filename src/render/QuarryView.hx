@@ -349,7 +349,7 @@ class QuarryView {
 		flush();
 		var granite = Granite.get();
 		var half = Quarry.L * 1.45 + PROUD;
-		var weather = Granite.paintWeather(q, seed, 512, half);
+		var weather = Granite.paintWeather(q, seed, 448, half);
 		var mats = [];
 		for (p in chunks) {
 			var m = new h3d.scene.Mesh(p, parent);

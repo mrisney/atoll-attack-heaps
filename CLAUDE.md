@@ -221,6 +221,20 @@ to the flag); player orders always override it.
   only where it steepens (across the crown they read as brush strokes),
   paler fresh sheets, thin dark sheet-edge lines, weathering pits; the xy
   projection smears straight down the sheer face, which suits its streaks.
+  **Baked relief and light** (owner, still "artificial", pointed at
+  monica-alegre/mountain-3d-viewer, real DEMs draped with satellite photos:
+  **no licence, and the imagery is CC BY-NC-SA, so nothing of it is used**;
+  and keaukraine/webgl-mountains, MIT, whose look comes from baked
+  lightmaps read through a colour gradient: technique only, no code
+  copied). The same weather map now bakes, from the rock's own heights:
+  ridged, domain-warped micro-relief; multiple-flow-direction drainage
+  (one-way D8 made straight zigzag scratches) that carves faint channels
+  and places the streaks and damp lichen; cavity darkening against a
+  blurred copy; soft shadows marched toward `TerrainStyle.SUN`; sky
+  visibility from horizon angles. Stored in alpha relative to the mesh's
+  own lighting, applied only on up-facing surfaces, through a cool-shade /
+  warm-light tint. The map reads the rock 0.8 m grown (the drawn sheet is
+  proud), or its edge shows as a seam. 448², baked once per island.
   `?yaw=` turns the camera for shots of
   the face. Known: the face's top edge is a little saw-toothed (the folded
   rings).
