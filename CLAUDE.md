@@ -214,10 +214,9 @@ to the flag); player orders always override it.
   patches, and about 11 grass tufts. Fissures were drawn as thin dark
   ribbons laid on the surface; the owner found them "very artificial", so
   they're **not drawn** any more (`QuarryView.drawCracks = false`; the walk
-  still places the tufts). Joints are instead **carved into the baked
-  relief** (`Granite.paintWeather`: a few long wandering grooves, deepest
-  cut wins where the walk overlaps), so the baked light shades their sides
-  and the drainage runs along them. Weathering after the owner's Stone
+  still places the tufts). Joints carved into the baked relief
+  instead still "look unnatural" (owner), so the dome has **no fissures
+  at all**: don't add cracks, joints or grooves back. Weathering after the owner's Stone
   Mountain (Georgia) photos: pale whitish granite (`Palette.QUARRY*`), a
   512² map baked once per island over the dome's footprint in world xy
   (`Granite.paintWeather`, `GraniteShader.weather`, stored halved so paler
