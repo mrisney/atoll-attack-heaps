@@ -251,6 +251,20 @@ to the flag); player orders always override it.
   first pass at full strength turned the crown into a putting green:
   keep it patchy. The article credits its mountains' realism to an
   erosion-simulated mesh, deep baked shadows and fog.
+  **Angular, not organic** (owner: the dome's lines looked "like a gourd,
+  or organic... more jagged perhaps", with a pumpkin photo): the base
+  outline is a **polygon** (`Quarry.outlineAt`: 9 irregular corners near
+  radius 1, straight runs between; smooth noise made round lobes that
+  bulged at the foot, and a deep concave corner pinched the flank into two
+  round cheeks), the flanks carry **no lumps, flutes or angle-banded
+  streaks** (repeated round the dome they converged on the crown like a
+  pumpkin's ribs; streaks are short and broken, drainage streaks
+  patchy), and `QuarryView.chip` presses ~110 tilted planes into the
+  sheet, gl-rock style, for flat facets with sharp rims (clamped per
+  point: 1.1 m on the flanks, ~0.2 m on the walkable crown and gullies,
+  none on the face or foot). The terrain mesh is **sunk 2.5 m under the
+  dome** (`IslandView.vertex`, drawing only) or the smooth height map
+  shows through deep chips.
   `?yaw=` turns the camera for shots of
   the face. Known: the face's top edge is a little saw-toothed (the folded
   rings).

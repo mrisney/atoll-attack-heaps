@@ -120,8 +120,37 @@ class Quarry {
 		return cy + u * sa + v * ca;
 
 	/** How far the base's outline wanders, as a factor on its radius, by direction. **/
-	public function outlineAt(theta:Float):Float
-		return 1 + (noise.fbm(Math.cos(theta) * 1.6 + 5, Math.sin(theta) * 1.6 + 9, 3) - 0.5) * 0.5;
+	/**
+		The base outline (1 = the plain ellipse): a polygon, straight runs
+		between irregular corners, plus a little noise. Smooth noise alone
+		made round lobes that bulged at the foot like a gourd's (owner: "more
+		jagged"); straight runs turn the flanks into broad faces meeting at
+		ridges. Corners stay near 1 so few are concave (a deep concave
+		corner pinched the flank into two round cheeks).
+	**/
+	public function outlineAt(theta:Float):Float {
+		var k = CORNERS;
+		inline function ang(j:Int):Float
+			return (j + (noise.value(((j % k) + k) % k * 7.31 + 0.5, 1.9) - 0.5) * 0.7) / k * Math.PI * 2;
+		inline function rad(j:Int):Float
+			return 0.9 + noise.value(((j % k) + k) % k * 5.17 + 0.5, 3.7) * 0.22;
+		var a = theta / (Math.PI * 2);
+		a -= Math.floor(a);
+		var t = a * Math.PI * 2;
+		// The segment whose corners straddle t.
+		var i = Math.floor(a * k) - 1;
+		while (ang(i + 1) <= t) i++;
+		while (ang(i) > t) i--;
+		var a0 = ang(i), a1 = ang(i + 1), r0 = rad(i), r1 = rad(i + 1);
+		var p0x = Math.cos(a0) * r0, p0y = Math.sin(a0) * r0;
+		var ex = Math.cos(a1) * r1 - p0x, ey = Math.sin(a1) * r1 - p0y;
+		var dx = Math.cos(t), dy = Math.sin(t);
+		var den = dx * ey - dy * ex;
+		var r = Math.abs(den) < 1e-9 ? r0 : (p0x * ey - p0y * ex) / den;
+		return r + (noise.fbm(Math.cos(theta) * 3.1 + 5, Math.sin(theta) * 3.1 + 9, 2) - 0.5) * 0.06;
+	}
+
+	static inline var CORNERS = 9;
 
 	/** Normalised distance from the centre (1 = the foot), irregular outline. **/
 	public function radius(u:Float, v:Float):Float {

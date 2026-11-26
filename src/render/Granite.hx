@@ -179,7 +179,7 @@ class Granite {
 				if (wts[m] > 0) acc[(j + nbr[m * 2 + 1]) * n + i + nbr[m * 2]] += acc[k] * wts[m] / sum;
 		}
 		// Carve the channels a little.
-		for (k in order) h[k] -= Math.min(0.06, 0.006 * Math.sqrt(acc[k] - 1));
+		for (k in order) h[k] -= Math.min(0.02, 0.002 * Math.sqrt(acc[k] - 1));
 
 		// Hollows: height against a blurred copy (two box blurs, ~0.6 m).
 		var blur = new haxe.ds.Vector<Float>(count), tmp = new haxe.ds.Vector<Float>(count);
@@ -267,8 +267,9 @@ class Granite {
 				var wet = Math.min(1, Math.log(acc[k]) / accLog);
 				var c = 1.0, cr = 1.0, cb = 1.0;
 				// Streaks along the drainage, darker where it runs steeply.
-				var streak = smooth(0.35, 0.85, wet) * (0.3 + 0.7 * smooth(0.1, 0.6, steep));
-				c *= 1 - streak * 0.42;
+				// Broken up, or the drainage fanning down every side of a dome draws ribs.
+				var streak = smooth(0.45, 0.9, wet) * (0.3 + 0.7 * smooth(0.1, 0.6, steep)) * smooth(0.4, 0.6, nz.fbm(x * 0.3 + 17, y * 0.3 + 5, 2));
+				c *= 1 - streak * 0.3;
 				cb *= 1 - streak * 0.06;
 				// Lichen crust: big ragged patches, mostly where it stays damp.
 				var crust = smooth(0.49, 0.53, nz.fbm(x * 0.075 + 3, y * 0.075 + 7, 4) + (nz.fbm(x * 0.9, y * 0.9, 2) - 0.5) * 0.12);

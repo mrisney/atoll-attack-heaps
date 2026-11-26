@@ -57,7 +57,17 @@ class IslandView extends h3d.scene.Object {
 
 	function vertex(i:Int, j:Int):Point {
 		var he = island.halfExtent;
-		return new Point(i * island.cell - he, j * island.cell - he, island.heightAtVertex(i, j));
+		var x = i * island.cell - he, y = j * island.cell - he;
+		var z = island.heightAtVertex(i, j);
+		// Under the dome the ground is never seen: sink it (drawing only, the
+		// sim keeps its heights), so the dome's chipped facets can cut in deep
+		// without the smooth height map showing through them.
+		var q = island.quarry;
+		if (q != null) {
+			var r = q.radius(q.localU(x, y), q.localV(x, y));
+			if (r < 0.97) z -= 2.5 * Math.min(1, (0.97 - r) / 0.08);
+		}
+		return new Point(x, y, z);
 	}
 
 	/**

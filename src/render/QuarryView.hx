@@ -72,8 +72,10 @@ class QuarryView {
 	function stone(u:Float, v:Float, z:Float, steep:Float, s:Float, inGully:Bool):Point {
 		var up = (z - q.floor) / Quarry.RISE;
 		var base = mixColor(Palette.QUARRY_TOP, Palette.QUARRY, smooth(0.2, 0.8, steep));
-		var streak = smooth(0.5, 0.72, noise.fbm(s * 0.6 + 31, 0.5, 3)) * smooth(0.3, 0.9, steep) * (0.4 + 0.6 * up);
-		var c = mixColor(base, Palette.QUARRY_STAIN, streak * 0.85);
+		// Streaks short and broken down the height: banded by angle alone, they ran
+		// from foot to crown like a gourd's ribs.
+		var streak = smooth(0.55, 0.75, noise.fbm(s * 0.6 + 31, z * 0.35, 3)) * smooth(0.3, 0.9, steep) * (0.4 + 0.6 * up);
+		var c = mixColor(base, Palette.QUARRY_STAIN, streak * 0.5);
 		// Exfoliation: thin darker shells following the dome's shape.
 		var shell = Math.abs(Math.sin((up * 9 + noise.value(u * 0.15, v * 0.15) * 2.5) * Math.PI));
 		var shellLine = (1 - smooth(0.0, 0.12, shell)) * smooth(0.1, 0.5, steep) * (1 - smooth(0.85, 1.0, steep)) * 0.22;
@@ -102,10 +104,11 @@ class QuarryView {
 		var nr = rings.length;
 		var grid:Array<Array<Point>> = [];
 		var colours:Array<Array<Point>> = [];
+		var chipW:Array<Array<Float>> = [];
 		for (ti in 0...nTheta) {
 			var th = ti / nTheta * Math.PI * 2;
 			var wob = q.outlineAt(Math.atan2(Math.sin(th), Math.cos(th)));
-			var c = [], cc = [];
+			var c = [], cc = [], cw:Array<Float> = [];
 			for (ri in 0...nr) {
 				var r = rings[ri];
 				var skirt = ri == nr - 1;
@@ -143,7 +146,10 @@ class QuarryView {
 					var step = sh - Math.floor(sh);
 					var riser = smooth(0.0, 0.35, step) * (1 - step);
 					var patchy = smooth(0.45, 0.7, noise.fbm(th * 2.3 + 17, Math.floor(sh) * 3.1, 2));
-					rel = rel * 0.5 + riser * 0.22 * patchy * smooth(0.15, 0.6, slope);
+					// No lumps or flutes round the flanks: repeated round the dome they
+					// converged on the crown like a pumpkin's ribs (owner: "like a gourd,
+					// or organic"). Facets are chipped in afterwards instead (chip).
+					rel = riser * 0.22 * patchy * smooth(0.15, 0.6, slope);
 				}
 				if (onFace) u += rel + 0.05;
 				else if (!skirt) {
@@ -156,12 +162,82 @@ class QuarryView {
 				if (!onFace && slope < 0.5) z += Math.abs(noise.fbm(u * 0.3 + 41, v * 0.3 + 9, 3) - 0.5) * 0.35 * (1 - slope * 2);
 				c.push(new Point(q.worldX(u, v), q.worldY(u, v), z));
 				cc.push(stone(u, v, z, slope, s, inGully));
-			}
-			grid.push(c);
-			colours.push(cc);
-		}
-		sheet(grid, colours, true, true);
+				// How deep facets may chip here: the flanks fully (the drawn sheet
+				// stands 0.8 m proud of the sim there), the walkable crown and the
+				// gullies only a touch (or feet sink into the rock), never the cut
+				// face, the foot or the skirt.
+				cw.push(onFace || ri >= nr - 3 ? 0.0 : (inGully ? 0.15 : 0.2 + 0.8 * smooth(0.25, 0.6, slope)) * smooth(1.0, 0.92, r));
+				}
+				grid.push(c);
+				colours.push(cc);
+				chipW.push(cw);
+				}
+				chip(grid, chipW);
+				sheet(grid, colours, true, true);
 	}
+
+	/**
+		Chip the dome into facets, as gl-rock scrapes its rocks (and as
+		`Rocks` does): planes cut through the surface a little below it, and
+		everything outside a plane is pressed flat onto it. Each cut leaves a
+		flat face with a sharp rim where it meets the curve, so the granite
+		reads as broken, angular sheets rather than a smooth gourd. A cut's
+		cap is bounded by its own depth, so no edge falls off a cliff.
+	**/
+	function chip(grid:Array<Array<Point>>, weight:Array<Array<Float>>) {
+		var nt = grid.length, nr = grid[0].length;
+		// Where each point started: the cuts together may only press it in so far
+		// (the terrain under the drawn sheet shows through otherwise).
+		var orig = [for (row in grid) [for (pt in row) pt.clone()]];
+		var st = (0x2545 + seed * 7919) & 0x7fffffff;
+		inline function rand():Float {
+			st = (st * 1103515245 + 12345) & 0x7fffffff;
+			return st / 2147483647.0;
+		}
+		for (f in 0...110) {
+			var ti = Std.int(rand() * nt), ri = Std.int(3 + rand() * (nr - 7));
+			if (weight[ti][ri] < 0.3) continue;
+			var p = grid[ti][ri].clone();
+			// The surface's outward normal there, from its neighbours.
+			var a = grid[(ti + 1) % nt][ri], b = grid[(ti + nt - 1) % nt][ri];
+			var c = grid[ti][ri + 1], d = grid[ti][ri - 1];
+			var n = a.sub(b).cross(c.sub(d));
+			n.normalize();
+			if (n.z < 0) n.scale(-1);
+			// Tilted, so facets meet at odd angles.
+			n.x += (rand() - 0.5) * 0.6;
+			n.y += (rand() - 0.5) * 0.6;
+			n.z += (rand() - 0.5) * 0.3;
+			n.normalize();
+			var depth = (0.25 + rand() * 0.6) * weight[ti][ri];
+			var ox = p.x - n.x * depth, oy = p.y - n.y * depth, oz = p.z - n.z * depth;
+			for (tj in 0...nt)
+				for (rj in 0...nr) {
+					var w = weight[tj][rj];
+					if (w <= 0) continue;
+					var v = grid[tj][rj];
+					var dx = v.x - p.x, dy = v.y - p.y, dz = v.z - p.z;
+					if (dx * dx + dy * dy + dz * dz > 25) continue;
+					var h = (v.x - ox) * n.x + (v.y - oy) * n.y + (v.z - oz) * n.z;
+					if (h <= 0) continue;
+					// Where chipping is limited, never deeper than allowed.
+					h = Math.min(h, 0.9 * w);
+					v.x -= n.x * h;
+					v.y -= n.y * h;
+					v.z -= n.z * h;
+					}
+					}
+					for (tj in 0...nt)
+					for (rj in 0...nr) {
+					var v = grid[tj][rj], o = orig[tj][rj];
+					var dx = v.x - o.x, dy = v.y - o.y, dz = v.z - o.z;
+					var len = Math.sqrt(dx * dx + dy * dy + dz * dz), most = 1.1 * weight[tj][rj];
+					if (len > most) {
+					var k = most / len;
+					v.set(o.x + dx * k, o.y + dy * k, o.z + dz * k);
+					}
+					}
+					}
 
 	// --- fissures and tufts -------------------------------------------------------
 
