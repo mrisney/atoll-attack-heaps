@@ -185,6 +185,7 @@ class QuarryView {
 	}
 
 	final crackPts:Array<{u:Float, v:Float}> = [];
+	static inline var drawCracks = false;
 
 	/** One crack: a wandering line from (u, v), heading `dir`, laid on the rock as a thin dark ribbon. **/
 	function crack(u:Float, v:Float, dir:Float, len:Float, width:Float, maxSlope:Float, turn:Float, depth:Int) {
@@ -202,7 +203,11 @@ class QuarryView {
 			v += Math.sin(dir) * step;
 			d += step;
 		}
-		if (path.length < 3) return;
+		// The ribbons themselves aren't drawn any more (owner: "very artificial"):
+		// the joints are carved into the baked relief instead (Granite.paintWeather),
+		// where the light and the drainage pick them out softly. The walk still
+		// finds where the grass tufts root.
+		if (path.length < 3 || !drawCracks) return;
 		var n = path.length;
 		var grid = [], cols = [];
 		for (i in 0...n) {

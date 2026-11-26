@@ -119,6 +119,8 @@ class Granite {
 		}
 		inline function ridge(f:Float):Float
 			return 1 - Math.abs(f * 2 - 1);
+		// The rock is read 0.8 m grown, where the drawn sheet stands.
+		var grow = 1 + 0.8 / world.Quarry.W;
 		var base = new haxe.ds.Vector<Float>(count);
 		var h = new haxe.ds.Vector<Float>(count);
 		var rock = new haxe.ds.Vector<Bool>(count);
@@ -131,7 +133,6 @@ class Granite {
 				wy[k] = y;
 				// Read the rock where the drawn sheet is (it stands a little proud of
 				// the sim's outline), so the map's edge meets the mesh's foot.
-				var grow = 1 + 0.8 / world.Quarry.W;
 				var u = q.localU(x, y) / grow, v = q.localV(x, y) / grow;
 				var rh = q.rockH(u, v);
 				rock[k] = !Math.isNaN(rh);
@@ -150,6 +151,45 @@ class Granite {
 				var r = q.radius(u, v);
 				h[k] = b + m * (1 - Math.pow(Math.min(r, 1), 8));
 			}
+
+		// Joints: a few long, wandering grooves cut into the relief (not drawn
+		// lines: drawn ribbons looked "very artificial"). The baked light shades
+		// their sides and the drainage runs along them, so they read softly.
+		var groove = new haxe.ds.Vector<Float>(count);
+		for (k in 0...count) groove[k] = 0;
+		inline function carveAt(fx:Float, fy:Float, depth:Float, width:Float) {
+			var rr = Std.int(Math.ceil(width * 2 / d));
+			var ci = Std.int(fx / d), cj = Std.int(fy / d);
+			for (dj in -rr...rr + 1)
+				for (di in -rr...rr + 1) {
+					var ii = ci + di, jj = cj + dj;
+					if (ii < 0 || jj < 0 || ii >= n || jj >= n) continue;
+					var kk = jj * n + ii;
+					if (!rock[kk]) continue;
+					var dx = (ii + 0.5) * d - fx, dy = (jj + 0.5) * d - fy;
+					var e = Math.sqrt(dx * dx + dy * dy) / width;
+					// The deepest cut wins (the walk overlaps itself step to step).
+					if (e < 2) groove[kk] = Math.max(groove[kk], depth * Math.exp(-e * e * 1.5));
+				}
+		}
+		for (jn in 0...9) {
+			var u = (rnd() - 0.6) * world.Quarry.L * 1.3, v = (rnd() - 0.5) * world.Quarry.W * 1.4;
+			var dir = rnd() * Math.PI * 2, len = 3 + rnd() * 7, t = 0.0;
+			var depth = 0.05 + rnd() * 0.06;
+			while (t < len) {
+				var x = q.worldX(u * grow, v * grow), y = q.worldY(u * grow, v * grow);
+				if (Math.isNaN(q.rockH(u, v))) break;
+				// Deep in the middle, closing at the ends.
+				var f = Math.sin(Math.PI * t / len);
+				carveAt(x - (q.cx - half), y - (q.cy - half), depth * f, 0.05 + 0.05 * f);
+				dir += (rnd() - 0.5) * 0.3;
+				u += Math.cos(dir) * d * 0.8;
+				v += Math.sin(dir) * d * 0.8;
+				t += d * 0.8;
+			}
+		}
+
+		for (k in 0...count) h[k] -= groove[k];
 
 		// Where water goes: each cell drains to its lowest neighbour, highest first.
 		var order = [for (k in 0...count) if (rock[k]) k];

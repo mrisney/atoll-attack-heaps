@@ -211,9 +211,13 @@ to the flag); player orders always override it.
   speckle and a slow mottle painted in code, triplanar at unrelated scales
   1.37 m / 11.3 m; never the shared rock texture, whose crack network
   repeats), exfoliation ledges stepping the flanks, broad weathering
-  patches, fissures as thin ribbons laid on the surface (crown joints,
-  curved sheeting joints, hairlines; seeded LCG, render-side only) and
-  about 11 grass tufts rooted in them. Weathering after the owner's Stone
+  patches, and about 11 grass tufts. Fissures were drawn as thin dark
+  ribbons laid on the surface; the owner found them "very artificial", so
+  they're **not drawn** any more (`QuarryView.drawCracks = false`; the walk
+  still places the tufts). Joints are instead **carved into the baked
+  relief** (`Granite.paintWeather`: a few long wandering grooves, deepest
+  cut wins where the walk overlaps), so the baked light shades their sides
+  and the drainage runs along them. Weathering after the owner's Stone
   Mountain (Georgia) photos: pale whitish granite (`Palette.QUARRY*`), a
   512² map baked once per island over the dome's footprint in world xy
   (`Granite.paintWeather`, `GraniteShader.weather`, stored halved so paler
